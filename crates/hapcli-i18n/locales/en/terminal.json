@@ -83,7 +83,7 @@
       "copy": "Copy",
       "copy_title": "Copy command output",
       "copy_command": "Copy command",
-      "send_to_ai": "Send to OxideSens",
+      "send_to_ai": "Send to hapcli",
       "fill_command_bar": "Fill command bar",
       "insert_selection_into_command": "Insert selection here",
       "replace_command_with_selection": "Replace command with selection",
@@ -348,7 +348,7 @@
       "path_state_conflict": "C"
     },
     "ai": {
-      "title": "OxideSens",
+      "title": "hapcli",
       "api_key_required": "API Key Required",
       "api_key_hint": "Configure your API key in Settings → AI to use this feature.",
       "context": "Context:",

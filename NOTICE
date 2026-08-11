@@ -7,22 +7,10 @@ following projects:
 Generated dependency notices are maintained separately:
 
 - THIRD_PARTY_NOTICES.md covers the native Rust workspace.
-- agent/THIRD_PARTY_NOTICES.md covers the standalone remote agent.
 
 Regenerate them with:
 
 - python3 scripts/release/generate_third_party_notices.py --cwd . --output THIRD_PARTY_NOTICES.md --title "Third-Party Notices (Native / Rust Workspace)" --exclude-prefix hapcli-
-- python3 scripts/release/generate_third_party_notices.py --cwd agent --output THIRD_PARTY_NOTICES.md --title "Third-Party Notices (hapcli Agent)" --exclude-name hapcli-agent
-
-Bundled background artwork
-Copyright (c) 2026 hapcli contributors.
-Licensed under the Creative Commons Attribution 4.0 International license
-(CC BY 4.0). The license applies to the artwork's copyright and similar rights;
-it does not grant trademark rights in the hapcli name or project marks.
-The bundled Oxide Ambient, Oxide Nocturne, and Oxide Verdant backgrounds are
-project artwork rather than third-party assets. Oxide Nocturne and Oxide
-Verdant were generated for the project with OpenAI image generation and then
-selected, edited, and encoded by hapcli contributors.
 
 Alacritty
 Copyright 2016-2025 The Alacritty Project Contributors.

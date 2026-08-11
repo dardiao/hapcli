@@ -69,7 +69,7 @@ class ComposeReleaseNotesTests(unittest.TestCase):
             )
 
             notes = COMPOSE_RELEASE_NOTES.compose_notes(
-                "2.0.0-preview.1", "gpui-v2.0.0-preview.1", base, changelog
+                "2.0.0-preview.1", "2.0.0-preview.2", base, changelog
             )
 
         self.assertNotIn("📥 Download for your system", notes)

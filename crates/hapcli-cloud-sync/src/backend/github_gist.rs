@@ -7,7 +7,7 @@ use super::*;
 
 const DEFAULT_GIT_API_ENDPOINT: &str = "https://api.github.com";
 const GITHUB_API_VERSION: &str = "2022-11-28";
-const GIST_OBJECT_PREFIX: &str = "OXIDETERM-GIST-BLOB-V1\n";
+const GIST_OBJECT_PREFIX: &str = "HAPCLI-GIST-BLOB-V1\n";
 
 impl CloudSyncBackend {
     pub async fn create_github_gist(

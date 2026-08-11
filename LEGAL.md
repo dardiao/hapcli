@@ -58,7 +58,7 @@ Credentials and API keys should remain in platform-secure storage where supporte
 
 ### 7. AI Features
 
-OxideSens may use user-configured model providers, local models, OpenAI-compatible endpoints, retrieval indexes, tool policies, and selected workspace context. AI output can be wrong, incomplete, or unsafe. Review suggestions, commands, file edits, and tool actions before execution.
+hapcli may use user-configured model providers, local models, OpenAI-compatible endpoints, retrieval indexes, tool policies, and selected workspace context. AI output can be wrong, incomplete, or unsafe. Review suggestions, commands, file edits, and tool actions before execution.
 
 Do not send private keys, passwords, production secrets, confidential data, regulated data, or other sensitive information to model providers unless you are authorized to do so and accept that provider's terms and data practices.
 
@@ -114,7 +114,7 @@ hapcli 设计为本地桌面客户端。默认情况下，它不要求 hapcli �
 
 ### 7. AI 功能
 
-OxideSens 可能使用用户配置的模型供应商、本地模型、OpenAI 兼容端点、检索索引、工具策略和用户选择的工作区上下文。AI 输出可能错误、不完整或不安全。执行前请审查建议、命令、文件编辑和工具动作。
+hapcli 可能使用用户配置的模型供应商、本地模型、OpenAI 兼容端点、检索索引、工具策略和用户选择的工作区上下文。AI 输出可能错误、不完整或不安全。执行前请审查建议、命令、文件编辑和工具动作。
 
 除非你获得授权并接受供应商条款和数据处理方式，否则不要把私钥、密码、生产秘密、机密数据、受监管数据或其他敏感信息发送给模型供应商。
 
@@ -170,7 +170,7 @@ hapcli 設計為本機桌面客戶端。預設情況下，它不要求 hapcli �
 
 ### 7. AI 功能
 
-OxideSens 可能使用使用者設定的模型供應商、本機模型、OpenAI 相容端點、檢索索引、工具策略和使用者選取的工作區內容。AI 輸出可能錯誤、不完整或不安全。執行前請審查建議、命令、檔案編輯和工具動作。
+hapcli 可能使用使用者設定的模型供應商、本機模型、OpenAI 相容端點、檢索索引、工具策略和使用者選取的工作區內容。AI 輸出可能錯誤、不完整或不安全。執行前請審查建議、命令、檔案編輯和工具動作。
 
 除非你獲得授權並接受供應商條款和資料處理方式，否則不要把私鑰、密碼、生產秘密、機密資料、受監管資料或其他敏感資訊傳送給模型供應商。
 
@@ -226,7 +226,7 @@ hapcli はローカルデスクトップクライアントとして設計され�
 
 ### 7. AI 機能
 
-OxideSens は、ユーザーが設定したモデルプロバイダー、ローカルモデル、OpenAI 互換エンドポイント、検索インデックス、ツールポリシー、選択されたワークスペースコンテキストを使用する場合があります。AI 出力は誤り、不完全、または安全でない可能性があります。実行前に提案、コマンド、ファイル編集、ツール操作を確認してください。
+hapcli は、ユーザーが設定したモデルプロバイダー、ローカルモデル、OpenAI 互換エンドポイント、検索インデックス、ツールポリシー、選択されたワークスペースコンテキストを使用する場合があります。AI 出力は誤り、不完全、または安全でない可能性があります。実行前に提案、コマンド、ファイル編集、ツール操作を確認してください。
 
 許可されており、プロバイダーの規約とデータ取り扱いを受け入れる場合を除き、秘密鍵、パスワード、本番環境の秘密情報、機密データ、規制対象データ、その他の敏感情報をモデルプロバイダーへ送信しないでください。
 
@@ -282,7 +282,7 @@ hapcli은 로컬 데스크톱 클라이언트로 설계되었습니다. 기본�
 
 ### 7. AI 기능
 
-OxideSens는 사용자가 구성한 모델 제공자, 로컬 모델, OpenAI 호환 엔드포인트, 검색 인덱스, 도구 정책 및 선택된 작업 공간 컨텍스트를 사용할 수 있습니다. AI 출력은 틀리거나 불완전하거나 안전하지 않을 수 있습니다. 실행 전에 제안, 명령, 파일 편집 및 도구 작업을 검토하세요.
+hapcli는 사용자가 구성한 모델 제공자, 로컬 모델, OpenAI 호환 엔드포인트, 검색 인덱스, 도구 정책 및 선택된 작업 공간 컨텍스트를 사용할 수 있습니다. AI 출력은 틀리거나 불완전하거나 안전하지 않을 수 있습니다. 실행 전에 제안, 명령, 파일 편집 및 도구 작업을 검토하세요.
 
 승인을 받았고 제공자의 약관과 데이터 처리 방식을 수락한 경우가 아니라면, 개인 키, 비밀번호, 운영 환경 비밀값, 기밀 데이터, 규제 대상 데이터 또는 기타 민감한 정보를 모델 제공자에게 보내지 마세요.
 
@@ -338,7 +338,7 @@ Les identifiants et clés API doivent rester dans le stockage sécurisé de la p
 
 ### 7. Fonctions IA
 
-OxideSens peut utiliser des fournisseurs de modèles configurés par l'utilisateur, des modèles locaux, des points de terminaison compatibles OpenAI, des index de recherche, des politiques d'outils et le contexte sélectionné de l'espace de travail. Les sorties IA peuvent être incorrectes, incomplètes ou dangereuses. Vérifiez les suggestions, commandes, modifications de fichiers et actions d'outils avant exécution.
+hapcli peut utiliser des fournisseurs de modèles configurés par l'utilisateur, des modèles locaux, des points de terminaison compatibles OpenAI, des index de recherche, des politiques d'outils et le contexte sélectionné de l'espace de travail. Les sorties IA peuvent être incorrectes, incomplètes ou dangereuses. Vérifiez les suggestions, commandes, modifications de fichiers et actions d'outils avant exécution.
 
 N'envoyez pas de clés privées, mots de passe, secrets de production, données confidentielles, données réglementées ou autres informations sensibles à des fournisseurs de modèles, sauf si vous y êtes autorisé et acceptez leurs conditions et pratiques de traitement des données.
 
@@ -394,7 +394,7 @@ Zugangsdaten und API-Schlüssel sollten, sofern unterstützt, im sicheren Speich
 
 ### 7. KI-Funktionen
 
-OxideSens kann vom Benutzer konfigurierte Modellanbieter, lokale Modelle, OpenAI-kompatible Endpunkte, Suchindizes, Tool-Richtlinien und ausgewählten Workspace-Kontext verwenden. KI-Ausgaben können falsch, unvollständig oder unsicher sein. Prüfen Sie Vorschläge, Befehle, Dateiänderungen und Tool-Aktionen vor der Ausführung.
+hapcli kann vom Benutzer konfigurierte Modellanbieter, lokale Modelle, OpenAI-kompatible Endpunkte, Suchindizes, Tool-Richtlinien und ausgewählten Workspace-Kontext verwenden. KI-Ausgaben können falsch, unvollständig oder unsicher sein. Prüfen Sie Vorschläge, Befehle, Dateiänderungen und Tool-Aktionen vor der Ausführung.
 
 Senden Sie keine privaten Schlüssel, Passwörter, Produktionsgeheimnisse, vertraulichen Daten, regulierten Daten oder andere sensible Informationen an Modellanbieter, sofern Sie dazu nicht autorisiert sind und deren Bedingungen sowie Datenverarbeitung akzeptieren.
 
@@ -450,7 +450,7 @@ Las credenciales y claves API deben permanecer en el almacenamiento seguro de la
 
 ### 7. Funciones de IA
 
-OxideSens puede usar proveedores de modelos configurados por el usuario, modelos locales, endpoints compatibles con OpenAI, índices de recuperación, políticas de herramientas y contexto seleccionado del espacio de trabajo. La salida de IA puede ser incorrecta, incompleta o insegura. Revisa sugerencias, comandos, ediciones de archivos y acciones de herramientas antes de ejecutarlas.
+hapcli puede usar proveedores de modelos configurados por el usuario, modelos locales, endpoints compatibles con OpenAI, índices de recuperación, políticas de herramientas y contexto seleccionado del espacio de trabajo. La salida de IA puede ser incorrecta, incompleta o insegura. Revisa sugerencias, comandos, ediciones de archivos y acciones de herramientas antes de ejecutarlas.
 
 No envíes claves privadas, contraseñas, secretos de producción, datos confidenciales, datos regulados u otra información sensible a proveedores de modelos salvo que estés autorizado y aceptes sus términos y prácticas de datos.
 
@@ -506,7 +506,7 @@ Credenziali e chiavi API dovrebbero restare nell'archiviazione sicura della piat
 
 ### 7. Funzioni IA
 
-OxideSens può usare provider di modelli configurati dall'utente, modelli locali, endpoint compatibili OpenAI, indici di recupero, policy degli strumenti e contesto selezionato del workspace. L'output IA può essere errato, incompleto o non sicuro. Controlla suggerimenti, comandi, modifiche ai file e azioni degli strumenti prima dell'esecuzione.
+hapcli può usare provider di modelli configurati dall'utente, modelli locali, endpoint compatibili OpenAI, indici di recupero, policy degli strumenti e contesto selezionato del workspace. L'output IA può essere errato, incompleto o non sicuro. Controlla suggerimenti, comandi, modifiche ai file e azioni degli strumenti prima dell'esecuzione.
 
 Non inviare chiavi private, password, segreti di produzione, dati confidenziali, dati regolamentati o altre informazioni sensibili a provider di modelli salvo che tu sia autorizzato e accetti i loro termini e pratiche sui dati.
 
@@ -562,7 +562,7 @@ Credenciais e chaves de API devem permanecer no armazenamento seguro da platafor
 
 ### 7. Recursos de IA
 
-OxideSens pode usar provedores de modelos configurados pelo usuário, modelos locais, endpoints compatíveis com OpenAI, índices de recuperação, políticas de ferramentas e contexto selecionado do workspace. A saída de IA pode estar errada, incompleta ou insegura. Revise sugestões, comandos, edições de arquivos e ações de ferramentas antes da execução.
+hapcli pode usar provedores de modelos configurados pelo usuário, modelos locais, endpoints compatíveis com OpenAI, índices de recuperação, políticas de ferramentas e contexto selecionado do workspace. A saída de IA pode estar errada, incompleta ou insegura. Revise sugestões, comandos, edições de arquivos e ações de ferramentas antes da execução.
 
 Não envie chaves privadas, senhas, segredos de produção, dados confidenciais, dados regulados ou outras informações sensíveis a provedores de modelos, a menos que você esteja autorizado e aceite seus termos e práticas de dados.
 
@@ -618,7 +618,7 @@ Thông tin xác thực và API key nên được giữ trong kho bảo mật c�
 
 ### 7. Tính năng AI
 
-OxideSens có thể dùng nhà cung cấp mô hình do người dùng cấu hình, mô hình cục bộ, endpoint tương thích OpenAI, chỉ mục truy xuất, chính sách công cụ và ngữ cảnh workspace được chọn. Đầu ra AI có thể sai, không đầy đủ hoặc không an toàn. Hãy xem lại gợi ý, lệnh, chỉnh sửa tệp và hành động công cụ trước khi thực thi.
+hapcli có thể dùng nhà cung cấp mô hình do người dùng cấu hình, mô hình cục bộ, endpoint tương thích OpenAI, chỉ mục truy xuất, chính sách công cụ và ngữ cảnh workspace được chọn. Đầu ra AI có thể sai, không đầy đủ hoặc không an toàn. Hãy xem lại gợi ý, lệnh, chỉnh sửa tệp và hành động công cụ trước khi thực thi.
 
 Không gửi khóa riêng, mật khẩu, bí mật sản xuất, dữ liệu mật, dữ liệu chịu quản lý hoặc thông tin nhạy cảm khác cho nhà cung cấp mô hình trừ khi bạn được phép và chấp nhận điều khoản cùng cách xử lý dữ liệu của họ.
 

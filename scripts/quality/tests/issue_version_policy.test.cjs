@@ -33,7 +33,7 @@ test('reads a stable version from the dedicated issue form field', () => {
 });
 
 test('ignores prerelease and non-stable channel versions', () => {
-  const versions = ['2.1.0-beta.1', '2.1.0 beta', 'gpui-v2.1.0', 'native-v2.1.0', 'nightly'];
+  const versions = ['2.1.0-beta.1', '2.1.0 beta', 'preview-v2.1.0', 'v2.1.0-rc.1', 'nightly'];
   for (const version of versions) {
     assert.equal(policy.readReportedStableVersion(issueBody(version)), null);
   }
@@ -52,7 +52,7 @@ test('selects the highest semantic stable release only', () => {
     release('v2.9.0'),
     release('v2.10.0'),
     release('v3.0.0-beta.1', { prerelease: true }),
-    release('gpui-v4.0.0'),
+    release('v4.0.0-rc.1', { prerelease: true }),
     release('v9.0.0', { draft: true }),
   ]);
 

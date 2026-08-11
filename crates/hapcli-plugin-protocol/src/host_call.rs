@@ -70,7 +70,7 @@ mod tests {
         let call = PluginHostCall {
             request_id: "sync-1".to_string(),
             namespace: "sync".to_string(),
-            method: "importOxide".to_string(),
+            method: "importHapcli".to_string(),
             args: serde_json::json!({ "password": "sensitive-value" }),
         };
 

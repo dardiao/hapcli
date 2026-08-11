@@ -131,7 +131,7 @@ function readSubmittedVersion(body) {
 
 function normalizeReleaseName(tagName) {
   return tagName
-    .replace(/^(?:(?:gpui|native|rustnative)-)?v/, '')
+    .replace(/^v/, '')
     .trim();
 }
 

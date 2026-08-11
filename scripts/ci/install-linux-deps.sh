@@ -43,7 +43,7 @@ sudo apt-get "${APT_GET_OPTIONS[@]}" -o APT::Update::Error-Mode=any update
 echo "Removing preinstalled LLVM libunwind-*-dev packages…"
 sudo apt-get remove -y 'libunwind-[0-9]*-dev' 2>/dev/null || true
 
-# Base set: GPUI + native Rust crate build requirements on Linux.
+# Base set: native Rust crate build requirements on Linux.
 PACKAGES=(
   build-essential
   libasound2-dev
@@ -69,7 +69,6 @@ PACKAGES=(
   libxcb-xinerama0-dev
   libxkbcommon-dev
   libxkbcommon-x11-dev
-  mesa-vulkan-drivers
   pkg-config
 )
 

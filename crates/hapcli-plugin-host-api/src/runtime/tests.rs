@@ -67,7 +67,7 @@ fn protocol_envelope_rejects_unknown_version() {
 #[test]
 fn process_decoder_classifies_sync_password_frames_before_typed_queues() {
     let frame = decode_process_output_frame(
-        r#"{"protocolVersion":1,"payload":{"type":"callHostApi","requestId":"sync-1","namespace":"sync","method":"importOxide","args":{"password":"sensitive-value"}}}"#,
+        r#"{"protocolVersion":1,"payload":{"type":"callHostApi","requestId":"sync-1","namespace":"sync","method":"importHapcli","args":{"password":"sensitive-value"}}}"#,
     )
     .unwrap();
 
@@ -916,7 +916,7 @@ async fn process_runtime_does_not_retain_sync_password_host_call_copies() {
 read activate
 printf '%s\n' '{"protocolVersion":1,"requestId":"activate-test","payload":{"requestId":"activate-test","result":{"status":"ok","value":{"activated":true}}}}'
 read dispatch
-printf '%s\n' '{"protocolVersion":1,"payload":{"type":"callHostApi","requestId":"host-sync-import","namespace":"sync","method":"importOxide","args":{"password":"plugin-sensitive-value","fileData":[]}}}'
+printf '%s\n' '{"protocolVersion":1,"payload":{"type":"callHostApi","requestId":"host-sync-import","namespace":"sync","method":"importHapcli","args":{"password":"plugin-sensitive-value","fileData":[]}}}'
 read host_response
 printf '%s\n' '{"protocolVersion":1,"requestId":"command:demo.sync","payload":{"requestId":"command:demo.sync","result":{"status":"ok","value":{"received":true}}}}'
 "#,
@@ -930,7 +930,7 @@ printf '%s\n' '{"protocolVersion":1,"requestId":"command:demo.sync","payload":{"
     );
     runtime.set_host_call_handler(Box::new(|mut call| {
         assert_eq!(call.namespace, "sync");
-        assert_eq!(call.method, "importOxide");
+        assert_eq!(call.method, "importHapcli");
         assert_eq!(call.args["password"], "plugin-sensitive-value");
         let request_id = std::mem::take(&mut call.request_id);
         call.zeroize_args();

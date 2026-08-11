@@ -14,7 +14,7 @@ pub enum PluginHostCallSensitivity {
 impl PluginHostCallSensitivity {
     pub fn classify(namespace: &str, method: &str) -> Self {
         match (namespace, method) {
-            ("secrets", _) | ("sync", "exportOxide" | "previewImport" | "importOxide") => {
+            ("secrets", _) | ("sync", "exportOxide" | "previewImport" | "importHapcli") => {
                 Self::Sensitive
             }
             _ => Self::Public,
@@ -58,7 +58,7 @@ mod tests {
             ("secrets", "set"),
             ("sync", "exportOxide"),
             ("sync", "previewImport"),
-            ("sync", "importOxide"),
+            ("sync", "importHapcli"),
         ] {
             assert!(
                 PluginHostCallSensitivity::classify(namespace, method).is_sensitive(),

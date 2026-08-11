@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Update the native workspace package version and keep Cargo.lock in sync.",
     )
-    parser.add_argument("version", help="New SemVer version, for example 2.0.0-gpui-preview.1.")
+    parser.add_argument("version", help="New SemVer version, for example 2.0.1.")
     parser.add_argument(
         "--no-lock",
         action="store_true",
@@ -43,7 +43,7 @@ def validate_version(version: str) -> None:
     if SEMVER_RE.fullmatch(version):
         return
     raise ValueError(
-        f"invalid version {version!r}; use SemVer like 2.0.0-gpui-preview.1, not 2.0.0preview1"
+        f"invalid version {version!r}; use SemVer like 2.0.1, not 2.0.0preview1"
     )
 
 

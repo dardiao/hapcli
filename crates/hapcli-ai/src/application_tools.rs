@@ -39,17 +39,17 @@ pub(crate) fn extended_application_tool_definitions() -> Vec<AiToolDefinition> {
         ),
         tool(
             "list_background_tasks",
-            "List background tasks owned by the current OxideSens conversation.",
+            "List background tasks owned by the current hapcli conversation.",
             empty_object_schema(),
         ),
         tool(
             "get_background_task",
-            "Inspect one background task owned by the current OxideSens conversation.",
+            "Inspect one background task owned by the current hapcli conversation.",
             id_schema("task_id"),
         ),
         tool(
             "cancel_background_task",
-            "Cancel one running or waiting background task owned by the current OxideSens conversation.",
+            "Cancel one running or waiting background task owned by the current hapcli conversation.",
             id_schema("task_id"),
         ),
         tool(

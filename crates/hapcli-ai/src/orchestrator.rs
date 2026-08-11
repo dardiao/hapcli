@@ -389,7 +389,7 @@ pub fn orchestrator_tool_definitions() -> Vec<AiToolDefinition> {
         ),
         tool(
             "remember_preference",
-            "Save a long-lived user preference for OxideSens memory. Do not use for transient task facts.",
+            "Save a long-lived user preference for hapcli memory. Do not use for transient task facts.",
             json!({
                 "type": "object",
                 "properties": {
@@ -401,7 +401,7 @@ pub fn orchestrator_tool_definitions() -> Vec<AiToolDefinition> {
         ),
         tool(
             "recall_preferences",
-            "Read saved long-lived OxideSens user preferences.",
+            "Read saved long-lived hapcli user preferences.",
             json!({
                 "type": "object",
                 "properties": {},

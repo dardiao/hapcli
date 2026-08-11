@@ -27,22 +27,6 @@ PERMISSIVE_LICENSES = {
 }
 
 VENDORED_WORKSPACE_PACKAGES = {
-    "gpui",
-    "gpui_ce_util",
-    "gpui_collections",
-    "gpui_derive_refineable",
-    "gpui_linux",
-    "gpui_macos",
-    "gpui_macros",
-    "gpui_media",
-    "gpui_platform",
-    "gpui_refineable",
-    "gpui_scheduler",
-    "gpui_shared_string",
-    "gpui_sum_tree",
-    "gpui_wgpu",
-    "gpui_windows",
-    "gpui_zed_util",
     "russh",
 }
 MICROSOFT_TERMINAL_REVISION = "1283c0f5b99a2961673249fa77c6b986efb5086c"
@@ -173,42 +157,9 @@ def crate_table(crates: list[CrateNotice]) -> str:
 
 
 def bundled_asset_notices(cwd: Path) -> list[BundledAssetNotice]:
-    # The native app embeds decompressed terminal font subsets. Keep asset
-    # notices here so binary distributions do not omit their attribution.
-    fonts_dir = cwd / "crates" / "hapcli-gpui-app" / "resources" / "fonts"
-    candidates = [
-        (
-            "JetBrains Mono Subset",
-            "SIL Open Font License 1.1",
-            fonts_dir / "JetBrainsMono" / "OFL.txt",
-            fonts_dir / "JetBrainsMono",
-        ),
-        (
-            "Meslo Nerd Font Subset",
-            "Apache License 2.0",
-            fonts_dir / "Meslo" / "LICENSE.txt",
-            fonts_dir / "Meslo",
-        ),
-        (
-            "Maple Mono NF CN Subset",
-            "SIL Open Font License 1.1",
-            fonts_dir / "MapleMono" / "LICENSE.txt",
-            fonts_dir / "MapleMono",
-        ),
-    ]
-    notices = []
-    for name, license_name, license_file, asset_dir in candidates:
-        if not license_file.exists() or not asset_dir.exists():
-            continue
-        notices.append(
-            BundledAssetNotice(
-                name=name,
-                license_name=license_name,
-                license_file=license_file.relative_to(cwd).as_posix(),
-                file_count=len(list(asset_dir.glob("*.ttf"))),
-            )
-        )
-    return notices
+    # The current desktop app does not bundle extra font subsets beyond the
+    # egui defaults; keep this hook for future bundled assets.
+    return []
 
 
 def adapted_source_notices(cwd: Path) -> list[AdaptedSourceNotice]:

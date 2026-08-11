@@ -5,7 +5,7 @@ const { parseSections } = require('./issue_quality_policy.cjs');
 const VERSION_REMINDER_MARKER = '<!-- hapcli-stable-version-reminder:v1 -->';
 const OBSOLETE_VERSION_NOTICE_MARKER = '<!-- hapcli-obsolete-version-notice:v1 -->';
 const VERSION_SECTION_HEADING = 'hapcli version / 版本';
-const NON_STABLE_CHANNEL_PATTERN = /\b(?:alpha|beta|nightly|preview|rc|gpui|native|rustnative)\b/iu;
+const NON_STABLE_CHANNEL_PATTERN = /\b(?:alpha|beta|nightly|preview|rc)\b/iu;
 const REPORTED_VERSION_PATTERN = /(?:^|[^0-9A-Za-z.-])v?(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z][0-9A-Za-z.-]*)?(?:\+[0-9A-Za-z][0-9A-Za-z.-]*)?(?=$|[^0-9A-Za-z.+-])/gu;
 const STABLE_RELEASE_TAG_PATTERN = /^v(\d+)\.(\d+)\.(\d+)$/u;
 

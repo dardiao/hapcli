@@ -3,7 +3,7 @@
 
 //! Sync host API DTO parsing and plugin-facing response shaping.
 //!
-//! Workspace mutation stays in `hapcli-gpui-app`; this module owns the pure
+//! Workspace mutation stays in the desktop app; this module owns the pure
 //! `.oxide` argument adapters, revision calculations, and import result payloads.
 
 use std::collections::{HashMap, HashSet};
@@ -147,9 +147,9 @@ pub fn native_plugin_sync_import_oxide_args(
     let password = args
         .as_object_mut()
         .and_then(|fields| fields.get_mut("password"))
-        .ok_or_else(|| "sync.importOxide requires args.password".to_string())?;
+        .ok_or_else(|| "sync.importHapcli requires args.password".to_string())?;
     let Value::String(password) = std::mem::replace(password, Value::Null) else {
-        return Err("sync.importOxide requires args.password".to_string());
+        return Err("sync.importHapcli requires args.password".to_string());
     };
     let password = Zeroizing::new(password);
     let conflict_strategy =

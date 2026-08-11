@@ -392,22 +392,6 @@ This section is a review prompt for binary distribution; it does not replace leg
 | gpu-allocator | 0.28.0 | MIT, Apache-2.0 | https://crates.io/crates/gpu-allocator |
 | gpu-descriptor | 0.3.2 | MIT, Apache-2.0 | https://crates.io/crates/gpu-descriptor |
 | gpu-descriptor-types | 0.2.0 | MIT, Apache-2.0 | https://crates.io/crates/gpu-descriptor-types |
-| gpui | 0.2.2 | Apache-2.0 | vendored in repository |
-| gpui_ce_util | 0.2.2 | Apache-2.0 | vendored in repository |
-| gpui_collections | 0.2.2 | Apache-2.0 | vendored in repository |
-| gpui_derive_refineable | 0.2.2 | Apache-2.0 | vendored in repository |
-| gpui_linux | 0.1.0 | Apache-2.0 | vendored in repository |
-| gpui_macos | 0.1.0 | Apache-2.0 | vendored in repository |
-| gpui_macros | 0.1.0 | Apache-2.0 | vendored in repository |
-| gpui_media | 0.2.2 | Apache-2.0 | vendored in repository |
-| gpui_platform | 0.1.0 | Apache-2.0 | vendored in repository |
-| gpui_refineable | 0.2.2 | Apache-2.0 | vendored in repository |
-| gpui_scheduler | 0.2.2 | Apache-2.0 | vendored in repository |
-| gpui_shared_string | 0.1.0 | Apache-2.0 | vendored in repository |
-| gpui_sum_tree | 0.2.2 | Apache-2.0 | vendored in repository |
-| gpui_wgpu | 0.1.0 | Apache-2.0 | vendored in repository |
-| gpui_windows | 0.1.0 | Apache-2.0 | vendored in repository |
-| gpui_zed_util | 0.2.2 | Apache-2.0 | vendored in repository |
 | grid | 1.0.1 | MIT | https://crates.io/crates/grid |
 | group | 0.14.0 | MIT, Apache-2.0 | https://crates.io/crates/group |
 | gstreamer | 0.24.5 | MIT, Apache-2.0 | https://crates.io/crates/gstreamer |
@@ -1270,14 +1254,6 @@ This section is a review prompt for binary distribution; it does not replace leg
 | Component | Source Revision | License | License File |
 |---|---|---|---|
 | Microsoft Terminal text contrast and gamma correction | 1283c0f5b99a2961673249fa77c6b986efb5086c | MIT | MICROSOFT-TERMINAL-LICENSE-MIT |
-
-## Bundled Fonts / Assets
-
-| Asset | Files | License | License File |
-|---|---:|---|---|
-| JetBrains Mono Subset | 4 | SIL Open Font License 1.1 | crates/hapcli-gpui-app/resources/fonts/JetBrainsMono/OFL.txt |
-| Meslo Nerd Font Subset | 4 | Apache License 2.0 | crates/hapcli-gpui-app/resources/fonts/Meslo/LICENSE.txt |
-| Maple Mono NF CN Subset | 4 | SIL Open Font License 1.1 | crates/hapcli-gpui-app/resources/fonts/MapleMono/LICENSE.txt |
 
 ## Notes
 

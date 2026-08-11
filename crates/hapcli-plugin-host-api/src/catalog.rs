@@ -892,7 +892,7 @@ pub static HOST_API_CATALOG: &[HostApiDescriptor] = &[
     ),
     api!(
         "sync",
-        "importOxide",
+        "importHapcli",
         Destructive,
         Some(NATIVE_PLUGIN_CAPABILITY_SYNC_WRITE),
         "Imports an Oxide configuration package."

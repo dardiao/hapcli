@@ -273,7 +273,7 @@ cargo test -p russh-sftp
 cargo test -p russh channel_tx_write_bytes_preserves_owned_slices
 cargo test -p hapcli-sftp
 cargo test -p hapcli-ssh
-cargo check -p hapcli-gpui-app
+cargo check -p hapcli-egui-app
 git diff --check
 ```
 
