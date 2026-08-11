@@ -108,7 +108,7 @@ impl QuickCommandsPanel {
                             let _ = session.write_input(b"\r");
                         }
                         if ui
-                            .small_button("✕")
+                            .small_button("×")
                             .on_hover_text("删除")
                             .clicked()
                         {

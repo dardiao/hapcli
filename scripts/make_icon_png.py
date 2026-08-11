@@ -27,6 +27,8 @@ ICNS_SIZES = [
     (b"ic10", 1024),
 ]
 
+ICO_SIZES = [16, 32, 48, 64, 128, 256]
+
 
 def lerp(a, b, t):
     return int(a + (b - a) * t)
@@ -139,10 +141,36 @@ def main():
     master = render_master()
     if out_path.endswith(".icns"):
         write_icns(out_path, master)
+    elif out_path.endswith(".ico"):
+        write_ico(out_path, master)
     else:
         with open(out_path, "wb") as f:
             f.write(png_bytes(SIZE, master))
     print(f"icon written: {out_path}")
+
+
+def write_ico(out_path, master):
+    blobs = [png_bytes(size, downscale(master, size)) for size in ICO_SIZES]
+    offset = 6 + 16 * len(blobs)
+    out = struct.pack("<HHH", 0, 1, len(blobs))
+    for size, data in zip(ICO_SIZES, blobs):
+        dimension = 0 if size == 256 else size
+        out += struct.pack(
+            "<BBBBHHII",
+            dimension,
+            dimension,
+            0,
+            0,
+            1,
+            32,
+            len(data),
+            offset,
+        )
+        offset += len(data)
+    for data in blobs:
+        out += data
+    with open(out_path, "wb") as f:
+        f.write(out)
 
 
 def write_icns(out_path, master):

@@ -763,7 +763,7 @@ impl eframe::App for HapcliApp {
                         {
                             clicked_tab = Some(index);
                         }
-                        if ui.small_button("✕").on_hover_text("关闭会话").clicked() {
+                        if ui.small_button("×").on_hover_text("关闭会话").clicked() {
                             close_tab = Some(index);
                         }
                     }
@@ -781,7 +781,7 @@ impl eframe::App for HapcliApp {
                         && ui
                             .add_enabled(
                                 sftp_connected,
-                                egui::Button::new(if sftp_open { "SFTP ✕" } else { "SFTP" }),
+                                egui::Button::new(if sftp_open { "SFTP ×" } else { "SFTP" }),
                             )
                             .on_hover_text("SFTP 文件传输（需已连接）")
                             .clicked()
@@ -792,7 +792,7 @@ impl eframe::App for HapcliApp {
                         && ui
                             .add_enabled(
                                 sftp_connected,
-                                egui::Button::new(if forward_open { "转发 ✕" } else { "转发" }),
+                                egui::Button::new(if forward_open { "转发 ×" } else { "转发" }),
                             )
                             .on_hover_text("SSH 端口转发（需已连接）")
                             .clicked()
@@ -874,7 +874,7 @@ impl eframe::App for HapcliApp {
                     if ui.button("↓").on_hover_text("下一个").clicked() {
                         next = true;
                     }
-                    if ui.button("✕").on_hover_text("关闭搜索").clicked() {
+                    if ui.button("×").on_hover_text("关闭搜索").clicked() {
                         close = true;
                     }
                     query_changed = response.changed();
@@ -1155,6 +1155,26 @@ fn install_fonts(ctx: &egui::Context, settings: &AppSettings) -> bool {
                 egui::FontData::from_owned(bytes),
             );
             cjk_name = Some("hapcli-cjk".to_owned());
+            break;
+        }
+    }
+
+    // 平台默认等宽字体：比内置 Hack 有更好的符号与本地化字形覆盖
+    // （macOS Monaco / Windows Consolas / Linux DejaVu Sans Mono）。
+    const SYSTEM_MONO_CANDIDATES: &[&str] = &[
+        "/System/Library/Fonts/Monaco.ttf",
+        "C:\\Windows\\Fonts\\consola.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+    ];
+    for path in SYSTEM_MONO_CANDIDATES {
+        if let Ok(bytes) = std::fs::read(path) {
+            fonts.font_data.insert(
+                "hapcli-system-mono".to_owned(),
+                egui::FontData::from_owned(bytes),
+            );
+            if let Some(mono) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
+                mono.insert(0, "hapcli-system-mono".to_owned());
+            }
             break;
         }
     }

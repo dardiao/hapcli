@@ -18,6 +18,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Build release binary
+        env:
+          # 静态链接 VC++ 运行库：目标机器无需安装 VCRUNTIME140.dll
+          RUSTFLAGS: "-C target-feature=+crt-static"
         run: cargo build --release -p hapcli-egui-app
 
       - name: Package executable
