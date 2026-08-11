@@ -344,7 +344,6 @@ def build_notices(args: argparse.Namespace) -> tuple[str, int, int]:
     output += "- Multi-license policy: where a crate offers multiple licenses, hapcli uses the most permissive compatible option available.\n"
     output += "- License data is generated from crate metadata through cargo-deny and may include multiple licenses per crate.\n"
     output += "- This notice list is for attribution and compliance tracking. It does not replace upstream license texts.\n"
-    output += "- GPUI-CE's complete Apache-2.0 text is shipped as `GPUI-CE-LICENSE-APACHE`.\n"
 
     return output, len(crates), len(copyleft_strict) + len(copyleft_with_permissive)
 

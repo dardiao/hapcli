@@ -1284,4 +1284,3 @@ This section is a review prompt for binary distribution; it does not replace leg
 - Multi-license policy: where a crate offers multiple licenses, hapcli uses the most permissive compatible option available.
 - License data is generated from crate metadata through cargo-deny and may include multiple licenses per crate.
 - This notice list is for attribution and compliance tracking. It does not replace upstream license texts.
-- GPUI-CE's complete Apache-2.0 text is shipped as `GPUI-CE-LICENSE-APACHE`.

@@ -33,31 +33,12 @@ The native local graphics PTY loop adapts Alacritty's event-loop structure
 under the same Apache-2.0 OR MIT terms, with hapcli-specific graphics
 protocol interception added before ANSI parsing.
 
-Lucide
-Copyright (c) 2020, Lucide Contributors.
-Licensed under the ISC License.
-Used for the native workspace sidebar and toolbar SVG icons.
-
-GPUI-CE / GPUI
-Copyright 2022-2025 Zed Industries, Inc.
-Additional GPUI-CE contributions are included under the same license.
-Licensed under the Apache License, Version 2.0.
-Vendored from https://github.com/gpui-ce/gpui-ce at commit
-6c799b8e994266233014cea66d7769675ec1967c for the native UI framework and
-Metal, DirectX, Vulkan, and OpenGL rendering backends. hapcli modifications
-are recorded in crates/gpui-ce/gpui/hapcli_PATCHES.md.
-
 Microsoft Terminal
 Copyright (c) Microsoft Corporation.
 Licensed under the MIT License.
-GPUI text contrast and gamma correction code is adapted from Microsoft
+Text contrast and gamma correction code is adapted from Microsoft
 Terminal commit 1283c0f5b99a2961673249fa77c6b986efb5086c. The complete license
 is shipped as MICROSOFT-TERMINAL-LICENSE-MIT.
-
-Linux graphics runtime
-The GPUI WGPU backend loads Vulkan and OpenGL/EGL loaders at runtime. As a
-result, libvulkan.so.1 and libEGL.so.1 may not appear in link-time dependency
-scans such as ldd, dpkg-shlibdeps, or RPM automatic dependency generation.
 Debian and RPM packages recommend the corresponding system loaders. The
 AppImage does not bundle system GPU loaders or drivers; the host or virtual
 machine must provide a compatible graphics stack.
