@@ -37,3 +37,6 @@ image = { workspace = true }
 # SFTP 文件传输（复用自研 hapcli-sftp）
 hapcli-sftp = { path = "../hapcli-sftp" }
 tokio = { workspace = true }
+# 快捷命令与端口转发（复用自研内核）
+hapcli-quick-commands = { path = "../hapcli-quick-commands" }
+hapcli-forwarding = { path = "../hapcli-forwarding" }

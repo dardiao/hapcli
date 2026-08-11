@@ -7,7 +7,9 @@ use hapcli_terminal::{
 use hapcli_trzsz::{TrzszState, TrzszTransferPolicy};
 
 use crate::connect::{ConnectForm, ConnectTarget, DialogOutcome};
+use crate::forward;
 use crate::render::build_theme;
+use crate::quick::QuickCommandsPanel;
 use crate::settings::{AppSettings, ThemeChoice, load_settings, save_settings};
 use crate::sftp;
 use crate::terminal::{TerminalPrefs, TerminalTab};
@@ -40,6 +42,7 @@ pub struct HapcliApp {
     trzsz_state: std::sync::Arc<TrzszState>,
     ssh_registry: hapcli_ssh::SshConnectionRegistry,
     last_window_title: String,
+    quick_panel: QuickCommandsPanel,
 }
 
 impl HapcliApp {
@@ -63,6 +66,7 @@ impl HapcliApp {
                 hapcli_ssh::ConnectionPoolConfig::default(),
             ),
             last_window_title: String::new(),
+            quick_panel: QuickCommandsPanel::new(),
         })
     }
 
@@ -327,6 +331,20 @@ impl HapcliApp {
         if refresh {
             if let Some(panel) = &self.tabs[index].sftp {
                 panel.refresh();
+            }
+        }
+    }
+
+    /// 轮询端口转发 worker 事件。
+    fn poll_forward(&mut self) {
+        let index = self.active_tab;
+        if let Some(panel) = &mut self.tabs[index].forward {
+            loop {
+                match panel.rx.try_recv() {
+                    Ok(event) => panel.apply_event(event),
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+                }
             }
         }
     }
@@ -719,6 +737,8 @@ impl eframe::App for HapcliApp {
         let mut want_local = false;
         let mut want_settings = false;
         let mut toggle_sftp = false;
+        let mut toggle_quick = false;
+        let mut toggle_forward = false;
         let active_is_ssh = self.tabs[self.active_tab].session.status().kind
             == TerminalSessionKind::SshPty;
         let sftp_connected = active_is_ssh
@@ -727,6 +747,10 @@ impl eframe::App for HapcliApp {
                 .ssh_connection_handle()
                 .is_some();
         let sftp_open = self.tabs[self.active_tab].sftp.is_some();
+        let forward_open = self.tabs[self.active_tab]
+            .forward
+            .as_ref()
+            .is_some_and(|panel| panel.show);
         egui::TopBottomPanel::top("tab_bar").show(ctx, |ui| {
             egui::ScrollArea::horizontal().show(ui, |ui| {
                 ui.horizontal(|ui| {
@@ -764,6 +788,20 @@ impl eframe::App for HapcliApp {
                     {
                         toggle_sftp = true;
                     }
+                    if active_is_ssh
+                        && ui
+                            .add_enabled(
+                                sftp_connected,
+                                egui::Button::new(if forward_open { "转发 ✕" } else { "转发" }),
+                            )
+                            .on_hover_text("SSH 端口转发（需已连接）")
+                            .clicked()
+                    {
+                        toggle_forward = true;
+                    }
+                    if ui.button("⚡").on_hover_text("快捷命令").clicked() {
+                        toggle_quick = true;
+                    }
                 });
             });
         });
@@ -791,6 +829,21 @@ impl eframe::App for HapcliApp {
                 panel.send(sftp::SftpCommand::List(".".to_string()));
                 self.tabs[index].sftp = Some(panel);
             }
+        }
+        if toggle_forward {
+            let index = self.active_tab;
+            if self.tabs[index].forward.is_some() {
+                self.tabs[index].forward = None;
+            } else if let Some(handle) = self.tabs[index].session.ssh_connection_handle() {
+                let mut panel = forward::spawn_forward_worker(handle);
+                panel.show = true;
+                panel.tx.send(forward::ForwardCommand::List).ok();
+                self.tabs[index].forward = Some(panel);
+            }
+        }
+        if toggle_quick {
+            self.quick_panel.show = !self.quick_panel.show;
+            surrender_focus(ctx);
         }
 
         // 2.5 搜索栏（仅活动会话开启搜索时显示）。
@@ -876,6 +929,45 @@ impl eframe::App for HapcliApp {
         // 3.5 设置窗口。
         if self.show_settings {
             self.settings_window(ctx);
+        }
+
+        // 3.7 快捷命令窗口。
+        if self.quick_panel.show {
+            let default_pos = ctx.screen_rect().center() - egui::vec2(170.0, 190.0);
+            egui::Window::new("快捷命令")
+                .collapsible(false)
+                .resizable(false)
+                .default_pos(default_pos)
+                .show(ctx, |ui| {
+                    let panel = &mut self.quick_panel;
+                    let session = &mut self.tabs[self.active_tab].session;
+                    panel.ui(ui, session);
+                });
+        }
+
+        // 3.8 端口转发窗口。
+        let forward_showing = self.tabs[self.active_tab]
+            .forward
+            .as_ref()
+            .is_some_and(|panel| panel.show);
+        if forward_showing {
+            self.poll_forward();
+            let default_pos = ctx.screen_rect().center() - egui::vec2(200.0, 140.0);
+            egui::Window::new("端口转发")
+                .collapsible(false)
+                .resizable(false)
+                .default_pos(default_pos)
+                .show(ctx, |ui| {
+                    let index = self.active_tab;
+                    let panel = self.tabs[index]
+                        .forward
+                        .as_mut()
+                        .expect("forward panel");
+                    let commands = forward::forward_window_ui(ui, panel);
+                    for command in commands {
+                        let _ = panel.tx.send(command);
+                    }
+                });
         }
 
         // 3.6 断开提示窗口。

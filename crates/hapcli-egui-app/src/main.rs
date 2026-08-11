@@ -1,8 +1,10 @@
 mod app;
 mod connect;
+mod forward;
 mod keys;
 mod render;
 mod profiles;
+mod quick;
 mod settings;
 mod sftp;
 mod terminal;

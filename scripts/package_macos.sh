@@ -54,10 +54,25 @@ if command -v python3 >/dev/null 2>&1; then
     python3 scripts/make_icon_png.py "$APP_DIR/Contents/Resources/hapcli.icns"
 fi
 
-echo "==> ad-hoc 签名"
-codesign --force --deep --sign - "$APP_DIR"
+echo "==> 签名"
+SIGN_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+  | grep 'Developer ID Application' | sed -E 's/.*"([^"]+)".*/\1/' | head -1)"
+if [ -n "$SIGN_IDENTITY" ]; then
+  echo "使用 Developer ID 签名: ${SIGN_IDENTITY}"
+  codesign --force --deep --sign "$SIGN_IDENTITY" "$APP_DIR"
+else
+  echo "未找到 Developer ID 证书，使用 ad-hoc 签名（仅本机/测试用）。"
+  codesign --force --deep --sign - "$APP_DIR"
+fi
 codesign --verify --deep --strict "$APP_DIR"
 plutil -lint "$APP_DIR/Contents/Info.plist" >/dev/null
 
 echo "完成: $(pwd)/${APP_DIR}"
 echo "双击即可运行，或执行: open $(pwd)/${APP_DIR}"
+if [ -z "$SIGN_IDENTITY" ]; then
+  echo ""
+  echo "提示：ad-hoc 包首次打开会提示“无法验证开发者”。"
+  echo "本机免提示方法：解压后执行"
+  echo "  xattr -dr com.apple.quarantine \"$(pwd)/${APP_DIR}\""
+  echo "或首次右键点击 App → 打开。"
+fi

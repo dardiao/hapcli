@@ -65,6 +65,7 @@ pub struct TerminalTab {
     pub search_current: Option<usize>,
     pub search_focus_requested: bool,
     pub sftp: Option<crate::sftp::SftpPanelState>,
+    pub forward: Option<crate::forward::ForwardPanel>,
     /// 静态标签：本地会话或 `user@host` 基础标签。
     base_label: String,
 }
@@ -106,6 +107,7 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             sftp: None,
+            forward: None,
             base_label: "本地".to_string(),
         })
     }
@@ -154,6 +156,7 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             sftp: None,
+            forward: None,
             base_label,
         }
     }
@@ -207,6 +210,7 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             sftp: None,
+            forward: None,
             base_label,
         }
     }
@@ -260,6 +264,7 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             sftp: None,
+            forward: None,
             base_label,
         })
     }
