@@ -1,0 +1,226 @@
+name: Issue Quality Gate
+
+on:
+  issues:
+    types: [opened, edited, reopened, labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: Validate issue quality
+    if: ${{ !endsWith(github.actor, '[bot]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out quality policy
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Test quality policy
+        run: node --test scripts/quality/tests/issue_quality_policy.test.cjs
+
+      - name: Evaluate issue
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const gate = require('./scripts/quality/issue_quality_policy.cjs');
+
+            const issue = context.payload.issue;
+            const repository = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+            };
+            const activeLabels = new Set(
+              (issue.labels || []).map((label) =>
+                typeof label === 'string' ? label : label.name
+              )
+            );
+
+            // Project members do not need automated format enforcement.
+            if (gate.TRUSTED_AUTHOR_ASSOCIATIONS.has(issue.author_association)) {
+              core.info('Skipping quality enforcement for a trusted project author.');
+              return;
+            }
+
+            async function findGateComment() {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                ...repository,
+                per_page: 100,
+              });
+              return comments.find((comment) => {
+                const writtenByBot = comment.user?.type === 'Bot';
+                return writtenByBot
+                  && (comment.body || '').includes(gate.GATE_COMMENT_MARKER);
+              });
+            }
+
+            async function saveGateComment(existingComment, body) {
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: repository.owner,
+                  repo: repository.repo,
+                  comment_id: existingComment.id,
+                  body,
+                });
+                return;
+              }
+              await github.rest.issues.createComment({
+                ...repository,
+                body,
+              });
+            }
+
+            async function addMissingLabels(labelNames) {
+              const missingLabels = labelNames.filter((label) => !activeLabels.has(label));
+              if (missingLabels.length === 0) return;
+              await github.rest.issues.addLabels({
+                ...repository,
+                labels: missingLabels,
+              });
+              for (const label of missingLabels) activeLabels.add(label);
+            }
+
+            async function removeCorrectionLabel() {
+              if (!activeLabels.has(gate.CORRECTION_NEEDED_LABEL)) return;
+              await github.rest.issues.removeLabel({
+                ...repository,
+                name: gate.CORRECTION_NEEDED_LABEL,
+              });
+              activeLabels.delete(gate.CORRECTION_NEEDED_LABEL);
+            }
+
+            async function readActorPermission() {
+              // Repository owners always have authority even if a permission lookup is unavailable.
+              if (context.actor === context.repo.owner) return 'admin';
+              try {
+                const response = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner: repository.owner,
+                  repo: repository.repo,
+                  username: context.actor,
+                });
+                return response.data.permission || 'none';
+              } catch (error) {
+                core.warning(`Could not read ${context.actor}'s repository permission: ${error.message}`);
+                return 'none';
+              }
+            }
+
+            if (context.payload.action === 'reopened') {
+              const actorPermission = await readActorPermission();
+              const manualMaintainerReopen = gate.isTrustedManualReopen({
+                action: context.payload.action,
+                senderType: context.payload.sender?.type,
+                actorPermission,
+              });
+              if (manualMaintainerReopen) {
+                // Persist the human decision so later edits and labels cannot re-close the issue.
+                await addMissingLabels([gate.QUALITY_BYPASS_LABEL]);
+                await removeCorrectionLabel();
+                const gateComment = await findGateComment();
+                if (gateComment) {
+                  await saveGateComment(gateComment, gate.buildBypassNotice());
+                }
+                core.info('Maintainer reopen recorded as a durable quality-gate exemption.');
+                return;
+              }
+            }
+
+            const bypassEnabled = activeLabels.has(gate.QUALITY_BYPASS_LABEL);
+            if (bypassEnabled) {
+              const gateComment = await findGateComment();
+              const stateChange = gate.decideStateChange({
+                currentState: issue.state,
+                hasBlockingFindings: false,
+                correctionLabelPresent: activeLabels.has(gate.CORRECTION_NEEDED_LABEL),
+                gateCommentPresent: Boolean(gateComment),
+              });
+              await removeCorrectionLabel();
+              if (stateChange === 'reopen') {
+                await github.rest.issues.update({
+                  ...repository,
+                  state: 'open',
+                });
+              }
+              if (gateComment) {
+                await saveGateComment(gateComment, gate.buildBypassNotice());
+              }
+              core.info('Quality enforcement bypassed by maintainer label.');
+              return;
+            }
+
+            const submittedVersion = gate.readSubmittedVersion(issue.body || '');
+            let releasedVersions = [];
+            if (submittedVersion) {
+              try {
+                const tags = await github.paginate(github.rest.repos.listTags, {
+                  owner: repository.owner,
+                  repo: repository.repo,
+                  per_page: 100,
+                });
+                releasedVersions = tags.map((tag) => gate.normalizeReleaseName(tag.name));
+              } catch (error) {
+                core.warning(`Release tag lookup failed: ${error.message}`);
+              }
+            }
+
+            const report = gate.evaluateIssue({
+              title: issue.title || '',
+              body: issue.body || '',
+              labels: [...activeLabels],
+              releasedVersions,
+            });
+            core.info(`Blocking findings: ${report.blockingFindings.map((item) => item.code).join(', ') || 'none'}`);
+            core.info(`Review findings: ${report.reviewFindings.map((item) => item.code).join(', ') || 'none'}`);
+
+            await addMissingLabels(gate.labelsForReviewFindings(report.reviewFindings));
+
+            if (report.blockingFindings.length > 0) {
+              await addMissingLabels([gate.CORRECTION_NEEDED_LABEL]);
+              const gateComment = await findGateComment();
+              await saveGateComment(gateComment, gate.buildCorrectionNotice(report.blockingFindings));
+              const stateChange = gate.decideStateChange({
+                currentState: issue.state,
+                hasBlockingFindings: true,
+                correctionLabelPresent: true,
+                gateCommentPresent: true,
+              });
+              if (stateChange === 'close') {
+                await github.rest.issues.update({
+                  ...repository,
+                  state: 'closed',
+                  state_reason: 'not_planned',
+                });
+              }
+              return;
+            }
+
+            const gateComment = activeLabels.has(gate.CORRECTION_NEEDED_LABEL)
+              ? await findGateComment()
+              : null;
+            const stateChange = gate.decideStateChange({
+              currentState: issue.state,
+              hasBlockingFindings: false,
+              correctionLabelPresent: activeLabels.has(gate.CORRECTION_NEEDED_LABEL),
+              gateCommentPresent: Boolean(gateComment),
+            });
+            const gateOwnedCorrection = Boolean(gateComment)
+              && activeLabels.has(gate.CORRECTION_NEEDED_LABEL);
+            if (!gateOwnedCorrection) {
+              core.info('Issue passed without a gate-managed closure to recover.');
+              return;
+            }
+
+            await removeCorrectionLabel();
+            if (stateChange === 'reopen') {
+              await github.rest.issues.update({
+                ...repository,
+                state: 'open',
+              });
+            }
+            await saveGateComment(
+              gateComment,
+              gate.buildRecoveryNotice(report.reviewFindings)
+            );

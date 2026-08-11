@@ -1,0 +1,766 @@
+{
+  "sidebar": {
+    "actions": {
+      "expand": "展开侧边栏",
+      "collapse": "折叠侧边栏",
+      "new_local_terminal": "新建本地终端",
+      "open_pylance_guide": "打开 Pylance 指南"
+    },
+    "panels": {
+      "sessions": "活动会话",
+      "saved": "保存的连接",
+      "saved_title": "保存的连接",
+      "sftp": "文件传输 (SFTP)",
+      "sftp_sessions": "SFTP 会话",
+      "files": "文件管理器",
+      "forwards": "端口转发",
+      "forwards_title": "端口转发",
+      "runtime": "仪表盘",
+      "runtime_description": "监控连接使用情况和拓扑",
+      "runtime_overview": "概览",
+      "connection_pool": "连接池",
+      "connection_monitor": "连接监控",
+      "connection_matrix": "连接矩阵",
+      "ai": "OxideSens",
+      "ai_assistant": "OxideSens (敬请期待)",
+      "settings": "设置",
+      "no_saved_connections": "无保存的连接",
+      "no_active_sessions": "无活动会话",
+      "no_connected_sessions": "无已连接会话",
+      "import_tooltip": "从 .oxide 文件导入",
+      "export_tooltip": "导出到 .oxide 文件",
+      "host_tools": "主机工具",
+      "host_monitor": "监控",
+      "gpu": "GPU / NPU",
+      "processes": "进程",
+      "services": "服务",
+      "logs": "日志",
+      "tmux": "tmux",
+      "docker": "Docker",
+      "tmux_management": "tmux 管理",
+      "docker_management": "Docker 管理",
+      "session_manager": "会话管理器",
+      "open_session_manager": "打开会话管理器",
+      "plugins": "插件",
+      "activity": "活动",
+      "event_log": "事件日志",
+      "notifications": "通知中心",
+      "saved_connections": "保存的连接",
+      "forwarding": "端口转发",
+      "ports": "端口",
+      "schedules": "计划任务",
+      "filesystems": "磁盘",
+      "packages": "包管理"
+    },
+    "tooltips": {
+      "settings": "设置",
+      "ai_hint": "OxideSens",
+      "switch_tree": "切换到树形视图",
+      "switch_focus": "切换到聚焦视图",
+      "new_connection": "新建连接",
+      "lock_app": "锁定 hapcli",
+      "setup_app_lock": "设置应用锁",
+      "collapse": "折叠"
+    },
+    "active_sessions": "活动会话",
+    "no_sessions": "暂无会话",
+    "add_new_connection": "点击 + 添加新连接",
+    "host_gpu": {
+      "count_suffix": "个加速设备",
+      "refresh_interval": "每 2 秒更新",
+      "sampling": "正在读取 GPU / NPU 状态...",
+      "unavailable": "此主机未提供受支持的 GPU / NPU 监控工具。",
+      "unsupported": "此操作系统暂不支持 GPU / NPU 监控。",
+      "no_devices": "未发现受支持的 GPU / NPU 设备。",
+      "error": "GPU / NPU 查询失败：{{error}}",
+      "actions": { "refresh": "刷新 GPU / NPU 数据" },
+      "summary": { "utilization": "平均利用率", "memory": "设备内存", "temperature": "最高温度", "power": "总功耗" },
+      "columns": { "device": "设备", "utilization": "利用率", "memory": "显存" },
+      "details": { "uuid": "UUID", "driver": "驱动", "performance_state": "性能状态", "health": "健康状态", "temperature": "温度", "power": "功耗", "fan": "风扇" },
+      "processes": { "title": "计算进程", "empty": "当前没有计算进程使用此设备。" }
+    },
+    "host_processes": {
+      "search_placeholder": "搜索进程...",
+      "count_suffix": "个进程",
+      "sampling": "正在采样进程...",
+      "empty": "没有匹配的进程",
+      "unknown": "未知",
+      "elapsed": "运行时间",
+      "filters": {
+        "all": "全部",
+        "running": "运行中",
+        "high_cpu": "高 CPU",
+        "high_memory": "高内存"
+      },
+      "sort": {
+        "cpu": "CPU",
+        "memory": "内存",
+        "pid": "PID",
+        "command": "命令",
+        "user": "用户"
+      },
+      "states": {
+        "running": "运行中",
+        "sleeping": "睡眠",
+        "waiting": "等待",
+        "stopped": "已停止",
+        "zombie": "僵尸",
+        "idle": "空闲",
+        "unknown": "未知"
+      },
+      "actions": {
+        "column": "操作",
+        "term": "终止",
+        "kill": "强杀",
+        "stop": "暂停",
+        "cont": "恢复",
+        "renice": "优先级",
+        "apply": "调整",
+        "renice_placeholder": "nice"
+      },
+      "confirm": {
+        "title": "确认进程操作",
+        "cancel": "取消",
+        "term_desc": "要向 PID {{pid}}（{{command}}）发送 TERM 吗？",
+        "kill_desc": "要用 KILL 强制结束 PID {{pid}}（{{command}}）吗？此操作不可撤销。",
+        "stop_desc": "要用 STOP 暂停 PID {{pid}}（{{command}}）吗？",
+        "cont_desc": "要用 CONT 恢复 PID {{pid}}（{{command}}）吗？",
+        "renice_desc": "要调整 PID {{pid}}（{{command}}）的优先级吗？"
+      },
+      "toast": {
+        "action_already_running": "已有进程操作正在执行。",
+        "invalid_nice": "请输入 -20 到 19 之间的 nice 值。",
+        "connection_missing": "所选连接已不可用。",
+        "action_failed": "进程操作失败。",
+        "action_succeeded": "PID {{pid}} 的进程操作已完成。",
+        "partial_support": "{{os}} 上的进程管理为部分支持。"
+      }
+    },
+    "host_docker": {
+      "search_placeholder": "搜索容器...",
+      "count_suffix": "个容器",
+      "sampling": "正在采样 Docker 容器...",
+      "empty": "没有匹配的容器",
+      "unavailable": "此主机上 Docker 不可用。",
+      "error": "Docker 命令失败：{{error}}",
+      "columns": {
+        "container": "容器 / 镜像",
+        "image": "镜像",
+        "state": "状态",
+        "ports": "端口"
+      },
+      "states": {
+        "running": "运行中",
+        "exited": "已退出",
+        "created": "已创建",
+        "paused": "已暂停",
+        "restarting": "重启中",
+        "removing": "删除中",
+        "dead": "已失效",
+        "unknown": "未知"
+      },
+      "actions": {
+        "refresh": "刷新容器",
+        "logs": "查看日志",
+        "follow_logs": "追踪日志",
+        "exec": "打开 Shell",
+        "start": "启动",
+        "stop": "停止",
+        "restart": "重启"
+      },
+      "exec_title": "Docker：{{name}}",
+      "follow_title": "Docker 日志：{{name}}",
+      "logs": {
+        "title": "日志：{{name}}",
+        "loading": "正在加载日志...",
+        "empty": "暂无近期日志。",
+        "close": "关闭日志"
+      },
+      "confirm": {
+        "title": "确认 Docker 操作",
+        "cancel": "取消",
+        "start_desc": "要启动容器 {{name}}（{{id}}）吗？",
+        "stop_desc": "要停止容器 {{name}}（{{id}}）吗？容器内正在运行的任务可能会中断。",
+        "restart_desc": "要重启容器 {{name}}（{{id}}）吗？容器内正在运行的任务会被中断。"
+      },
+      "toast": {
+        "action_already_running": "已有 Docker 操作正在执行。",
+        "logs_already_running": "Docker 日志正在加载。",
+        "logs_failed": "Docker 日志加载失败。",
+        "exec_terminal_missing": "此容器没有可用的实时 SSH 终端路由。",
+        "exec_opened": "已为 {{name}} 打开 Shell。",
+        "follow_opened": "正在追踪 {{name}} 的日志。",
+        "connection_missing": "所选连接已不可用。",
+        "action_failed": "Docker 操作失败。",
+        "action_succeeded": "容器 {{name}} 的 Docker 操作已完成。"
+      }
+    },
+    "host_services": {
+      "search_placeholder": "搜索服务...",
+      "count_suffix": "个服务",
+      "sampling": "正在采样服务...",
+      "empty": "没有匹配的服务",
+      "unavailable": "此主机上服务管理器不可用。",
+      "error": "服务命令失败：{{error}}",
+      "capability": {
+        "full": "完整支持",
+        "partial": "部分支持",
+        "unknown": "支持状态未知"
+      },
+      "columns": {
+        "service": "服务",
+        "state": "状态",
+        "enabled": "启用",
+        "pid": "PID",
+        "description": "描述",
+        "load": "加载",
+        "sub_state": "子状态"
+      },
+      "states": {
+        "running": "运行中",
+        "stopped": "已停止",
+        "failed": "失败",
+        "activating": "启动中",
+        "deactivating": "停止中",
+        "reloading": "重载中",
+        "unknown": "未知"
+      },
+      "enabled": {
+        "enabled": "已启用",
+        "disabled": "已禁用",
+        "masked": "已屏蔽",
+        "static": "静态",
+        "unknown": "未知"
+      },
+      "actions": {
+        "refresh": "刷新服务",
+        "logs": "查看日志",
+        "follow_logs": "追踪日志",
+        "start": "启动",
+        "stop": "停止",
+        "restart": "重启",
+        "reload": "重载",
+        "enable": "启用",
+        "disable": "禁用"
+      },
+      "follow_title": "服务日志：{{name}}",
+      "logs": {
+        "title": "日志：{{name}}",
+        "loading": "正在加载日志...",
+        "empty": "暂无近期日志。",
+        "close": "关闭日志"
+      },
+      "confirm": {
+        "title": "确认服务操作",
+        "cancel": "取消",
+        "start_desc": "要启动服务 {{id}}（{{name}}）吗？",
+        "stop_desc": "要停止服务 {{id}}（{{name}}）吗？正在运行的任务可能会中断。",
+        "restart_desc": "要重启服务 {{id}}（{{name}}）吗？正在运行的任务会被中断。",
+        "reload_desc": "要重载服务 {{id}}（{{name}}）吗？",
+        "enable_desc": "要将服务 {{id}}（{{name}}）设为开机启用吗？",
+        "disable_desc": "要将服务 {{id}}（{{name}}）设为开机禁用吗？"
+      },
+      "toast": {
+        "action_already_running": "已有服务操作正在执行。",
+        "logs_already_running": "服务日志正在加载。",
+        "logs_failed": "服务日志加载失败。",
+        "exec_terminal_missing": "此服务没有可用的实时 SSH 终端路由。",
+        "follow_opened": "正在追踪 {{name}} 的日志。",
+        "connection_missing": "所选连接已不可用。",
+        "action_failed": "服务操作失败。",
+        "action_succeeded": "服务 {{name}} 的操作已完成。",
+        "partial_support": "{{os}} 上的服务管理为部分支持。"
+      }
+    },
+    "host_logs": {
+      "search_placeholder": "搜索日志...",
+      "count_suffix": "条日志",
+      "loading": "正在加载日志...",
+      "empty": "没有匹配的日志",
+      "unavailable": "此主机上日志不可用。",
+      "error": "日志命令失败：{{error}}",
+      "capability": {
+        "full": "完整支持",
+        "partial": "部分支持",
+        "unknown": "支持状态未知"
+      },
+      "presets": {
+        "all": "全部",
+        "errors": "错误",
+        "auth": "SSH/认证",
+        "kernel": "内核",
+        "system": "系统"
+      },
+      "columns": {
+        "time": "时间",
+        "level": "级别",
+        "source": "来源",
+        "unit": "单元",
+        "message": "消息"
+      },
+      "levels": {
+        "error": "错误",
+        "warning": "警告",
+        "info": "信息",
+        "debug": "调试",
+        "unknown": "未知"
+      },
+      "actions": {
+        "refresh": "刷新日志",
+        "follow": "追踪日志"
+      },
+      "follow_title": "主机日志：{{preset}}",
+      "toast": {
+        "snapshot_already_running": "已有日志快照正在执行。",
+        "snapshot_loaded": "已加载 {{count}} 条日志。",
+        "snapshot_failed": "日志加载失败：{{reason}}",
+        "unavailable": "此主机上日志不可用。",
+        "connection_missing": "所选连接已不可用。",
+        "exec_terminal_missing": "主机日志没有可用的实时 SSH 终端路由。",
+        "follow_opened": "正在追踪 {{preset}} 日志。",
+        "partial_support": "{{os}} 上的主机日志为部分支持。",
+        "unknown_error": "未知错误"
+      }
+    },
+    "host_tmux": {
+      "search_placeholder": "搜索 tmux...",
+      "count_suffix": "个会话",
+      "loading": "正在加载 tmux 会话...",
+      "empty": "没有匹配的 tmux 会话",
+      "unavailable": "此主机上 tmux 不可用。",
+      "error": "tmux 命令失败：{{error}}",
+      "capability": {
+        "full": "完整支持",
+        "partial": "部分支持",
+        "unknown": "支持状态未知"
+      },
+      "columns": {
+        "session": "会话",
+        "attached": "连接",
+        "windows": "窗口",
+        "panes": "Pane",
+        "activity": "活动",
+        "created": "创建"
+      },
+      "attached": {
+        "yes": "已连接",
+        "no": "未连接"
+      },
+      "actions": {
+        "new_session": "新建会话",
+        "refresh": "刷新 tmux",
+        "attach": "连接",
+        "kill_session": "杀死会话",
+        "rename_session": "重命名会话",
+        "rename_window": "重命名窗口",
+        "kill_window": "杀掉窗口",
+        "kill_pane": "杀掉 Pane",
+        "send_command": "发送命令"
+      },
+      "active_window": "活动 #{{index}} {{name}}",
+      "no_active_window": "无活动窗口",
+      "attach_title": "tmux：{{name}}",
+      "new_session_title": "新建 tmux 会话",
+      "new_session_name": "新会话",
+      "confirm": {
+        "title": "确认 tmux 操作",
+        "cancel": "取消",
+        "kill_session_desc": "要杀死 tmux 会话 {{id}}（{{name}}）吗？此会话中的所有窗口和 pane 都会被终止。",
+        "kill_window_desc": "要杀掉会话 {{name}} 中的 tmux 窗口 {{target}} 吗？该窗口内所有 Pane 都会被终止。",
+        "kill_pane_desc": "要杀掉会话 {{name}} 中的 tmux Pane {{target}} 吗？其中运行的命令会被终止。",
+        "action_desc": "要对会话 {{name}} 中的 {{target}} 执行 tmux 操作吗？"
+      },
+      "toast": {
+        "snapshot_already_running": "已有 tmux 快照正在执行。",
+        "snapshot_loaded": "已加载 {{count}} 个 tmux 会话。",
+        "snapshot_failed": "tmux 会话加载失败：{{reason}}",
+        "unavailable": "此主机上 tmux 不可用。",
+        "connection_missing": "所选连接已不可用。",
+        "exec_terminal_missing": "tmux 没有可用的实时 SSH 终端路由。",
+        "attach_opened": "正在连接到 {{name}}。",
+        "new_session_opened": "正在打开 {{name}}。",
+        "action_already_running": "已有 tmux 操作正在执行。",
+        "action_failed": "tmux 操作失败。",
+        "action_succeeded": "tmux 对 {{target}} 的操作已完成。",
+        "unknown_error": "未知错误",
+        "input_required": "继续前请输入内容。"
+      },
+      "input": {
+        "rename_session_title": "重命名会话",
+        "rename_window_title": "重命名窗口",
+        "send_command_title": "向 Pane 发送命令",
+        "rename_session_desc": "为会话 {{target}} 设置新名称。",
+        "rename_window_desc": "为会话 {{name}} 中的窗口 {{target}} 设置新名称。",
+        "send_command_desc": "向会话 {{name}} 中的 Pane {{target}} 发送一条命令并回车。",
+        "rename_session_placeholder": "会话名称",
+        "rename_window_placeholder": "窗口名称",
+        "send_command_placeholder": "要发送的命令"
+      }
+    },
+    "host_schedules": {
+      "search_placeholder": "搜索计划任务...",
+      "count_suffix": "个任务",
+      "loading": "正在扫描计划任务...",
+      "empty": "没有匹配的计划任务",
+      "unavailable": "此主机不支持计划任务工具。",
+      "error": "计划任务命令失败：{{error}}",
+      "capability": {
+        "full": "完整支持",
+        "partial": "部分支持",
+        "unknown": "支持未知"
+      },
+      "filters": {
+        "all": "全部",
+        "enabled": "已启用",
+        "disabled": "已禁用",
+        "systemd": "systemd",
+        "cron": "cron",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "failed": "失败"
+      },
+      "sources": {
+        "systemd": "systemd",
+        "cron": "cron",
+        "anacron": "anacron",
+        "at": "at",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "unknown": "未知"
+      },
+      "enabled": {
+        "enabled": "已启用",
+        "disabled": "已禁用",
+        "static": "静态",
+        "masked": "已屏蔽",
+        "unknown": "未知"
+      },
+      "active": {
+        "active": "活跃",
+        "inactive": "非活跃",
+        "failed": "失败",
+        "unknown": "未知"
+      },
+      "columns": {
+        "task": "任务",
+        "source": "来源",
+        "state": "状态",
+        "enabled": "启用",
+        "next": "下次",
+        "last": "上次",
+        "user": "用户",
+        "schedule": "计划",
+        "command": "命令",
+        "result": "结果",
+        "description": "描述",
+        "unit": "Unit"
+      },
+      "actions": {
+        "refresh": "刷新计划任务",
+        "diagnostic": "打开诊断终端",
+        "logs": "查看日志",
+        "follow_logs": "跟随日志",
+        "enable": "启用",
+        "disable": "禁用",
+        "run_now": "立即运行"
+      },
+      "diagnostic_title": "计划任务诊断",
+      "follow_title": "计划任务日志：{{name}}",
+      "logs": {
+        "title": "日志：{{name}}",
+        "loading": "正在加载日志...",
+        "empty": "没有最近日志。",
+        "close": "关闭日志"
+      },
+      "confirm": {
+        "title": "确认计划任务操作",
+        "cancel": "取消",
+        "enable_desc": "启用计划任务 {{name}} 吗？Unit：{{unit}}。",
+        "disable_desc": "禁用计划任务 {{name}} 吗？后续自动运行可能会停止。Unit：{{unit}}。",
+        "run_now_desc": "现在运行计划任务 {{name}} 吗？Unit：{{unit}}。"
+      },
+      "toast": {
+        "snapshot_already_running": "计划任务扫描正在运行。",
+        "snapshot_loaded": "已加载 {{count}} 个计划任务。",
+        "snapshot_failed": "扫描计划任务失败：{{reason}}",
+        "unavailable": "此主机不支持计划任务工具。",
+        "connection_missing": "所选连接不再可用。",
+        "exec_terminal_missing": "没有可用于诊断的实时 SSH 终端路由。",
+        "diagnostic_opened": "已打开计划任务诊断。",
+        "follow_opened": "已打开 {{name}} 的计划任务日志跟随。",
+        "logs_already_running": "计划任务日志正在加载。",
+        "logs_failed": "加载计划任务日志失败。",
+        "action_already_running": "已有计划任务操作正在运行。",
+        "action_failed": "计划任务操作失败。",
+        "enable_succeeded": "已启用 {{name}}。",
+        "disable_succeeded": "已禁用 {{name}}。",
+        "run_now_started": "已启动 {{name}}。",
+        "partial_support": "{{os}} 上的计划任务支持为部分支持。",
+        "unknown_error": "未知计划任务错误。"
+      }
+    },
+    "host_ports": {
+      "search_placeholder": "搜索端口...",
+      "count_suffix": "个端口",
+      "loading": "正在扫描端口...",
+      "empty": "没有匹配的端口",
+      "unavailable": "此主机不可用端口工具。",
+      "error": "端口命令失败：{{error}}",
+      "capability": {
+        "full": "完整支持",
+        "partial": "部分支持",
+        "unknown": "支持状态未知"
+      },
+      "filters": {
+        "all": "全部",
+        "listening": "监听",
+        "connected": "已连接",
+        "tcp": "TCP",
+        "udp": "UDP",
+        "risky": "高风险"
+      },
+      "columns": {
+        "local": "本地地址",
+        "protocol": "协议",
+        "state": "状态",
+        "pid": "PID",
+        "process": "进程",
+        "remote": "远端地址",
+        "user": "用户",
+        "command": "命令",
+        "source": "来源",
+        "inode": "Inode"
+      },
+      "states": {
+        "listening": "监听中",
+        "established": "已建立",
+        "open": "开放",
+        "time_wait": "TIME_WAIT",
+        "close_wait": "CLOSE_WAIT",
+        "unknown": "未知"
+      },
+      "actions": {
+        "refresh": "刷新端口",
+        "diagnostic": "打开诊断终端",
+        "copy_endpoint": "复制地址",
+        "jump_process": "查找进程"
+      },
+      "diagnostic_title": "端口诊断",
+      "toast": {
+        "snapshot_already_running": "端口扫描正在运行。",
+        "snapshot_loaded": "已加载 {{count}} 个端口。",
+        "snapshot_failed": "端口扫描失败：{{reason}}",
+        "unavailable": "此主机不可用端口工具。",
+        "connection_missing": "所选连接已不可用。",
+        "exec_terminal_missing": "没有可用的 SSH 终端路由用于诊断。",
+        "diagnostic_opened": "已打开端口诊断。",
+        "copied_endpoint": "已复制 {{endpoint}}。",
+        "partial_support": "{{os}} 上的端口检查为部分支持。",
+        "unknown_error": "未知端口扫描错误。"
+      }
+    },
+    "host_filesystems": {
+      "search_placeholder": "搜索文件系统...",
+      "count_suffix": "项",
+      "loading": "正在扫描磁盘...",
+      "empty": "没有匹配的文件系统条目",
+      "unavailable": "此主机没有可用的文件系统工具。",
+      "error": "文件系统命令失败：{{error}}",
+      "capability": {
+        "full": "完整支持",
+        "partial": "部分支持",
+        "unknown": "支持状态未知"
+      },
+      "filters": {
+        "all": "全部",
+        "mounts": "挂载点",
+        "read_only": "只读",
+        "high_usage": "高占用",
+        "inode_pressure": "Inode 压力",
+        "large_items": "大项",
+        "blocks": "块设备",
+        "attention": "需要关注",
+        "inode_hotspots": "Inode / 文件数"
+      },
+      "columns": {
+        "path": "路径",
+        "kind": "类型",
+        "usage": "占用",
+        "inode": "Inode",
+        "fs": "文件系统",
+        "size": "大小",
+        "read_only": "只读",
+        "device": "设备",
+        "used_available": "已用 / 可用",
+        "source": "来源",
+        "detail": "详情",
+        "options": "选项",
+        "attention": "关注原因"
+      },
+      "kinds": {
+        "mount": "挂载点",
+        "large_dir": "大目录",
+        "large_file": "大文件",
+        "block": "块设备",
+        "unknown": "未知",
+        "inode_dir": "Inode 热点",
+        "count_dir": "文件数热点"
+      },
+      "read_only": {
+        "yes": "是",
+        "no": "否"
+      },
+      "actions": {
+        "refresh": "刷新磁盘",
+        "diagnostic": "打开诊断终端",
+        "copy_path": "复制路径"
+      },
+      "diagnostic_title": "磁盘诊断",
+      "toast": {
+        "snapshot_already_running": "磁盘扫描已在运行。",
+        "snapshot_loaded": "已加载 {{count}} 个文件系统条目。",
+        "snapshot_failed": "磁盘扫描失败：{{reason}}",
+        "unavailable": "此主机没有可用的文件系统工具。",
+        "connection_missing": "选中的连接已不可用。",
+        "exec_terminal_missing": "没有可用于诊断的实时 SSH 终端路由。",
+        "diagnostic_opened": "已打开磁盘诊断。",
+        "copied_path": "已复制 {{path}}。",
+        "partial_support": "{{os}} 上的文件系统检查为部分支持。",
+        "unknown_error": "未知文件系统扫描错误。"
+      },
+      "attention": {
+        "critical_usage": "容量危险",
+        "high_usage": "高占用",
+        "critical_inode": "Inode 危险",
+        "inode_pressure": "Inode 压力",
+        "low_free_space": "剩余过低",
+        "read_only": "只读挂载",
+        "large_item": "大项",
+        "inode_hotspot": "Inode 热点",
+        "file_count_hotspot": "文件数热点"
+      },
+      "values": {
+        "inode_count": "{{count}} 个 inode",
+        "file_count": "{{count}} 个文件"
+      }
+    },
+    "host_packages": {
+      "search_placeholder": "搜索软件包...",
+      "count_suffix": "个包",
+      "loading": "正在扫描软件包...",
+      "empty": "没有匹配的软件包",
+      "unavailable": "此主机上没有可用的包管理工具。",
+      "error": "包管理命令失败：{{error}}",
+      "capability": {
+        "full": "完整支持",
+        "partial": "只读支持",
+        "unknown": "支持情况未知"
+      },
+      "filters": {
+        "all": "全部",
+        "upgradable": "可更新",
+        "installed": "已安装",
+        "services": "服务相关",
+        "apt": "apt",
+        "dnf": "dnf",
+        "yum": "yum",
+        "pacman": "pacman",
+        "brew": "Homebrew"
+      },
+      "columns": {
+        "package": "软件包",
+        "status": "状态",
+        "installed": "已安装",
+        "candidate": "候选版本",
+        "manager": "管理器",
+        "service": "服务",
+        "arch": "架构",
+        "repository": "仓库",
+        "summary": "摘要",
+        "source": "来源",
+        "owner_paths": "归属路径"
+      },
+      "status": {
+        "upgradable": "可更新",
+        "installed": "已安装",
+        "unknown": "未知"
+      },
+      "actions": {
+        "refresh": "刷新软件包",
+        "inspect": "打开包详情",
+        "copy_name": "复制包名"
+      },
+      "inspect_title": "包详情",
+      "toast": {
+        "snapshot_already_running": "软件包扫描已经在运行。",
+        "snapshot_loaded": "已加载 {{count}} 个软件包。",
+        "snapshot_failed": "扫描软件包失败：{{reason}}",
+        "unavailable": "此主机上没有可用的包管理工具。",
+        "connection_missing": "选中的连接已不可用。",
+        "exec_terminal_missing": "没有可用于包详情的实时 SSH 终端路由。",
+        "inspect_unsupported": "暂不支持 {{manager}} 的包详情命令。",
+        "inspect_opened": "已打开 {{name}} 的详情。",
+        "copied_name": "已复制 {{name}}。",
+        "partial_support": "{{os}} 上的软件包检查为只读支持。",
+        "unknown_error": "未知的软件包扫描错误。"
+      }
+    }
+  },
+  "sessions": {
+    "tree": {
+      "no_sessions": "暂无会话",
+      "click_to_add": "点击 + 添加新连接",
+      "actions": {
+        "new_terminal": "新建终端",
+        "sftp": "SFTP",
+        "port_forwarding": "端口转发",
+        "disconnect": "断开",
+        "reconnect": "重新连接",
+        "edit_and_reconnect": "修改并重连",
+        "remove_session": "移除会话",
+        "cancel_reconnect": "取消重连",
+        "drill_in": "钻入 (下一跳)",
+        "saved_next_hop": "使用已保存连接作为下一跳...",
+        "connect": "连接",
+        "save_as_connection": "保存为连接..."
+      }
+    },
+    "focused_list": {
+      "all_servers": "全部服务器",
+      "child": "子节点",
+      "children": "子节点",
+      "no_child_nodes": "此节点没有子节点",
+      "no_servers": "暂无服务器",
+      "add_by_drilling": "您可以通过钻取添加子节点",
+      "click_to_add": "点击 + 添加新连接",
+      "terminal": "终端 #{{number}}",
+      "close_terminal": "关闭终端"
+    },
+    "actions": {
+      "connect": "连接",
+      "new_terminal": "新建终端",
+      "sftp_explorer": "SFTP 文件管理器",
+      "port_forwarding": "端口转发",
+      "disconnect": "断开连接",
+      "reconnect": "重新连接",
+      "drill_in": "钻入 (下一跳)",
+      "saved_next_hop": "使用已保存连接作为下一跳...",
+      "save_as_connection": "保存为连接..."
+    },
+    "saved_next_hop": {
+      "title": "使用已保存连接作为下一跳",
+      "description": "选择一个已保存连接，接到 {{host}} 下方。",
+      "empty": "暂无可用的已保存连接。",
+      "cancel": "取消",
+      "proxy_chain_badge": "{{count}} 跳",
+      "parent_not_ready": "请先连接父节点，再添加已保存的下一跳。",
+      "not_found": "未找到该已保存连接。",
+      "missing_credentials": "此已保存连接缺少连接所需的凭据。",
+      "materialize_failed": "无法将该已保存连接添加到会话树。"
+    },
+    "breadcrumb": {
+      "back_to_root": "返回根视图",
+      "all_servers": "全部服务器"
+    }
+  }
+}

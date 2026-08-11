@@ -1,0 +1,27 @@
+[package]
+name = "hapcli-cli"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "hapcli"
+path = "src/main.rs"
+
+[dependencies]
+chrono.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+hapcli-ai = { path = "../hapcli-ai" }
+hapcli-cloud-sync = { path = "../hapcli-cloud-sync", default-features = false }
+hapcli-connections = { path = "../hapcli-connections" }
+hapcli-forwarding = { path = "../hapcli-forwarding", default-features = false }
+hapcli-portable-runtime = { path = "../hapcli-portable-runtime" }
+hapcli-quick-commands = { path = "../hapcli-quick-commands" }
+hapcli-settings = { path = "../hapcli-settings" }
+hapcli-ssh = { path = "../hapcli-ssh" }
+hapcli-ssh-launch = { path = "../hapcli-ssh-launch" }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+zeroize.workspace = true

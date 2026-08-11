@@ -1,0 +1,37 @@
+[package]
+name = "hapcli-forwarding"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[features]
+default = ["runtime"]
+runtime = [
+  "dep:dashmap",
+  "dep:hapcli-backend-classification",
+  "dep:hapcli-ssh",
+  "dep:hapcli-x11-forwarding",
+  "dep:tokio",
+  "dep:tracing",
+]
+
+[dependencies]
+chrono.workspace = true
+dashmap = { workspace = true, optional = true }
+hapcli-backend-classification = { path = "../hapcli-backend-classification", optional = true }
+hapcli-atomic-file = { path = "../hapcli-atomic-file" }
+hapcli-ssh = { path = "../hapcli-ssh", optional = true }
+hapcli-x11-forwarding = { path = "../hapcli-x11-forwarding", optional = true }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
+uuid.workspace = true
+
+[dev-dependencies]
+rand10.workspace = true
+russh = { path = "../russh" }
+serde_json.workspace = true
+tempfile = "3.23"

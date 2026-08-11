@@ -1,0 +1,135 @@
+{
+  "connections": {
+    "state": {
+      "connecting": "연결 중...",
+      "active": "활성",
+      "idle": "유휴",
+      "disconnecting": "연결 종료 중...",
+      "disconnected": "연결 해제됨",
+      "error": "오류: {{error}}"
+    },
+    "events": {
+      "connection_lost_reconnecting": "연결 끊김 - 재연결 중...",
+      "connection_closed": "연결이 닫힘"
+    },
+    "time": {
+      "just_now": "방금",
+      "mins_ago": "{{count}}분 전",
+      "hrs_ago": "{{count}}시간 전"
+    },
+    "panel": {
+      "title": "백그라운드 SSH 연결",
+      "description": "활성 SSH 연결 및 keep-alive 설정 관리",
+      "refresh": "새로고침",
+      "no_connections": "활성 SSH 연결 없음",
+      "no_connections_hint": "새 연결이 여기에 표시됩니다",
+      "terminals": "{{count}} 터미널",
+      "sftp": "{{count}} SFTP",
+      "forwards": "{{count}} 포워딩",
+      "created": "생성: {{time}}",
+      "idle_hint": "유휴 - {{keepAlive}}",
+      "keep_alive_enabled": "Keep Alive",
+      "disconnect_in": "{{min}}분 후 연결 해제"
+    },
+    "keep_alive": {
+      "enable_tooltip": "Keep Alive 활성화 (자동 연결 해제 안함)",
+      "disable_tooltip": "Keep Alive 비활성화 ({{min}}분 유휴 후 연결 해제)",
+      "legend_enabled": "Keep Alive: 자동 연결 해제 안함",
+      "legend_disabled": "표준: {{min}}분 유휴 후 자동 연결 해제",
+      "global_never_tooltip": "전역 설정: 시간 초과 없음"
+    },
+    "monitor": {
+      "title": "연결 풀",
+      "loading": "통계 로딩 중...",
+      "idle_timeout": "유휴: {{min}}분",
+      "idle_timeout_never": "유휴: 시간 초과 없음",
+      "capacity": "용량: {{capacity}}",
+      "active": "활성",
+      "idle": "유휴",
+      "reconnecting": "재연결 중",
+      "link_down": "연결 끊김",
+      "terminals": "터미널",
+      "sftp": "SFTP",
+      "forwards": "포워딩",
+      "summary": "총: {{total}} 연결 • 참조: {{refs}}",
+      "live": "실시간",
+      "topology_nodes_edges": "Nodes: {{nodes}} • Edges: {{edges}}",
+      "topology_roots_children": "{{roots}} roots / {{children}} children"
+    },
+    "status": {
+      "reconnecting_title": "연결 재설정 중",
+      "reconnecting_wait": "연결을 복원하고 있습니다. 잠시 후 다시 시도해 주세요.",
+      "reconnect_unstable": "연결 불안정",
+      "try_again_later": "연결이 아직 안정되지 않았습니다. 나중에 다시 시도해 주세요.",
+      "connection_failed": "연결에 실패했습니다",
+      "no_connection_id": "재연결 후 연결 ID가 할당되지 않았습니다."
+    },
+    "failedFetchStats": "통계를 가져오지 못했습니다",
+    "errors": {
+      "chain_busy_desc": "다른 연결 체인이 진행 중입니다. 잠시만 기다려 주세요.",
+      "chain_busy_title": "작업 진행 중",
+      "chain_failed_desc": "노드 {{position}}/{{total}} 에서 실패했습니다: {{error}}",
+      "chain_failed_title": "연결 실패",
+      "generic_title": "연결 오류",
+      "node_connecting_desc": "이 노드는 이미 연결 중입니다.",
+      "node_connecting_title": "이미 연결 중"
+    },
+    "reconnect": {
+      "cancelled": "재연결이 취소되었습니다",
+      "completed": "연결이 복원되었습니다. {{count}}개 서비스가 복구되었습니다",
+      "failed": "재연결 실패: {{error}}",
+      "recovered": "연결 복구됨 — 세션 유지",
+      "ssh_restored": "SSH 연결이 복원되었습니다",
+      "starting": "{{name}} 재연결 중..."
+    },
+    "toast": {
+      "proxy_chain_desc": "체인 깊이 {{depth}}. 토폴로지 동기화됨.",
+      "proxy_chain_established": "프록시 체인 연결 설정됨",
+      "proxy_chain_invalid": "프록시 체인이 올바르지 않습니다",
+      "proxy_hop_auth_unsupported": "이 점프 호스트는 지원되지 않는 인증 유형을 사용합니다",
+      "proxy_hop_kbi_unsupported": "이 점프 호스트는 keyboard-interactive/2FA를 지원하지 않습니다"
+    },
+    "trace": {
+      "connected": "연결됨 · {{elapsed}}",
+      "connecting": "{{label}} 연결 중",
+      "connecting_chain": "{{current}}/{{total}} 연결 중: {{label}}",
+      "failed": "연결 실패: {{label}}",
+      "reconnecting": "{{label}} 재연결 중",
+      "reconnecting_chain": "{{current}}/{{total}} 재연결 중: {{label}}",
+      "diagnostics": {
+        "kind": {
+          "key_exchange": "키 교환",
+          "host_key": "호스트 키",
+          "cipher": "암호화",
+          "mac": "MAC",
+          "compression": "압축"
+        },
+        "summary": {
+          "key_exchange": "서버가 현재 보안 정책에서 활성화되지 않은 키 교환 알고리즘만 제공했습니다.",
+          "host_key": "서버 호스트 키 알고리즘이 현재 보안 정책과 일치하지 않습니다.",
+          "host_key_ssh_rsa": "서버가 기본적으로 비활성화된 ssh-rsa 호스트 키만 지원합니다.",
+          "cipher": "서버 암호화 목록이 현재 클라이언트 정책과 겹치지 않습니다.",
+          "cipher_legacy": "서버가 CBC 또는 3DES 같은 레거시 암호화만 제공했습니다. 서버를 업그레이드하거나 레거시 호환 모드를 명시적으로 활성화하세요.",
+          "mac": "서버 MAC 목록이 현재 클라이언트 정책과 겹치지 않습니다. 서버를 업그레이드하거나 호환되는 MAC 정책을 활성화하세요.",
+          "compression": "서버 압축 모드가 클라이언트 정책과 겹치지 않습니다."
+        },
+        "client_offered": "클라이언트 제공: {{algorithms}}",
+        "server_offered": "서버 제공: {{algorithms}}",
+        "missing_match": "일치 없음: {{reason}}",
+        "no_common": "공통 {{kind}} 알고리즘 없음"
+      },
+      "stage": {
+        "authentication": "인증 중",
+        "host_key": "호스트 키 확인 중",
+        "opening_transport": "전송 채널 여는 중",
+        "preparing": "연결 준비 중",
+        "pty": "PTY 할당 중",
+        "queued": "대기 중",
+        "ready": "준비됨",
+        "shell_ready": "셸 시작 중",
+        "ssh_handshake": "SSH 핸드셰이크"
+      },
+      "target_unknown": "대상"
+    }
+  }
+}

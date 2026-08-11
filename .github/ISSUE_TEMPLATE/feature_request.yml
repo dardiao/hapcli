@@ -1,0 +1,105 @@
+name: Feature Request
+description: Suggest an improvement or new capability / 功能建议或改进
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Code contributions (Pull Requests) are not accepted** — see [CONTRIBUTING.md](https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/CONTRIBUTING.md) for details. If you want to extend functionality yourself, consider building a [plugin](https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md).
+
+        **PR：** 本项目目前不接受 PR——详见 [CONTRIBUTING.md](https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/CONTRIBUTING.md)。如需自行扩展功能，可考虑构建[插件](https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md)。
+
+        ---
+
+        **Scope:** hapcli is an SSH-based terminal and DevOps platform (local shells, SSH, SFTP, remote IDE, port forwarding, AI, plugins). Requests for unrelated remote-access protocols are out of scope and will be closed.
+        **范围：** hapcli 是基于 SSH 的终端与 DevOps 平台（本地终端、SSH、SFTP、远程 IDE、端口转发、AI、插件）。与此无关的远程访问协议不在项目范围内，相关请求将被直接关闭。
+
+        **One request per issue.** Multiple unrelated suggestions in a single issue will be closed — please open separate issues.
+        **每个 Issue 只提一个建议。** 在同一 Issue 中混合多条不相关建议将被直接关闭，请分别提交。
+
+  - type: input
+    id: version
+    attributes:
+      label: hapcli version / 版本
+      description: "e.g. `1.1.13` — from Settings → Help & About, or the title bar"
+      placeholder: "1.1.13"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case / 问题或使用场景
+      description: What are you trying to do? What is painful today?
+      placeholder: When managing many jump hosts, I wish …
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution / 期望方案
+      description: |
+        How would you like it to work? Mockups or examples welcome.
+        Answers like "N/A", "none", "you figure it out" will cause the issue to be closed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: importance
+    attributes:
+      label: Why is this important? / 为什么这个功能对你重要？
+      description: |
+        Explain why this matters to you — how often you hit the problem, how much time it costs, or how many people it affects.
+        Requests without a concrete reason may be closed.
+        请说明该功能对你的重要性——你多久遇到一次这个问题、每次耗费多少时间、或会影响多少人。
+        没有具体理由的请求可能会被关闭。
+      placeholder: |
+        - I manage 50+ jump hosts and re-enter credentials daily, costing minutes each time.
+        - This blocks our team's standard workflow; several colleagues hit the same wall.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area (best guess) / 大致领域
+      options:
+        - Terminal (local / SSH)
+        - SFTP / file manager
+        - IDE mode
+        - Port forwarding / topology
+        - AI / OxideSens / MCP / RAG
+        - Plugins
+        - Settings / themes / i18n
+        - Windows / WSL / graphics
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority / 优先级
+      description: How important is this to you? / 这个功能对你有多重要？
+      options:
+        - Nice to have / 锦上添花
+        - Would improve my daily workflow / 能改善我的日常工作流
+        - Blocking / critical for my use case / 阻塞我的使用场景
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I am using the latest release, confirmed this feature does not already exist, and searched existing issues / 我正在使用最新正式版，已确认该功能尚不存在，并已搜索过已有 Issue
+          required: true
+        - label: This is one focused request within hapcli's scope / 这是一个聚焦且属于 hapcli 范围内的请求
+          required: true
+        - label: |
+            I have described a concrete problem/use case and proposed solution; I understand feature requests are handled best-effort, and vague or inactive issues may be closed.
+            我已描述具体问题/使用场景和期望方案；我理解功能请求会尽力处理，描述模糊或长期无回复的 Issue 可能会被关闭。
+          required: true

@@ -1,0 +1,10 @@
+[package]
+name = "hapcli-terminal-unicode"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+hapcli-terminal-model = { path = "../hapcli-terminal-model" }
+unicode-bidi.workspace = true
+unicode-segmentation.workspace = true

@@ -1,0 +1,39 @@
+[package]
+name = "hapcli-egui-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+# egui 桌面框架
+eframe = "0.29"
+egui = "0.29"
+
+# 自研终端内核（唯一终端实现，禁止直接引入第三方终端库）
+hapcli-terminal = { path = "../hapcli-terminal" }
+# SSH 连接配置（认证方式、超时、host key 策略）
+hapcli-ssh = { path = "../hapcli-ssh" }
+
+# 错误处理与活动通知阻塞等待
+anyhow = { workspace = true }
+pollster = { workspace = true }
+# 认证密钥内存安全包装
+zeroize = { workspace = true }
+# 会话收藏持久化（本地 JSON）
+serde = { workspace = true }
+serde_json = { workspace = true }
+dirs = { workspace = true }
+# 原生文件选择框（私钥路径浏览）
+rfd = "0.15"
+# Trzsz 文件传输（复用自研内核协议栈，非第三方终端库）
+hapcli-trzsz = { path = "../hapcli-trzsz" }
+# 系统剪贴板读取（中键粘贴）
+arboard = "3"
+# 系统钥匙串（SSH 密码安全保存）
+hapcli-secret-store = { path = "../hapcli-secret-store" }
+# 图标解码（内嵌 PNG → 窗口/Dock 图标）
+image = { workspace = true }
+# SFTP 文件传输（复用自研 hapcli-sftp）
+hapcli-sftp = { path = "../hapcli-sftp" }
+tokio = { workspace = true }

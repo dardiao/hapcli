@@ -1,0 +1,48 @@
+{
+  "profiler": {
+    "capsule": {
+      "click_expand": "Klicken zum Erweitern",
+      "no_data": "Keine Daten",
+      "sampling": "Abtastung..."
+    },
+    "detail": {
+      "load_avg": "Lastdurchschn.",
+      "cpu_cores": "CPU-Kerne",
+      "memory": "Speicher",
+      "source": "Quelle"
+    },
+    "panel": {
+      "no_connection": "Keine aktive Verbindung ausgewählt",
+      "sampling": "Abtastung...",
+      "no_data": "Keine Daten",
+      "system_information": "Systeminformationen",
+      "system": "System",
+      "system_version": "Systemversion",
+      "architecture": "Architektur",
+      "boot_time": "Startzeit",
+      "uptime": "Betriebszeit",
+      "cpu": "CPU",
+      "memory": "Speicher",
+      "disk": "Datenträger",
+      "gpu": "GPU",
+      "gpu_memory": "GPU-Speicher",
+      "gpus": "GPUs",
+      "network": "Netzwerk-E/A",
+      "load_avg": "Lastdurchschnitt",
+      "rtt": "RTT-Latenz",
+      "source": "Quelle",
+      "disabled": "Überwachung deaktiviert",
+      "enable": "Abtastung aktivieren",
+      "swap": "Swap",
+      "mounts": "Einhängepunkte",
+      "interfaces": "Netzwerkschnittstellen",
+      "top_processes": "Speicherintensive Prozesse",
+      "source_full": "Vollständig",
+      "source_partial": "Teilweise",
+      "source_rtt_only": "Nur RTT",
+      "source_failed": "Fehlgeschlagen",
+      "source_unsupported": "Nicht unterstützt",
+      "retry": "Erneut prüfen"
+    }
+  }
+}

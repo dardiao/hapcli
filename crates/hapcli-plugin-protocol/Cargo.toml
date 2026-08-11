@@ -1,0 +1,11 @@
+[package]
+name = "hapcli-plugin-protocol"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+hapcli-plugin-manifest = { path = "../hapcli-plugin-manifest" }
+serde.workspace = true
+serde_json.workspace = true
+zeroize.workspace = true

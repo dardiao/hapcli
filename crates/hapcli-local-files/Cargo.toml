@@ -1,0 +1,15 @@
+[package]
+name = "hapcli-local-files"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+chrono.workspace = true
+dirs.workspace = true
+md5 = "0.7"
+serde.workspace = true
+sha2.workspace = true
+sysinfo.workspace = true
+walkdir = "2"
+zip.workspace = true

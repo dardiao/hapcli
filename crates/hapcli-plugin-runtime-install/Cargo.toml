@@ -1,0 +1,17 @@
+[package]
+name = "hapcli-plugin-runtime-install"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+flate2 = "1.1.9"
+futures-util.workspace = true
+hapcli-network-proxy = { path = "../hapcli-network-proxy" }
+hapcli-plugin-protocol = { path = "../hapcli-plugin-protocol" }
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tar = "0.4"
+zip.workspace = true

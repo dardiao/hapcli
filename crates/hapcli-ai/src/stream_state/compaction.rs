@@ -1,0 +1,275 @@
+//! Pure conversation compaction planning and summary payload construction.
+
+use crate::{AiChatMessage, AiChatRole, sanitize_for_persistence};
+
+#[derive(Clone)]
+pub struct AiCompactionPlan {
+    pub compact_messages: Vec<AiChatMessage>,
+    pub keep_messages: Vec<AiChatMessage>,
+}
+
+pub fn ai_compaction_plan(
+    messages: &[AiChatMessage],
+    context_window: usize,
+    silent: bool,
+) -> Option<AiCompactionPlan> {
+    ai_compaction_plan_with_estimator(
+        messages,
+        context_window,
+        silent,
+        super::history::ai_message_estimated_tokens,
+    )
+}
+
+pub fn ai_compaction_plan_for_provider(
+    messages: &[AiChatMessage],
+    context_window: usize,
+    silent: bool,
+    provider_type: &str,
+) -> Option<AiCompactionPlan> {
+    ai_compaction_plan_with_estimator(messages, context_window, silent, |message| {
+        super::history::ai_message_payload_estimated_tokens(message, provider_type)
+    })
+}
+
+fn ai_compaction_plan_with_estimator(
+    messages: &[AiChatMessage],
+    context_window: usize,
+    silent: bool,
+    estimate_message: impl Fn(&AiChatMessage) -> usize,
+) -> Option<AiCompactionPlan> {
+    if messages.len() < 4 {
+        return None;
+    }
+    let total_tokens = messages.iter().map(&estimate_message).sum::<usize>();
+    let mut budget = ((context_window as f32) * 0.4).floor() as usize;
+    if !silent && total_tokens > 0 {
+        budget = budget.min(((total_tokens as f32) * 0.6).floor() as usize);
+    }
+    let mut keep_start = messages.len();
+    let mut used = 0usize;
+    for (index, message) in messages.iter().enumerate().rev() {
+        let tokens = estimate_message(message);
+        if keep_start < messages.len() && used.saturating_add(tokens) > budget {
+            break;
+        }
+        used = used.saturating_add(tokens);
+        keep_start = index;
+    }
+    if keep_start < 2 {
+        return None;
+    }
+    let compact_messages = messages[..keep_start].to_vec();
+    if compact_messages.len() < 2 {
+        return None;
+    }
+    let keep_messages = messages[keep_start..].to_vec();
+    Some(AiCompactionPlan {
+        compact_messages,
+        keep_messages,
+    })
+}
+
+pub fn ai_compaction_summary_messages(messages: &[AiChatMessage]) -> Vec<AiChatMessage> {
+    let mut history_parts = Vec::new();
+    for message in messages {
+        if message
+            .metadata
+            .as_ref()
+            .is_some_and(|metadata| metadata.kind == "compaction-anchor")
+        {
+            let summary = message.content.as_str();
+            if !summary.is_empty() {
+                history_parts.push(format!(
+                    "[Previous Summary]: {}",
+                    sanitize_for_persistence(summary)
+                ));
+            }
+        } else if matches!(message.role, AiChatRole::User | AiChatRole::Assistant) {
+            let role = match message.role {
+                AiChatRole::User => "User",
+                AiChatRole::Assistant => "Assistant",
+                _ => unreachable!(),
+            };
+            history_parts.push(format!(
+                "{role}: {}",
+                sanitize_for_persistence(&message.content)
+            ));
+        }
+    }
+    vec![
+        AiChatMessage {
+            id: "compact-system".to_string(),
+            role: AiChatRole::System,
+            content: "Summarize the following conversation in a concise paragraph. Capture the key topics, questions asked, solutions provided, and any important context. Write in the same language as the conversation. Keep it under 200 words. If there is a \"[Previous Summary]\" section, integrate it into your summary.".to_string(),
+            timestamp_ms: 0,
+            model: None,
+            context: None,
+            is_streaming: false,
+            thinking_content: None,
+            metadata: None,
+            tool_call_id: None,
+            tool_calls: Vec::new(),
+            turn: None,
+            transcript_ref: None,
+            summary_ref: None,
+            branches: None,
+            suggestions: Vec::new(),
+        },
+        AiChatMessage {
+            id: "compact-request".to_string(),
+            role: AiChatRole::User,
+            content: history_parts.join("\n\n"),
+            timestamp_ms: 0,
+            model: None,
+            context: None,
+            is_streaming: false,
+            thinking_content: None,
+            metadata: None,
+            tool_call_id: None,
+            tool_calls: Vec::new(),
+            turn: None,
+            transcript_ref: None,
+            summary_ref: None,
+            branches: None,
+            suggestions: Vec::new(),
+        },
+    ]
+}
+
+pub fn ai_conversation_summary_messages(messages: &[AiChatMessage]) -> Vec<AiChatMessage> {
+    let history_text = messages
+        .iter()
+        .filter(|message| matches!(message.role, AiChatRole::User | AiChatRole::Assistant))
+        .map(|message| {
+            let role = if message.role == AiChatRole::User {
+                "User"
+            } else {
+                "Assistant"
+            };
+            format!("{role}: {}", sanitize_for_persistence(&message.content))
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    vec![
+        AiChatMessage {
+            id: "summary-system".to_string(),
+            role: AiChatRole::System,
+            content: "Summarize the following conversation in a concise paragraph. Capture the key topics, questions asked, solutions provided, and any important context. Write in the same language as the conversation. Keep it under 200 words.".to_string(),
+            timestamp_ms: 0,
+            model: None,
+            context: None,
+            is_streaming: false,
+            thinking_content: None,
+            metadata: None,
+            tool_call_id: None,
+            tool_calls: Vec::new(),
+            turn: None,
+            transcript_ref: None,
+            summary_ref: None,
+            branches: None,
+            suggestions: Vec::new(),
+        },
+        AiChatMessage {
+            id: "summary-request".to_string(),
+            role: AiChatRole::User,
+            content: history_text,
+            timestamp_ms: 0,
+            model: None,
+            context: None,
+            is_streaming: false,
+            thinking_content: None,
+            metadata: None,
+            tool_call_id: None,
+            tool_calls: Vec::new(),
+            turn: None,
+            transcript_ref: None,
+            summary_ref: None,
+            branches: None,
+            suggestions: Vec::new(),
+        },
+    ]
+}
+
+pub const AI_MAX_ANCHOR_SNAPSHOT: usize = 50;
+
+pub fn ai_compaction_original_count(messages: &[AiChatMessage]) -> usize {
+    messages
+        .iter()
+        .map(|message| {
+            if message
+                .metadata
+                .as_ref()
+                .is_some_and(|metadata| metadata.kind == "compaction-anchor")
+            {
+                message
+                    .metadata
+                    .as_ref()
+                    .and_then(|metadata| metadata.original_count)
+                    .unwrap_or(0)
+            } else {
+                1
+            }
+        })
+        .sum()
+}
+
+pub fn ai_compaction_anchor_snapshot(messages: &[AiChatMessage]) -> Vec<AiChatMessage> {
+    messages
+        .iter()
+        .filter(|message| {
+            !message
+                .metadata
+                .as_ref()
+                .is_some_and(|metadata| metadata.kind == "compaction-anchor")
+        })
+        .rev()
+        .take(AI_MAX_ANCHOR_SNAPSHOT)
+        .map(|message| {
+            let mut snapshot = message.clone();
+            snapshot.model = None;
+            snapshot.context = None;
+            snapshot.is_streaming = false;
+            snapshot.thinking_content = None;
+            snapshot.metadata = None;
+            snapshot.tool_call_id = None;
+            snapshot.tool_calls.clear();
+            snapshot.turn = None;
+            snapshot.transcript_ref = None;
+            snapshot.summary_ref = None;
+            snapshot.branches = None;
+            snapshot.suggestions.clear();
+            snapshot.content = sanitize_for_persistence(&snapshot.content);
+            snapshot
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect()
+}
+
+pub fn ai_latest_summary_round_id(messages: &[AiChatMessage]) -> Option<String> {
+    messages.iter().rev().find_map(|message| {
+        message
+            .summary_ref
+            .as_ref()
+            .and_then(|summary_ref| summary_ref.get("roundId"))
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string)
+            .or_else(|| {
+                message
+                    .turn
+                    .as_ref()
+                    .and_then(|turn| turn.get("toolRounds"))
+                    .and_then(serde_json::Value::as_array)
+                    .and_then(|rounds| {
+                        rounds.iter().rev().find_map(|round| {
+                            round
+                                .get("id")
+                                .and_then(serde_json::Value::as_str)
+                                .map(str::to_string)
+                        })
+                    })
+            })
+    })
+}

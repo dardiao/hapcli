@@ -1,0 +1,1164 @@
+use crate::{SecretString, keychain::ConnectionKeychain};
+
+pub const CONFIG_VERSION: u32 = 1;
+pub const CONNECTION_TOMBSTONE_RETENTION_DAYS: i64 = 30;
+pub const LOCAL_SHELL_PRIVILEGE_CONNECTION_ID: &str = "local-shell:default";
+pub const GLOBAL_UPSTREAM_PROXY_PASSWORD_KEYCHAIN_ID: &str = "oxide_global_upstream_proxy_password";
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthType {
+    Password,
+    Key,
+    ManagedKey,
+    Certificate,
+    KeyboardInteractive,
+    Agent,
+}
+
+impl AuthType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Password => "password",
+            Self::Key => "key",
+            Self::ManagedKey => "managed_key",
+            Self::Certificate => "certificate",
+            Self::KeyboardInteractive => "keyboard_interactive",
+            Self::Agent => "agent",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SavedAuth {
+    Password {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        keychain_id: Option<String>,
+        #[serde(default, rename = "password", skip_serializing)]
+        plaintext_password: Option<SecretString>,
+    },
+    Key {
+        key_path: String,
+        #[serde(default)]
+        has_passphrase: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        passphrase_keychain_id: Option<String>,
+        #[serde(default, rename = "passphrase", skip_serializing)]
+        plaintext_passphrase: Option<SecretString>,
+    },
+    Certificate {
+        key_path: String,
+        cert_path: String,
+        #[serde(default)]
+        has_passphrase: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        passphrase_keychain_id: Option<String>,
+        #[serde(default, rename = "passphrase", skip_serializing)]
+        plaintext_passphrase: Option<SecretString>,
+    },
+    ManagedKey {
+        key_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        passphrase_keychain_id: Option<String>,
+        #[serde(default, rename = "passphrase", skip_serializing)]
+        plaintext_passphrase: Option<SecretString>,
+    },
+    // Keyboard-interactive carries no persisted secret; prompts are collected during connect.
+    KeyboardInteractive,
+    Agent,
+}
+
+impl SavedAuth {
+    pub fn auth_type(&self) -> AuthType {
+        match self {
+            Self::Password { .. } => AuthType::Password,
+            Self::Key { .. } => AuthType::Key,
+            Self::ManagedKey { .. } => AuthType::ManagedKey,
+            Self::Certificate { .. } => AuthType::Certificate,
+            Self::KeyboardInteractive => AuthType::KeyboardInteractive,
+            Self::Agent => AuthType::Agent,
+        }
+    }
+
+    pub fn key_path(&self) -> Option<&str> {
+        match self {
+            Self::Key { key_path, .. } | Self::Certificate { key_path, .. } => Some(key_path),
+            _ => None,
+        }
+    }
+
+    pub fn cert_path(&self) -> Option<&str> {
+        match self {
+            Self::Certificate { cert_path, .. } => Some(cert_path),
+            _ => None,
+        }
+    }
+
+    pub fn managed_key_id(&self) -> Option<&str> {
+        match self {
+            Self::ManagedKey { key_id, .. } => Some(key_id),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConnectionTerminalEncoding {
+    #[serde(rename = "utf-8")]
+    Utf8,
+    Gbk,
+    Gb18030,
+    Big5,
+    ShiftJis,
+    #[serde(rename = "euc-jp")]
+    EucJp,
+    #[serde(rename = "euc-kr")]
+    EucKr,
+    #[serde(rename = "windows-1252")]
+    Windows1252,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ConnectionTerminalBackspaceSequence {
+    Delete,
+    ControlH,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ConnectionTerminalDeleteSequence {
+    Csi3Tilde,
+    Delete,
+    ControlH,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionTerminalOptions {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encoding: Option<ConnectionTerminalEncoding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backspace_sequence: Option<ConnectionTerminalBackspaceSequence>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delete_sequence: Option<ConnectionTerminalDeleteSequence>,
+}
+
+impl ConnectionTerminalOptions {
+    pub fn inherits_application_defaults(&self) -> bool {
+        self.encoding.is_none()
+            && self.backspace_sequence.is_none()
+            && self.delete_sequence.is_none()
+    }
+}
+
+pub const DEFAULT_X11_UNTRUSTED_TIMEOUT_SECONDS: u32 = 20 * 60;
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConnectionX11ForwardingMode {
+    #[default]
+    Untrusted,
+    Trusted,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ConnectionX11ForwardingOptions {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub mode: ConnectionX11ForwardingMode,
+    #[serde(default = "default_x11_untrusted_timeout_seconds")]
+    pub untrusted_timeout_seconds: u32,
+}
+
+impl ConnectionX11ForwardingOptions {
+    pub fn is_default(&self) -> bool {
+        *self == Self::default()
+    }
+}
+
+impl Default for ConnectionX11ForwardingOptions {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            mode: ConnectionX11ForwardingMode::Untrusted,
+            untrusted_timeout_seconds: DEFAULT_X11_UNTRUSTED_TIMEOUT_SECONDS,
+        }
+    }
+}
+
+fn default_x11_untrusted_timeout_seconds() -> u32 {
+    DEFAULT_X11_UNTRUSTED_TIMEOUT_SECONDS
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct ConnectionOptions {
+    #[serde(default)]
+    pub keep_alive_interval: u32,
+    #[serde(default)]
+    pub compression: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jump_host: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub term_type: Option<String>,
+    #[serde(default)]
+    pub agent_forwarding: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity_agent: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_forwarding_socket: Option<String>,
+    #[serde(default)]
+    pub legacy_ssh_compatibility: bool,
+    /// Some SSH servers require a new authentication exchange for every terminal.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub dedicated_new_terminal_connection: bool,
+    /// X11 stores only portable policy; local display and cookies are resolved per shell.
+    #[serde(
+        default,
+        skip_serializing_if = "ConnectionX11ForwardingOptions::is_default"
+    )]
+    pub x11_forwarding: ConnectionX11ForwardingOptions,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_connect_command: Option<String>,
+    /// Terminal protocol behavior is host-specific; absent values inherit the
+    /// application defaults so existing saved connections remain compatible.
+    #[serde(
+        default,
+        skip_serializing_if = "ConnectionTerminalOptions::inherits_application_defaults"
+    )]
+    pub terminal: ConnectionTerminalOptions,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SavedProxyHop {
+    pub host: String,
+    #[serde(default = "default_port")]
+    pub port: u16,
+    pub username: String,
+    pub auth: SavedAuth,
+    #[serde(default)]
+    pub agent_forwarding: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity_agent: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_forwarding_socket: Option<String>,
+    #[serde(default)]
+    pub legacy_ssh_compatibility: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SavedUpstreamProxyProtocol {
+    Socks5,
+    HttpConnect,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SavedUpstreamProxyAuth {
+    None,
+    Password {
+        username: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        keychain_id: Option<String>,
+        #[serde(default, rename = "password", skip_serializing)]
+        plaintext_password: Option<SecretString>,
+    },
+}
+
+impl Default for SavedUpstreamProxyAuth {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedUpstreamProxyConfig {
+    pub protocol: SavedUpstreamProxyProtocol,
+    pub host: String,
+    pub port: u16,
+    #[serde(default)]
+    pub auth: SavedUpstreamProxyAuth,
+    #[serde(default = "default_proxy_remote_dns")]
+    pub remote_dns: bool,
+    #[serde(default)]
+    pub no_proxy: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+pub enum SavedUpstreamProxyPolicy {
+    UseGlobal,
+    Direct,
+    Custom { proxy: SavedUpstreamProxyConfig },
+}
+
+impl SavedUpstreamProxyPolicy {
+    pub fn is_use_global(&self) -> bool {
+        matches!(self, Self::UseGlobal)
+    }
+}
+
+impl Default for SavedUpstreamProxyPolicy {
+    fn default() -> Self {
+        Self::UseGlobal
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PrivilegeCredentialKind {
+    SudoPassword,
+    SuPassword,
+    CustomPrompt,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct SavedPrivilegeCredential {
+    pub id: String,
+    pub connection_id: String,
+    pub label: String,
+    pub kind: PrivilegeCredentialKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub username_hint: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub prompt_patterns: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keychain_id: Option<String>,
+    #[serde(default, skip)]
+    pub plaintext_secret: Option<SecretString>,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub require_click_to_send: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProxyHopInfo {
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub auth_type: AuthType,
+    pub key_path: Option<String>,
+    pub cert_path: Option<String>,
+    pub managed_key_id: Option<String>,
+    pub managed_key_name: Option<String>,
+    pub agent_forwarding: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity_agent: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_forwarding_socket: Option<String>,
+    pub legacy_ssh_compatibility: bool,
+}
+
+impl From<&SavedProxyHop> for ProxyHopInfo {
+    fn from(hop: &SavedProxyHop) -> Self {
+        Self {
+            host: hop.host.clone(),
+            port: hop.port,
+            username: hop.username.clone(),
+            auth_type: hop.auth.auth_type(),
+            key_path: hop.auth.key_path().map(ToOwned::to_owned),
+            cert_path: hop.auth.cert_path().map(ToOwned::to_owned),
+            managed_key_id: hop.auth.managed_key_id().map(ToOwned::to_owned),
+            managed_key_name: None,
+            agent_forwarding: hop.agent_forwarding,
+            identity_agent: hop.identity_agent.clone(),
+            agent_forwarding_socket: hop.agent_forwarding_socket.clone(),
+            legacy_ssh_compatibility: hop.legacy_ssh_compatibility,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SavedConnection {
+    pub id: String,
+    #[serde(default = "default_config_version")]
+    pub version: u32,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    pub host: String,
+    #[serde(default = "default_port")]
+    pub port: u16,
+    pub username: String,
+    pub auth: SavedAuth,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub proxy_chain: Vec<SavedProxyHop>,
+    #[serde(default, skip_serializing_if = "SavedUpstreamProxyPolicy::is_use_global")]
+    pub upstream_proxy: SavedUpstreamProxyPolicy,
+    #[serde(default)]
+    pub options: ConnectionOptions,
+    pub created_at: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_used_at: Option<DateTime<Utc>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<DateTime<Utc>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_background_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_connect_command: Option<String>,
+    /// Privilege helper metadata is persisted with the connection, but the
+    /// secret value lives only in the dedicated keychain namespace.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub privilege_credentials: Vec<SavedPrivilegeCredential>,
+}
+
+fn default_port() -> u16 {
+    22
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_proxy_remote_dns() -> bool {
+    true
+}
+
+fn default_config_version() -> u32 {
+    CONFIG_VERSION
+}
+
+impl SavedConnection {
+    pub fn touch(&mut self) {
+        let now = Utc::now();
+        self.last_used_at = Some(now);
+        self.updated_at = Some(now);
+    }
+
+    pub fn post_connect_command(&self) -> Option<&str> {
+        self.post_connect_command
+            .as_deref()
+            .or(self.options.post_connect_command.as_deref())
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConnectionInfo {
+    pub id: String,
+    pub name: String,
+    pub group: Option<String>,
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub auth_type: AuthType,
+    pub key_path: Option<String>,
+    pub cert_path: Option<String>,
+    pub managed_key_id: Option<String>,
+    pub managed_key_name: Option<String>,
+    pub proxy_chain: Vec<ProxyHopInfo>,
+    pub upstream_proxy: SavedUpstreamProxyPolicy,
+    pub created_at: String,
+    pub last_used_at: Option<String>,
+    pub color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_background_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    pub tags: Vec<String>,
+    pub agent_forwarding: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity_agent: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_forwarding_socket: Option<String>,
+    pub legacy_ssh_compatibility: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_connect_command: Option<String>,
+}
+
+impl ConnectionInfo {
+    pub fn matches_search_query(&self, query: &str) -> bool {
+        let query = query.trim().to_lowercase();
+        if query.is_empty() {
+            return true;
+        }
+
+        // Keep every saved-connection search surface on one non-secret field set.
+        self.name.to_lowercase().contains(&query)
+            || self.host.to_lowercase().contains(&query)
+            || self.port.to_string().contains(&query)
+            || self.username.to_lowercase().contains(&query)
+            || self
+                .group
+                .as_deref()
+                .is_some_and(|group| group.to_lowercase().contains(&query))
+            || self
+                .tags
+                .iter()
+                .any(|tag| tag.to_lowercase().contains(&query))
+    }
+
+    pub fn search_text(&self) -> String {
+        // Palette filtering consumes one normalized haystack while the other
+        // surfaces use matches_search_query directly.
+        format!(
+            "{}\n{}\n{}\n{}\n{}\n{}",
+            self.name,
+            self.host,
+            self.port,
+            self.username,
+            self.group.as_deref().unwrap_or_default(),
+            self.tags.join(" ")
+        )
+    }
+}
+
+#[derive(Clone)]
+pub struct SavePrivilegeCredentialRequest {
+    pub connection_id: String,
+    pub credential_id: Option<String>,
+    pub label: String,
+    pub kind: PrivilegeCredentialKind,
+    pub username_hint: Option<String>,
+    pub prompt_patterns: Vec<String>,
+    /// UI drafts become SecretString at the store boundary. The value is stored
+    /// in keychain and never serialized into SavedConnection.
+    pub secret: Option<SecretString>,
+    pub enabled: bool,
+    pub require_click_to_send: bool,
+}
+
+impl fmt::Debug for SavePrivilegeCredentialRequest {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // This request crosses the UI-to-store secret boundary. Keep Debug
+        // useful for metadata while never depending on SecretString internals
+        // to redact the cleartext privilege credential.
+        formatter
+            .debug_struct("SavePrivilegeCredentialRequest")
+            .field("connection_id", &self.connection_id)
+            .field("credential_id", &self.credential_id)
+            .field("label", &self.label)
+            .field("kind", &self.kind)
+            .field("username_hint", &self.username_hint)
+            .field("prompt_patterns", &self.prompt_patterns)
+            .field("secret", &self.secret.as_ref().map(|_| "[redacted secret]"))
+            .field("enabled", &self.enabled)
+            .field("require_click_to_send", &self.require_click_to_send)
+            .finish()
+    }
+}
+
+impl From<&SavedConnection> for ConnectionInfo {
+    fn from(conn: &SavedConnection) -> Self {
+        Self {
+            id: conn.id.clone(),
+            name: conn.name.clone(),
+            group: conn.group.clone(),
+            host: conn.host.clone(),
+            port: conn.port,
+            username: conn.username.clone(),
+            auth_type: conn.auth.auth_type(),
+            key_path: conn.auth.key_path().map(ToOwned::to_owned),
+            cert_path: conn.auth.cert_path().map(ToOwned::to_owned),
+            managed_key_id: conn.auth.managed_key_id().map(ToOwned::to_owned),
+            managed_key_name: None,
+            proxy_chain: conn.proxy_chain.iter().map(ProxyHopInfo::from).collect(),
+            upstream_proxy: conn.upstream_proxy.clone(),
+            created_at: conn.created_at.to_rfc3339(),
+            last_used_at: conn.last_used_at.map(|time| time.to_rfc3339()),
+            color: conn.color.clone(),
+            icon_background_color: conn.icon_background_color.clone(),
+            icon: conn.icon.clone(),
+            tags: conn.tags.clone(),
+            agent_forwarding: conn.options.agent_forwarding,
+            identity_agent: conn.options.identity_agent.clone(),
+            agent_forwarding_socket: conn.options.agent_forwarding_socket.clone(),
+            legacy_ssh_compatibility: conn.options.legacy_ssh_compatibility,
+            post_connect_command: conn.post_connect_command().map(ToOwned::to_owned),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SerialParity {
+    None,
+    Odd,
+    Even,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SerialFlowControl {
+    None,
+    Software,
+    Hardware,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct SerialProfile {
+    pub id: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_background_color: Option<String>,
+    pub port_path: String,
+    pub baud_rate: u32,
+    pub data_bits: u8,
+    pub stop_bits: u8,
+    pub parity: SerialParity,
+    pub flow_control: SerialFlowControl,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub connect_on_open: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_used_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct SaveSerialProfileRequest {
+    pub id: Option<String>,
+    pub name: String,
+    pub group: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub icon_background_color: Option<String>,
+    pub port_path: String,
+    pub baud_rate: Option<u32>,
+    pub data_bits: Option<u8>,
+    pub stop_bits: Option<u8>,
+    pub parity: Option<SerialParity>,
+    pub flow_control: Option<SerialFlowControl>,
+    pub connect_on_open: Option<bool>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct TelnetProfile {
+    pub id: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_background_color: Option<String>,
+    pub host: String,
+    pub port: u16,
+    #[serde(
+        default,
+        skip_serializing_if = "ConnectionTerminalOptions::inherits_application_defaults"
+    )]
+    pub terminal: ConnectionTerminalOptions,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub connect_on_open: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_used_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct SaveTelnetProfileRequest {
+    pub id: Option<String>,
+    pub name: String,
+    pub group: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub icon_background_color: Option<String>,
+    pub host: String,
+    pub port: u16,
+    pub terminal: ConnectionTerminalOptions,
+    pub connect_on_open: Option<bool>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct RemoteDesktopProfile {
+    pub id: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_background_color: Option<String>,
+    pub protocol: RemoteDesktopProtocol,
+    pub host: String,
+    pub port: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    /// Stable protected-store reference; the credential value is never serialized here.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub read_only: bool,
+    #[serde(default)]
+    pub session_options: RemoteDesktopSessionOptions,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_used_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct SaveRemoteDesktopProfileRequest {
+    pub id: Option<String>,
+    pub name: String,
+    pub group: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub icon_background_color: Option<String>,
+    pub protocol: RemoteDesktopProtocol,
+    pub host: String,
+    pub port: u16,
+    pub username: Option<String>,
+    pub domain: Option<String>,
+    /// An explicit reference is primarily used by trusted import and sync paths.
+    pub credential_ref: Option<String>,
+    /// The store moves this secret into the protected credential backend.
+    pub credential: Option<SecretString>,
+    /// Explicitly removes the device-local protected credential while updating the profile.
+    pub clear_credential: bool,
+    pub read_only: bool,
+    pub session_options: RemoteDesktopSessionOptions,
+}
+
+impl SerialProfile {
+    pub fn new(name: impl Into<String>, port_path: impl Into<String>) -> Self {
+        let now = Utc::now();
+        Self {
+            id: Uuid::new_v4().to_string(),
+            name: name.into(),
+            group: None,
+            icon: None,
+            color: None,
+            icon_background_color: None,
+            port_path: port_path.into(),
+            baud_rate: 115_200,
+            data_bits: 8,
+            stop_bits: 1,
+            parity: SerialParity::None,
+            flow_control: SerialFlowControl::None,
+            connect_on_open: false,
+            created_at: now,
+            updated_at: now,
+            last_used_at: None,
+        }
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.id.trim().is_empty() {
+            bail!("Serial profile id is required");
+        }
+        if self.name.trim().is_empty() {
+            bail!("Serial profile name is required");
+        }
+        if self.port_path.trim().is_empty() {
+            bail!("Serial port path is required");
+        }
+        if self.baud_rate == 0 {
+            bail!("Serial baud rate must be greater than zero");
+        }
+        if !(5..=8).contains(&self.data_bits) {
+            bail!("Serial data bits must be between 5 and 8");
+        }
+        if !matches!(self.stop_bits, 1 | 2) {
+            bail!("Serial stop bits must be 1 or 2");
+        }
+        Ok(())
+    }
+}
+
+impl TelnetProfile {
+    pub fn new(name: impl Into<String>, host: impl Into<String>, port: u16) -> Self {
+        let now = Utc::now();
+        Self {
+            id: Uuid::new_v4().to_string(),
+            name: name.into(),
+            group: None,
+            icon: None,
+            color: None,
+            icon_background_color: None,
+            host: host.into(),
+            port,
+            terminal: ConnectionTerminalOptions::default(),
+            connect_on_open: false,
+            created_at: now,
+            updated_at: now,
+            last_used_at: None,
+        }
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.id.trim().is_empty() {
+            bail!("Telnet profile id is required");
+        }
+        if self.name.trim().is_empty() {
+            bail!("Telnet profile name is required");
+        }
+        if self.host.trim().is_empty() {
+            bail!("Telnet host is required");
+        }
+        Ok(())
+    }
+}
+
+impl RemoteDesktopProfile {
+    pub fn new(
+        name: impl Into<String>,
+        protocol: RemoteDesktopProtocol,
+        host: impl Into<String>,
+        port: u16,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: Uuid::new_v4().to_string(),
+            name: name.into(),
+            group: None,
+            icon: None,
+            color: None,
+            icon_background_color: None,
+            protocol,
+            host: host.into(),
+            port,
+            username: None,
+            domain: None,
+            credential_ref: None,
+            read_only: false,
+            session_options: RemoteDesktopSessionOptions::default(),
+            created_at: now,
+            updated_at: now,
+            last_used_at: None,
+        }
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.id.trim().is_empty() {
+            bail!("Remote desktop profile id is required");
+        }
+        if self.name.trim().is_empty() {
+            bail!("Remote desktop profile name is required");
+        }
+        if self.host.trim().is_empty() {
+            bail!("Remote desktop host is required");
+        }
+        if self.port == 0 {
+            bail!("Remote desktop port must be greater than zero");
+        }
+        if self
+            .credential_ref
+            .as_deref()
+            .is_some_and(|reference| reference.trim().is_empty())
+        {
+            bail!("Remote desktop credential reference cannot be empty");
+        }
+        Ok(())
+    }
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
+#[derive(Clone, Debug)]
+pub struct SaveConnectionRequest {
+    pub id: Option<String>,
+    pub name: String,
+    pub group: Option<String>,
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub auth: SavedAuth,
+    pub proxy_chain: Vec<SavedProxyHop>,
+    pub upstream_proxy: SavedUpstreamProxyPolicy,
+    pub color: Option<String>,
+    pub icon_background_color: Option<String>,
+    pub icon: Option<String>,
+    pub tags: Vec<String>,
+    pub agent_forwarding: bool,
+    pub identity_agent: Option<String>,
+    pub agent_forwarding_socket: Option<String>,
+    pub legacy_ssh_compatibility: bool,
+    pub dedicated_new_terminal_connection: bool,
+    pub x11_forwarding: ConnectionX11ForwardingOptions,
+    pub post_connect_command: Option<String>,
+    pub terminal: ConnectionTerminalOptions,
+}
+
+/// Returns the original plaintext allocations after persistence for one runtime handoff.
+///
+/// The saved record never owns these values. Dropping this bundle zeroizes every secret.
+pub struct SavedConnectionRuntimeSecrets {
+    pub auth: Option<SecretString>,
+    pub proxy_chain: Vec<Option<SecretString>>,
+    pub upstream_proxy: Option<SecretString>,
+}
+
+impl fmt::Debug for SavedConnectionRuntimeSecrets {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("SavedConnectionRuntimeSecrets")
+            .field("auth", &self.auth.as_ref().map(|_| "[redacted secret]"))
+            .field(
+                "proxy_chain",
+                &self
+                    .proxy_chain
+                    .iter()
+                    .map(|secret| secret.as_ref().map(|_| "[redacted secret]"))
+                    .collect::<Vec<_>>(),
+            )
+            .field(
+                "upstream_proxy",
+                &self
+                    .upstream_proxy
+                    .as_ref()
+                    .map(|_| "[redacted secret]"),
+            )
+            .finish()
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConnectionStoreData {
+    #[serde(default = "default_config_version")]
+    pub version: u32,
+    #[serde(default)]
+    pub connections: Vec<SavedConnection>,
+    #[serde(default)]
+    pub groups: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub recent: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub connection_tombstones: Vec<DeletedConnectionTombstone>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub managed_ssh_keys: Vec<ManagedSshKey>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub serial_profiles: Vec<SerialProfile>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub telnet_profiles: Vec<TelnetProfile>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub remote_desktop_profiles: Vec<RemoteDesktopProfile>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub local_privilege_credentials: Vec<SavedPrivilegeCredential>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pending_keychain_cleanup: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pending_privilege_keychain_cleanup: Vec<String>,
+}
+
+impl Default for ConnectionStoreData {
+    fn default() -> Self {
+        Self {
+            version: CONFIG_VERSION,
+            connections: Vec::new(),
+            groups: Vec::new(),
+            recent: Vec::new(),
+            connection_tombstones: Vec::new(),
+            managed_ssh_keys: Vec::new(),
+            serial_profiles: Vec::new(),
+            telnet_profiles: Vec::new(),
+            remote_desktop_profiles: Vec::new(),
+            local_privilege_credentials: Vec::new(),
+            pending_keychain_cleanup: Vec::new(),
+            pending_privilege_keychain_cleanup: Vec::new(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SerialProfilesSyncSnapshot {
+    pub revision: String,
+    pub exported_at: String,
+    #[serde(default)]
+    pub records: Vec<SerialProfile>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteDesktopProfilesSyncSnapshot {
+    pub revision: String,
+    pub exported_at: String,
+    #[serde(default)]
+    pub records: Vec<RemoteDesktopProfile>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ManagedSshKeyOrigin {
+    ImportedFile,
+    PastedText,
+    OxideImport,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ManagedSshKey {
+    pub id: String,
+    /// Managed secret ID containing the private key material.
+    pub secret_id: String,
+    pub name: String,
+    pub fingerprint: String,
+    pub public_key: String,
+    pub requires_passphrase: bool,
+    pub origin: ManagedSshKeyOrigin,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ImportedManagedSshKey {
+    pub key: ManagedSshKey,
+    pub secret: SecretString,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct DeletedConnectionTombstone {
+    pub id: String,
+    pub deleted_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedConnectionSyncRecord {
+    pub id: String,
+    pub revision: String,
+    pub updated_at: String,
+    pub deleted: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payload: Option<ConnectionInfo>,
+    /// Full connection options were added after the initial sync format. Keep
+    /// this optional so existing cloud snapshots remain readable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options: Option<ConnectionOptions>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedConnectionsSyncSnapshot {
+    pub revision: String,
+    pub exported_at: String,
+    pub records: Vec<SavedConnectionSyncRecord>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplySavedConnectionsSyncSnapshotResult {
+    pub applied: usize,
+    pub skipped: usize,
+    pub conflicts: usize,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ApplySavedConnectionsSyncOutcome {
+    pub result: ApplySavedConnectionsSyncSnapshotResult,
+    pub deleted_connection_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalSyncMetadata {
+    pub saved_connections_revision: String,
+    pub saved_connections_updated_at: String,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SavedConnectionsConflictStrategy {
+    Skip,
+    Replace,
+    Merge,
+}
+
+impl SavedConnectionsConflictStrategy {
+    pub fn parse(value: Option<&str>) -> Result<Self> {
+        match value.unwrap_or("skip") {
+            "skip" => Ok(Self::Skip),
+            "replace" => Ok(Self::Replace),
+            "merge" => Ok(Self::Merge),
+            other => bail!("Unsupported saved connection conflict strategy: {other}"),
+        }
+    }
+
+    fn preserves_local_auth(self) -> bool {
+        matches!(self, Self::Merge)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ConnectionStore {
+    path: PathBuf,
+    data: ConnectionStoreData,
+    storage_format: ConnectionStoreStorageFormat,
+    keychain: ConnectionKeychain,
+    managed_keychain: ConnectionKeychain,
+    privilege_keychain: ConnectionKeychain,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ManagedSshKeyInfo {
+    pub id: String,
+    pub name: String,
+    pub fingerprint: String,
+    pub public_key: String,
+    pub requires_passphrase: bool,
+    pub origin: ManagedSshKeyOrigin,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<&ManagedSshKey> for ManagedSshKeyInfo {
+    fn from(key: &ManagedSshKey) -> Self {
+        Self {
+            id: key.id.clone(),
+            name: key.name.clone(),
+            fingerprint: key.fingerprint.clone(),
+            public_key: key.public_key.clone(),
+            requires_passphrase: key.requires_passphrase,
+            origin: key.origin.clone(),
+            created_at: key.created_at.to_rfc3339(),
+            updated_at: key.updated_at.to_rfc3339(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ManagedSshKeyUsageItem {
+    pub connection_id: String,
+    pub connection_name: String,
+    pub location: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ManagedSshKeyUsage {
+    pub key_id: String,
+    pub count: usize,
+    pub items: Vec<ManagedSshKeyUsageItem>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ManagedSshKeyDeleteResult {
+    pub deleted: bool,
+    pub key_id: String,
+    pub usage: ManagedSshKeyUsage,
+}
+
+#[derive(Debug)]
+struct StagedImportedConnection {
+    id: String,
+    touched_keychain_ids: Vec<String>,
+    touched_privilege_keychain_ids: Vec<String>,
+    stale_old_keychain_ids: Vec<String>,
+}

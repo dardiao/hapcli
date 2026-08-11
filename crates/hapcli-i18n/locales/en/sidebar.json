@@ -1,0 +1,766 @@
+{
+  "sidebar": {
+    "actions": {
+      "expand": "Expand Sidebar",
+      "collapse": "Collapse Sidebar",
+      "new_local_terminal": "New Local Terminal",
+      "open_pylance_guide": "Open Pylance Guide"
+    },
+    "panels": {
+      "sessions": "Active Sessions",
+      "saved": "Saved Connections",
+      "saved_title": "Saved Connections",
+      "sftp": "SFTP",
+      "sftp_sessions": "SFTP Sessions",
+      "files": "File Manager",
+      "forwards": "Port Forwarding",
+      "forwards_title": "Port Forwarding",
+      "runtime": "Dashboard",
+      "runtime_description": "Monitor connection usage and topology",
+      "runtime_overview": "Overview",
+      "connection_pool": "Connection Pool",
+      "connection_monitor": "Connection Monitor",
+      "connection_matrix": "Connection Matrix",
+      "ai": "OxideSens",
+      "ai_assistant": "OxideSens (Coming Soon)",
+      "settings": "Settings",
+      "no_saved_connections": "No saved connections",
+      "no_active_sessions": "No active sessions",
+      "no_connected_sessions": "No connected sessions",
+      "import_tooltip": "Import from .oxide file",
+      "export_tooltip": "Export to .oxide file",
+      "host_tools": "Host Tools",
+      "host_monitor": "Monitor",
+      "gpu": "GPU / NPU",
+      "processes": "Processes",
+      "services": "Services",
+      "logs": "Logs",
+      "tmux": "tmux",
+      "docker": "Docker",
+      "tmux_management": "tmux Management",
+      "docker_management": "Docker Management",
+      "session_manager": "Session Manager",
+      "open_session_manager": "Open Session Manager",
+      "plugins": "Plugins",
+      "activity": "Activity",
+      "event_log": "Event Log",
+      "notifications": "Notifications",
+      "saved_connections": "Saved Connections",
+      "forwarding": "Port Forwarding",
+      "ports": "Ports",
+      "schedules": "Schedules",
+      "filesystems": "Disks",
+      "packages": "Packages"
+    },
+    "tooltips": {
+      "settings": "Settings",
+      "ai_hint": "OxideSens",
+      "switch_tree": "Switch to Tree View",
+      "switch_focus": "Switch to Focus View",
+      "new_connection": "New Connection",
+      "lock_app": "Lock hapcli",
+      "setup_app_lock": "Set Up Application Lock",
+      "collapse": "Collapse"
+    },
+    "active_sessions": "Active Sessions",
+    "no_sessions": "No Sessions",
+    "add_new_connection": "Click + to add a new connection",
+    "host_gpu": {
+      "count_suffix": "accelerators",
+      "refresh_interval": "Updates every 2 seconds",
+      "sampling": "Sampling GPU / NPU devices...",
+      "unavailable": "No supported GPU / NPU monitoring tool was found on this host.",
+      "unsupported": "GPU / NPU monitoring is not supported on this operating system.",
+      "no_devices": "No supported GPU / NPU devices were found.",
+      "error": "GPU / NPU query failed: {{error}}",
+      "actions": { "refresh": "Refresh GPU / NPU data" },
+      "summary": { "utilization": "Average utilization", "memory": "Device memory", "temperature": "Maximum temperature", "power": "Total power" },
+      "columns": { "device": "Device", "utilization": "Usage", "memory": "Memory" },
+      "details": { "uuid": "UUID", "driver": "Driver", "performance_state": "Performance", "health": "Health", "temperature": "Temperature", "power": "Power", "fan": "Fan" },
+      "processes": { "title": "Compute processes", "empty": "No compute processes are using this device." }
+    },
+    "host_processes": {
+      "search_placeholder": "Search processes...",
+      "count_suffix": "processes",
+      "sampling": "Sampling processes...",
+      "empty": "No processes match",
+      "unknown": "Unknown",
+      "elapsed": "Elapsed",
+      "filters": {
+        "all": "All",
+        "running": "Running",
+        "high_cpu": "High CPU",
+        "high_memory": "High Memory"
+      },
+      "sort": {
+        "cpu": "CPU",
+        "memory": "Memory",
+        "pid": "PID",
+        "command": "Command",
+        "user": "User"
+      },
+      "states": {
+        "running": "Running",
+        "sleeping": "Sleeping",
+        "waiting": "Waiting",
+        "stopped": "Stopped",
+        "zombie": "Zombie",
+        "idle": "Idle",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "column": "Actions",
+        "term": "End",
+        "kill": "Kill",
+        "stop": "Pause",
+        "cont": "Resume",
+        "renice": "Priority",
+        "apply": "Set",
+        "renice_placeholder": "nice"
+      },
+      "confirm": {
+        "title": "Confirm process action",
+        "cancel": "Cancel",
+        "term_desc": "Send TERM to PID {{pid}} ({{command}})?",
+        "kill_desc": "Force kill PID {{pid}} ({{command}}) with KILL. This cannot be undone.",
+        "stop_desc": "Pause PID {{pid}} ({{command}}) with STOP?",
+        "cont_desc": "Resume PID {{pid}} ({{command}}) with CONT?",
+        "renice_desc": "Change priority for PID {{pid}} ({{command}})?"
+      },
+      "toast": {
+        "action_already_running": "A process action is already running.",
+        "invalid_nice": "Enter a nice value from -20 to 19.",
+        "connection_missing": "The selected connection is no longer available.",
+        "action_failed": "Process action failed.",
+        "action_succeeded": "Process action completed for PID {{pid}}.",
+        "partial_support": "Process management is partial on {{os}}."
+      }
+    },
+    "host_docker": {
+      "search_placeholder": "Search containers...",
+      "count_suffix": "containers",
+      "sampling": "Sampling Docker containers...",
+      "empty": "No containers match",
+      "unavailable": "Docker is not available on this host.",
+      "error": "Docker command failed: {{error}}",
+      "columns": {
+        "container": "Container / Image",
+        "image": "Image",
+        "state": "State",
+        "ports": "Ports"
+      },
+      "states": {
+        "running": "Running",
+        "exited": "Exited",
+        "created": "Created",
+        "paused": "Paused",
+        "restarting": "Restarting",
+        "removing": "Removing",
+        "dead": "Dead",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "refresh": "Refresh containers",
+        "logs": "View logs",
+        "follow_logs": "Follow logs",
+        "exec": "Open shell",
+        "start": "Start",
+        "stop": "Stop",
+        "restart": "Restart"
+      },
+      "exec_title": "Docker: {{name}}",
+      "follow_title": "Docker logs: {{name}}",
+      "logs": {
+        "title": "Logs: {{name}}",
+        "loading": "Loading logs...",
+        "empty": "No recent logs.",
+        "close": "Close logs"
+      },
+      "confirm": {
+        "title": "Confirm Docker action",
+        "cancel": "Cancel",
+        "start_desc": "Start container {{name}} ({{id}})?",
+        "stop_desc": "Stop container {{name}} ({{id}})? Running work inside the container may be interrupted.",
+        "restart_desc": "Restart container {{name}} ({{id}})? Running work inside the container will be interrupted."
+      },
+      "toast": {
+        "action_already_running": "A Docker action is already running.",
+        "logs_already_running": "Docker logs are already loading.",
+        "logs_failed": "Failed to load Docker logs.",
+        "exec_terminal_missing": "No live SSH terminal route is available for this container.",
+        "exec_opened": "Opened shell for {{name}}.",
+        "follow_opened": "Following logs for {{name}}.",
+        "connection_missing": "The selected connection is no longer available.",
+        "action_failed": "Docker action failed.",
+        "action_succeeded": "Docker action completed for {{name}}."
+      }
+    },
+    "host_services": {
+      "search_placeholder": "Search services...",
+      "count_suffix": "services",
+      "sampling": "Sampling services...",
+      "empty": "No services match",
+      "unavailable": "Service manager is not available on this host.",
+      "error": "Service command failed: {{error}}",
+      "capability": {
+        "full": "Full support",
+        "partial": "Partial support",
+        "unknown": "Support unknown"
+      },
+      "columns": {
+        "service": "Service",
+        "state": "State",
+        "enabled": "Enabled",
+        "pid": "PID",
+        "description": "Description",
+        "load": "Load",
+        "sub_state": "Sub-state"
+      },
+      "states": {
+        "running": "Running",
+        "stopped": "Stopped",
+        "failed": "Failed",
+        "activating": "Activating",
+        "deactivating": "Deactivating",
+        "reloading": "Reloading",
+        "unknown": "Unknown"
+      },
+      "enabled": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "masked": "Masked",
+        "static": "Static",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "refresh": "Refresh services",
+        "logs": "View logs",
+        "follow_logs": "Follow logs",
+        "start": "Start",
+        "stop": "Stop",
+        "restart": "Restart",
+        "reload": "Reload",
+        "enable": "Enable",
+        "disable": "Disable"
+      },
+      "follow_title": "Service logs: {{name}}",
+      "logs": {
+        "title": "Logs: {{name}}",
+        "loading": "Loading logs...",
+        "empty": "No recent logs.",
+        "close": "Close logs"
+      },
+      "confirm": {
+        "title": "Confirm service action",
+        "cancel": "Cancel",
+        "start_desc": "Start service {{id}} ({{name}})?",
+        "stop_desc": "Stop service {{id}} ({{name}})? Running work may be interrupted.",
+        "restart_desc": "Restart service {{id}} ({{name}})? Running work will be interrupted.",
+        "reload_desc": "Reload service {{id}} ({{name}})?",
+        "enable_desc": "Enable service {{id}} ({{name}}) at startup?",
+        "disable_desc": "Disable service {{id}} ({{name}}) at startup?"
+      },
+      "toast": {
+        "action_already_running": "A service action is already running.",
+        "logs_already_running": "Service logs are already loading.",
+        "logs_failed": "Failed to load service logs.",
+        "exec_terminal_missing": "No live SSH terminal route is available for this service.",
+        "follow_opened": "Following logs for {{name}}.",
+        "connection_missing": "The selected connection is no longer available.",
+        "action_failed": "Service action failed.",
+        "action_succeeded": "Service action completed for {{name}}.",
+        "partial_support": "Service management is partial on {{os}}."
+      }
+    },
+    "host_logs": {
+      "search_placeholder": "Search logs...",
+      "count_suffix": "logs",
+      "loading": "Loading logs...",
+      "empty": "No logs match",
+      "unavailable": "Host logs are not available on this host.",
+      "error": "Log command failed: {{error}}",
+      "capability": {
+        "full": "Full support",
+        "partial": "Partial support",
+        "unknown": "Support unknown"
+      },
+      "presets": {
+        "all": "All",
+        "errors": "Errors",
+        "auth": "SSH/Auth",
+        "kernel": "Kernel",
+        "system": "System"
+      },
+      "columns": {
+        "time": "Time",
+        "level": "Level",
+        "source": "Source",
+        "unit": "Unit",
+        "message": "Message"
+      },
+      "levels": {
+        "error": "Error",
+        "warning": "Warn",
+        "info": "Info",
+        "debug": "Debug",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "refresh": "Refresh logs",
+        "follow": "Follow logs"
+      },
+      "follow_title": "Host logs: {{preset}}",
+      "toast": {
+        "snapshot_already_running": "A log snapshot is already running.",
+        "snapshot_loaded": "Loaded {{count}} log entries.",
+        "snapshot_failed": "Failed to load logs: {{reason}}",
+        "unavailable": "Host logs are unavailable on this host.",
+        "connection_missing": "The selected connection is no longer available.",
+        "exec_terminal_missing": "No live SSH terminal route is available for host logs.",
+        "follow_opened": "Following {{preset}} logs.",
+        "partial_support": "Host logs are partial on {{os}}.",
+        "unknown_error": "Unknown error"
+      }
+    },
+    "host_tmux": {
+      "search_placeholder": "Search tmux...",
+      "count_suffix": "sessions",
+      "loading": "Loading tmux sessions...",
+      "empty": "No tmux sessions match",
+      "unavailable": "tmux is not available on this host.",
+      "error": "tmux command failed: {{error}}",
+      "capability": {
+        "full": "Full support",
+        "partial": "Partial support",
+        "unknown": "Support unknown"
+      },
+      "columns": {
+        "session": "Session",
+        "attached": "Attached",
+        "windows": "Windows",
+        "panes": "Panes",
+        "activity": "Activity",
+        "created": "Created"
+      },
+      "attached": {
+        "yes": "Attached",
+        "no": "Detached"
+      },
+      "actions": {
+        "new_session": "New session",
+        "refresh": "Refresh tmux",
+        "attach": "Attach",
+        "kill_session": "Kill session",
+        "rename_session": "Rename session",
+        "rename_window": "Rename window",
+        "kill_window": "Kill window",
+        "kill_pane": "Kill pane",
+        "send_command": "Send command"
+      },
+      "active_window": "Active #{{index}} {{name}}",
+      "no_active_window": "No active window",
+      "attach_title": "tmux: {{name}}",
+      "new_session_title": "New tmux session",
+      "new_session_name": "new session",
+      "confirm": {
+        "title": "Confirm tmux action",
+        "cancel": "Cancel",
+        "kill_session_desc": "Kill tmux session {{id}} ({{name}})? All windows and panes in this session will be terminated.",
+        "kill_window_desc": "Kill tmux window {{target}} in session {{name}}? All panes in this window will be terminated.",
+        "kill_pane_desc": "Kill tmux pane {{target}} in session {{name}}? Its running command will be terminated.",
+        "action_desc": "Run tmux action on {{target}} in session {{name}}?"
+      },
+      "toast": {
+        "snapshot_already_running": "A tmux snapshot is already running.",
+        "snapshot_loaded": "Loaded {{count}} tmux sessions.",
+        "snapshot_failed": "Failed to load tmux sessions: {{reason}}",
+        "unavailable": "tmux is unavailable on this host.",
+        "connection_missing": "The selected connection is no longer available.",
+        "exec_terminal_missing": "No live SSH terminal route is available for tmux.",
+        "attach_opened": "Attaching to {{name}}.",
+        "new_session_opened": "Opening {{name}}.",
+        "action_already_running": "A tmux action is already running.",
+        "action_failed": "tmux action failed.",
+        "action_succeeded": "tmux action completed for {{target}}.",
+        "unknown_error": "Unknown error",
+        "input_required": "Enter a value before continuing."
+      },
+      "input": {
+        "rename_session_title": "Rename session",
+        "rename_window_title": "Rename window",
+        "send_command_title": "Send command to pane",
+        "rename_session_desc": "Set a new name for session {{target}}.",
+        "rename_window_desc": "Set a new name for window {{target}} in session {{name}}.",
+        "send_command_desc": "Send one command followed by Enter to pane {{target}} in session {{name}}.",
+        "rename_session_placeholder": "Session name",
+        "rename_window_placeholder": "Window name",
+        "send_command_placeholder": "Command to send"
+      }
+    },
+    "host_schedules": {
+      "search_placeholder": "Search schedules...",
+      "count_suffix": "tasks",
+      "loading": "Scanning schedules...",
+      "empty": "No scheduled tasks match",
+      "unavailable": "Scheduled task tools are not available on this host.",
+      "error": "Scheduled task command failed: {{error}}",
+      "capability": {
+        "full": "Full support",
+        "partial": "Partial support",
+        "unknown": "Support unknown"
+      },
+      "filters": {
+        "all": "All",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "systemd": "systemd",
+        "cron": "cron",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "failed": "Failed"
+      },
+      "sources": {
+        "systemd": "systemd",
+        "cron": "cron",
+        "anacron": "anacron",
+        "at": "at",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "unknown": "Unknown"
+      },
+      "enabled": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "static": "Static",
+        "masked": "Masked",
+        "unknown": "Unknown"
+      },
+      "active": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "failed": "Failed",
+        "unknown": "Unknown"
+      },
+      "columns": {
+        "task": "Task",
+        "source": "Source",
+        "state": "State",
+        "enabled": "Enabled",
+        "next": "Next",
+        "last": "Last",
+        "user": "User",
+        "schedule": "Schedule",
+        "command": "Command",
+        "result": "Result",
+        "description": "Description",
+        "unit": "Unit"
+      },
+      "actions": {
+        "refresh": "Refresh schedules",
+        "diagnostic": "Open diagnostic terminal",
+        "logs": "View logs",
+        "follow_logs": "Follow logs",
+        "enable": "Enable",
+        "disable": "Disable",
+        "run_now": "Run now"
+      },
+      "diagnostic_title": "Schedule diagnostics",
+      "follow_title": "Schedule logs: {{name}}",
+      "logs": {
+        "title": "Logs: {{name}}",
+        "loading": "Loading logs...",
+        "empty": "No recent logs.",
+        "close": "Close logs"
+      },
+      "confirm": {
+        "title": "Confirm scheduled task action",
+        "cancel": "Cancel",
+        "enable_desc": "Enable scheduled task {{name}}? Unit: {{unit}}.",
+        "disable_desc": "Disable scheduled task {{name}}? Unit: {{unit}}. Future runs may stop.",
+        "run_now_desc": "Run scheduled task {{name}} now? Unit: {{unit}}."
+      },
+      "toast": {
+        "snapshot_already_running": "Schedule scan is already running.",
+        "snapshot_loaded": "Loaded {{count}} scheduled tasks.",
+        "snapshot_failed": "Failed to scan scheduled tasks: {{reason}}",
+        "unavailable": "Scheduled task tools are not available on this host.",
+        "connection_missing": "The selected connection is no longer available.",
+        "exec_terminal_missing": "No live SSH terminal route is available for diagnostics.",
+        "diagnostic_opened": "Opened schedule diagnostics.",
+        "follow_opened": "Opened schedule log follow for {{name}}.",
+        "logs_already_running": "Schedule logs are already loading.",
+        "logs_failed": "Failed to load schedule logs.",
+        "action_already_running": "A scheduled task action is already running.",
+        "action_failed": "Scheduled task action failed.",
+        "enable_succeeded": "Enabled {{name}}.",
+        "disable_succeeded": "Disabled {{name}}.",
+        "run_now_started": "Started {{name}}.",
+        "partial_support": "Scheduled task support is partial on {{os}}.",
+        "unknown_error": "Unknown scheduled task error."
+      }
+    },
+    "host_ports": {
+      "search_placeholder": "Search ports...",
+      "count_suffix": "ports",
+      "loading": "Scanning ports...",
+      "empty": "No ports match",
+      "unavailable": "Port tools are not available on this host.",
+      "error": "Port command failed: {{error}}",
+      "capability": {
+        "full": "Full support",
+        "partial": "Partial support",
+        "unknown": "Support unknown"
+      },
+      "filters": {
+        "all": "All",
+        "listening": "Listening",
+        "connected": "Connected",
+        "tcp": "TCP",
+        "udp": "UDP",
+        "risky": "High risk"
+      },
+      "columns": {
+        "local": "Local address",
+        "protocol": "Protocol",
+        "state": "State",
+        "pid": "PID",
+        "process": "Process",
+        "remote": "Remote address",
+        "user": "User",
+        "command": "Command",
+        "source": "Source",
+        "inode": "Inode"
+      },
+      "states": {
+        "listening": "Listening",
+        "established": "Established",
+        "open": "Open",
+        "time_wait": "Time wait",
+        "close_wait": "Close wait",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "refresh": "Refresh ports",
+        "diagnostic": "Open diagnostic terminal",
+        "copy_endpoint": "Copy address",
+        "jump_process": "Find process"
+      },
+      "diagnostic_title": "Port diagnostics",
+      "toast": {
+        "snapshot_already_running": "Port scan is already running.",
+        "snapshot_loaded": "Loaded {{count}} ports.",
+        "snapshot_failed": "Failed to scan ports: {{reason}}",
+        "unavailable": "Port tools are not available on this host.",
+        "connection_missing": "The selected connection is no longer available.",
+        "exec_terminal_missing": "No live SSH terminal route is available for diagnostics.",
+        "diagnostic_opened": "Opened port diagnostics.",
+        "copied_endpoint": "Copied {{endpoint}}.",
+        "partial_support": "Port inspection is partial on {{os}}.",
+        "unknown_error": "Unknown port scan error."
+      }
+    },
+    "host_filesystems": {
+      "search_placeholder": "Search filesystems...",
+      "count_suffix": "items",
+      "loading": "Scanning disks...",
+      "empty": "No filesystem entries match",
+      "unavailable": "Filesystem tools are not available on this host.",
+      "error": "Filesystem command failed: {{error}}",
+      "capability": {
+        "full": "Full support",
+        "partial": "Partial support",
+        "unknown": "Support unknown"
+      },
+      "filters": {
+        "all": "All",
+        "mounts": "Mounts",
+        "read_only": "Read-only",
+        "high_usage": "High usage",
+        "inode_pressure": "Inode pressure",
+        "large_items": "Large items",
+        "blocks": "Blocks",
+        "attention": "Attention",
+        "inode_hotspots": "Inode / file count"
+      },
+      "columns": {
+        "path": "Path",
+        "kind": "Kind",
+        "usage": "Usage",
+        "inode": "Inode",
+        "fs": "FS",
+        "size": "Size",
+        "read_only": "RO",
+        "device": "Device",
+        "used_available": "Used / available",
+        "source": "Source",
+        "detail": "Detail",
+        "options": "Options",
+        "attention": "Attention"
+      },
+      "kinds": {
+        "mount": "Mount",
+        "large_dir": "Large dir",
+        "large_file": "Large file",
+        "block": "Block",
+        "unknown": "Unknown",
+        "inode_dir": "Inode hotspot",
+        "count_dir": "File count hotspot"
+      },
+      "read_only": {
+        "yes": "Yes",
+        "no": "No"
+      },
+      "actions": {
+        "refresh": "Refresh disks",
+        "diagnostic": "Open diagnostic terminal",
+        "copy_path": "Copy path"
+      },
+      "diagnostic_title": "Disk diagnostics",
+      "toast": {
+        "snapshot_already_running": "Disk scan is already running.",
+        "snapshot_loaded": "Loaded {{count}} filesystem entries.",
+        "snapshot_failed": "Failed to scan disks: {{reason}}",
+        "unavailable": "Filesystem tools are not available on this host.",
+        "connection_missing": "The selected connection is no longer available.",
+        "exec_terminal_missing": "No live SSH terminal route is available for diagnostics.",
+        "diagnostic_opened": "Opened disk diagnostics.",
+        "copied_path": "Copied {{path}}.",
+        "partial_support": "Filesystem inspection is partial on {{os}}.",
+        "unknown_error": "Unknown filesystem scan error."
+      },
+      "attention": {
+        "critical_usage": "Critical usage",
+        "high_usage": "High usage",
+        "critical_inode": "Critical inode",
+        "inode_pressure": "Inode pressure",
+        "low_free_space": "Low free",
+        "read_only": "Read-only",
+        "large_item": "Large item",
+        "inode_hotspot": "Inode hotspot",
+        "file_count_hotspot": "File count hotspot"
+      },
+      "values": {
+        "inode_count": "{{count}} inodes",
+        "file_count": "{{count}} files"
+      }
+    },
+    "host_packages": {
+      "search_placeholder": "Search packages...",
+      "count_suffix": "packages",
+      "loading": "Scanning packages...",
+      "empty": "No packages match",
+      "unavailable": "Package tools are not available on this host.",
+      "error": "Package command failed: {{error}}",
+      "capability": {
+        "full": "Full support",
+        "partial": "Read-only support",
+        "unknown": "Support unknown"
+      },
+      "filters": {
+        "all": "All",
+        "upgradable": "Upgradable",
+        "installed": "Installed",
+        "services": "Services",
+        "apt": "apt",
+        "dnf": "dnf",
+        "yum": "yum",
+        "pacman": "pacman",
+        "brew": "Homebrew"
+      },
+      "columns": {
+        "package": "Package",
+        "status": "Status",
+        "installed": "Installed",
+        "candidate": "Candidate",
+        "manager": "Manager",
+        "service": "Service",
+        "arch": "Arch",
+        "repository": "Repository",
+        "summary": "Summary",
+        "source": "Source",
+        "owner_paths": "Owner paths"
+      },
+      "status": {
+        "upgradable": "Upgradable",
+        "installed": "Installed",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "refresh": "Refresh packages",
+        "inspect": "Open package details",
+        "copy_name": "Copy package name"
+      },
+      "inspect_title": "Package details",
+      "toast": {
+        "snapshot_already_running": "Package scan is already running.",
+        "snapshot_loaded": "Loaded {{count}} packages.",
+        "snapshot_failed": "Failed to scan packages: {{reason}}",
+        "unavailable": "Package tools are not available on this host.",
+        "connection_missing": "The selected connection is no longer available.",
+        "exec_terminal_missing": "No live SSH terminal route is available for package details.",
+        "inspect_unsupported": "Package details are not supported for {{manager}} yet.",
+        "inspect_opened": "Opened details for {{name}}.",
+        "copied_name": "Copied {{name}}.",
+        "partial_support": "Package inspection is read-only on {{os}}.",
+        "unknown_error": "Unknown package scan error."
+      }
+    }
+  },
+  "sessions": {
+    "tree": {
+      "no_sessions": "No Sessions",
+      "click_to_add": "Click + to add a new connection",
+      "actions": {
+        "new_terminal": "New Terminal",
+        "sftp": "SFTP",
+        "port_forwarding": "Port Forwarding",
+        "disconnect": "Disconnect",
+        "reconnect": "Reconnect",
+        "edit_and_reconnect": "Edit & Reconnect",
+        "remove_session": "Remove Session",
+        "cancel_reconnect": "Cancel Reconnect",
+        "drill_in": "Drill In (Next Hop)",
+        "saved_next_hop": "Use Saved Next Hop...",
+        "connect": "Connect",
+        "save_as_connection": "Save as Connection..."
+      }
+    },
+    "focused_list": {
+      "all_servers": "All Servers",
+      "child": "child",
+      "children": "children",
+      "no_child_nodes": "This node has no child nodes",
+      "no_servers": "No servers yet",
+      "add_by_drilling": "You can add child nodes by drilling down",
+      "click_to_add": "Click + to add a new connection",
+      "terminal": "Terminal #{{number}}",
+      "close_terminal": "Close terminal"
+    },
+    "actions": {
+      "connect": "Connect",
+      "new_terminal": "New Terminal",
+      "sftp_explorer": "SFTP Explorer",
+      "port_forwarding": "Port Forwarding",
+      "disconnect": "Disconnect",
+      "reconnect": "Reconnect",
+      "drill_in": "Drill In (Next Hop)",
+      "saved_next_hop": "Use Saved Next Hop...",
+      "save_as_connection": "Save as Connection..."
+    },
+    "saved_next_hop": {
+      "title": "Use Saved Connection as Next Hop",
+      "description": "Choose a saved connection to attach under {{host}}.",
+      "empty": "No saved connections available.",
+      "cancel": "Cancel",
+      "proxy_chain_badge": "{{count}} hops",
+      "parent_not_ready": "Connect the parent node before adding a saved next hop.",
+      "not_found": "Saved connection was not found.",
+      "missing_credentials": "This saved connection is missing credentials needed to connect.",
+      "materialize_failed": "Could not add the saved connection to the session tree."
+    },
+    "breadcrumb": {
+      "back_to_root": "Back to root view",
+      "all_servers": "All Servers"
+    }
+  }
+}

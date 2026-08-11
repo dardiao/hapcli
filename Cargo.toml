@@ -1,0 +1,251 @@
+[workspace]
+members = [
+  "crates/hapcli-atomic-file",
+  "crates/hapcli-app-lock",
+  "crates/hapcli-cli",
+  "crates/hapcli-environment",
+  "crates/hapcli-plugin-host-api",
+  "crates/hapcli-plugin-manifest",
+  "crates/hapcli-plugin-protocol",
+  "crates/hapcli-plugin-registry",
+  "crates/hapcli-plugin-runtime-install",
+  "crates/hapcli-plugin-wasm-runtime",
+  "crates/hapcli-ai",
+  "crates/hapcli-ai-tasks",
+  "crates/hapcli-skills",
+  "crates/hapcli-acp-adapter",
+  "crates/hapcli-acp-host-tools",
+  "crates/hapcli-editor-core",
+  "crates/hapcli-editor-syntax",
+  "crates/hapcli-connections",
+  "crates/hapcli-quick-commands",
+  "crates/hapcli-connection-monitor",
+  "crates/hapcli-notification-center",
+  "crates/hapcli-network-proxy",
+  "crates/hapcli-topology",
+  "crates/hapcli-backend-classification",
+  "crates/hapcli-cloud-sync",
+  "crates/hapcli-ide-core",
+  "crates/hapcli-ide-fs",
+  "crates/hapcli-forwarding",
+  "crates/hapcli-portable-runtime",
+  "crates/hapcli-secret-store",
+  "crates/hapcli-i18n",
+  "crates/hapcli-local-files",
+  "crates/hapcli-modem-transfer",
+  "crates/hapcli-remote-desktop",
+  "crates/hapcli-settings",
+  "crates/hapcli-settings-model",
+  "crates/hapcli-sftp",
+  "crates/hapcli-ssh-launch",
+  "crates/hapcli-ssh",
+  "crates/hapcli-terminal",
+  "crates/hapcli-terminal-recording",
+  "crates/hapcli-terminal-encoding",
+  "crates/hapcli-terminal-graphics",
+  "crates/hapcli-terminal-model",
+  "crates/hapcli-terminal-unicode",
+  "crates/hapcli-trzsz",
+  "crates/hapcli-workspace",
+  "crates/russh",
+  "crates/russh-sftp",
+  "crates/hapcli-egui-app",
+]
+default-members = ["crates/hapcli-cli", "crates/hapcli-egui-app"]
+resolver = "2"
+
+[patch.crates-io]
+russh = { path = "crates/russh" }
+russh-sftp = { path = "crates/russh-sftp" }
+
+[workspace.package]
+edition = "2024"
+license = "GPL-3.0-only"
+publish = false
+version = "2.0.18"
+
+[workspace.dependencies]
+alacritty_terminal = "0.26.0"
+agent-client-protocol = { version = "=2.0.0", features = ["unstable"] }
+anyhow = "1.0"
+async-channel = "2.5.0"
+async-trait = "0.1"
+async-process = "2.5"
+argon2 = { version = "0.5", default-features = false, features = ["std"] }
+base64 = "0.22"
+backtrace = "0.3"
+bitflags = "2.6.0"
+bytes = "1.11"
+chacha20poly1305 = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.5", features = ["derive", "env"] }
+clap_complete = "4.5"
+crossbeam-channel = "0.5"
+criterion = { version = "0.5", features = ["html_reports"] }
+ctor = "1.0.6"
+dashmap = "6.1"
+derive_more = { version = "2.1.1", features = ["add", "add_assign", "deref", "deref_mut", "display", "from_str", "mul", "mul_assign", "not"] }
+dirs = "5"
+encoding_rs = "0.8"
+env_logger = "0.11"
+futures-util = "0.3"
+futures = "0.3"
+futures-concurrency = "7.7.1"
+fs2 = "0.4"
+hdrhistogram = "7"
+heck = "0.5"
+http = "1.3"
+http-body-util = "0.1"
+hyper = { version = "1.9", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["server", "tokio"] }
+icy_sixel = "0.5.0"
+image = "0.25.10"
+inventory = "0.3.19"
+itertools = "0.14.0"
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+libc = "0.2"
+log = { version = "0.4.16", features = ["kv_unstable_serde", "serde"] }
+mach2 = "0.5"
+memmap2 = "0.9"
+minisign-verify = "0.2"
+parking_lot = "0.12"
+polling = "3.11"
+pollster = "0.4.0"
+postage = { version = "0.5", features = ["futures-traits"] }
+proc-macro2 = "1.0.93"
+profiling = "1"
+proptest = { version = "1.10", features = ["attr-macro"] }
+quote = "1.0.9"
+quick-xml = "0.39"
+regex = "1.12"
+rand = "0.8"
+rand10 = { package = "rand", version = "0.10" }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "socks", "stream", "system-proxy"] }
+rmp-serde = "1"
+schemars = { version = "1.0", features = ["indexmap2"] }
+semver = { version = "1.0", features = ["serde"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = { version = "1.0", features = ["preserve_order", "raw_value"] }
+serde_yaml = "0.9"
+sha2 = "0.10"
+signature = "3.0.0-rc.10"
+serialport = "4"
+slotmap = "1.0.6"
+smallvec = { version = "1.6", features = ["union", "const_new"] }
+smol = "2.0"
+ssh-encoding = "=0.3.0-rc.9"
+stacksafe = "1.0"
+strum = { version = "0.27.2", features = ["derive"] }
+subtle = "2.5"
+syn = { version = "2.0.101", features = ["full", "extra_traits", "visit-mut"] }
+sysinfo = { version = "0.33", default-features = false, features = ["disk", "system"] }
+thiserror = "2.0"
+tokio = { version = "1.52", features = ["rt-multi-thread", "sync", "time", "io-util", "net", "fs", "process", "macros"] }
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tree-sitter = "0.25.10"
+tree-sitter-bash = "0.23.3"
+tree-sitter-c = "0.24.2"
+tree-sitter-c-sharp = "0.23.5"
+tree-sitter-cmake = "0.7.1"
+tree-sitter-cpp = "0.23.4"
+tree-sitter-css = "0.23.2"
+tree-sitter-diff = "0.1.0"
+tree-sitter-containerfile = "0.8.0"
+tree-sitter-elixir = "0.3.5"
+tree-sitter-fish = "3.6.0"
+tree-sitter-go = "0.23.4"
+tree-sitter-html = "0.23.2"
+tree-sitter-java = "0.23.5"
+tree-sitter-javascript = "0.23.1"
+tree-sitter-json = "0.24.8"
+tree-sitter-commonlisp = "0.4.1"
+tree-sitter-lua = "0.5.0"
+tree-sitter-make = "1.1.1"
+tree-sitter-md = "0.5.3"
+tree-sitter-objc = "3.0.2"
+tree-sitter-php = "0.24.2"
+tree-sitter-powershell = "0.26.4"
+tree-sitter-python = "0.23.6"
+tree-sitter-r = "1.2.0"
+tree-sitter-ruby = "0.23.1"
+tree-sitter-rust = "0.24.2"
+tree-sitter-scala = "0.23.4"
+tree-sitter-sequel = "0.3.11"
+tree-sitter-swift = "0.7.2"
+tree-sitter-toml-ng = "0.7.0"
+tree-sitter-typescript = "0.23.2"
+tree-sitter-yaml = "0.7.2"
+tree-sitter-zsh = "0.63.4"
+tree-sitter-zig = "1.1.2"
+ts-parser-perl = "1.0.2"
+unicode-bidi = "0.3"
+unicode-normalization = "0.1"
+unicode-segmentation = "1.12"
+unicode-width = "0.2.2"
+url = "2.2"
+uuid = { version = "1.23", features = ["v4", "v5", "v7", "serde"] }
+wasm-bindgen = "0.2.120"
+wasmtime = { version = "46.0.1", default-features = false, features = ["cranelift", "runtime", "std"] }
+wasmtime-wasi = { version = "46.0.1", default-features = false, features = ["p1"] }
+web-time = "1.1.0"
+whoami = "1.6"
+zeroize = { version = "1.8", features = ["serde"] }
+zip = { version = "2.0", default-features = false, features = ["deflate", "time"] }
+windows = { version = "0.61", features = [
+  "Foundation_Numerics",
+  "Globalization_DateTimeFormatting",
+  "Storage_Search",
+  "Storage_Streams",
+  "UI_ViewManagement",
+  "Wdk_System_SystemServices",
+  "Win32_Foundation",
+  "Win32_Globalization",
+  "Win32_Graphics_Gdi",
+  "Win32_Graphics_Imaging",
+  "Win32_Security",
+  "Win32_Security_Credentials",
+  "Win32_Security_Cryptography",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Com",
+  "Win32_System_Console",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Memory",
+  "Win32_System_Pipes",
+  "Win32_System_Threading",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+windows-core = "0.61"
+
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "allow" }
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+declare_interior_mutable_const = "deny"
+redundant_clone = "deny"
+disallowed_methods = "deny"
+style = { level = "allow", priority = -1 }
+type_complexity = "allow"
+let_underscore_future = "allow"
+single_range_in_vec_init = "allow"
+too_many_arguments = "allow"
+large_enum_variant = "allow"
+nonminimal_bool = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
+opt-level = 3
+
+[profile.dev]
+opt-level = 0
+debug = 1
+incremental = true
+split-debuginfo = "unpacked"

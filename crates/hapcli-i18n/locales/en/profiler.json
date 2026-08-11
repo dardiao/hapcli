@@ -1,0 +1,48 @@
+{
+  "profiler": {
+    "capsule": {
+      "click_expand": "Click to expand",
+      "no_data": "No data",
+      "sampling": "Sampling..."
+    },
+    "detail": {
+      "load_avg": "Load Avg",
+      "cpu_cores": "CPU Cores",
+      "memory": "Memory",
+      "source": "Source"
+    },
+    "panel": {
+      "no_connection": "No active connection selected",
+      "sampling": "Sampling...",
+      "no_data": "No data available",
+      "system_information": "System Information",
+      "system": "System",
+      "system_version": "System Version",
+      "architecture": "Architecture",
+      "boot_time": "Boot Time",
+      "uptime": "Uptime",
+      "cpu": "CPU",
+      "memory": "Memory",
+      "disk": "Disk",
+      "gpu": "GPU",
+      "gpu_memory": "GPU Memory",
+      "gpus": "GPUs",
+      "network": "Network I/O",
+      "load_avg": "Load Average",
+      "rtt": "RTT Latency",
+      "source": "Source",
+      "disabled": "Monitoring disabled",
+      "enable": "Enable sampling",
+      "swap": "Swap",
+      "mounts": "Mounts",
+      "interfaces": "Interfaces",
+      "top_processes": "Top Processes",
+      "source_full": "Full",
+      "source_partial": "Partial",
+      "source_rtt_only": "RTT only",
+      "source_failed": "Failed",
+      "source_unsupported": "Unsupported",
+      "retry": "Retry sampling"
+    }
+  }
+}

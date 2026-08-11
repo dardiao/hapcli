@@ -1,0 +1,35 @@
+[package]
+name = "hapcli-terminal"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+alacritty_terminal.workspace = true
+anyhow.workspace = true
+async-channel.workspace = true
+crossbeam-channel.workspace = true
+libc.workspace = true
+hapcli-ssh = { path = "../hapcli-ssh" }
+hapcli-modem-transfer = { path = "../hapcli-modem-transfer" }
+hapcli-terminal-encoding = { path = "../hapcli-terminal-encoding" }
+hapcli-terminal-graphics = { path = "../hapcli-terminal-graphics" }
+hapcli-terminal-model = { path = "../hapcli-terminal-model" }
+hapcli-trzsz = { path = "../hapcli-trzsz" }
+polling.workspace = true
+serialport.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tempfile = "3.23"
+unicode-segmentation.workspace = true
+zeroize.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = ["Win32_Foundation", "Win32_System_JobObjects", "Win32_System_Threading"] }
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "terminal_pipeline"
+harness = false

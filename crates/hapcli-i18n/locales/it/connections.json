@@ -1,0 +1,135 @@
+{
+  "connections": {
+    "state": {
+      "connecting": "Connessione in corso...",
+      "active": "Attiva",
+      "idle": "Inattiva",
+      "disconnecting": "Disconnessione in corso...",
+      "disconnected": "Disconnessa",
+      "error": "Errore: {{error}}"
+    },
+    "events": {
+      "connection_lost_reconnecting": "Connessione persa - riconnessione...",
+      "connection_closed": "Connessione chiusa"
+    },
+    "time": {
+      "just_now": "Adesso",
+      "mins_ago": "{{count}} min fa",
+      "hrs_ago": "{{count}} ore fa"
+    },
+    "panel": {
+      "title": "Connessioni SSH in background",
+      "description": "Gestisci le connessioni SSH attive e le impostazioni keep-alive",
+      "refresh": "Aggiorna",
+      "no_connections": "Nessuna connessione SSH attiva",
+      "no_connections_hint": "Le nuove connessioni appariranno qui",
+      "terminals": "{{count}} Terminali",
+      "sftp": "{{count}} SFTP",
+      "forwards": "{{count}} Inoltri",
+      "created": "Creata: {{time}}",
+      "idle_hint": "Inattiva - {{keepAlive}}",
+      "keep_alive_enabled": "Keep Alive",
+      "disconnect_in": "Disconnessione in {{min}}m"
+    },
+    "keep_alive": {
+      "enable_tooltip": "Abilita Keep Alive (Mai disconnettere)",
+      "disable_tooltip": "Disabilita Keep Alive (Disconnetti dopo {{min}}m inattività)",
+      "legend_enabled": "Keep Alive: Mai disconnettere automaticamente",
+      "legend_disabled": "Standard: Disconnetti automaticamente dopo {{min}} min inattività",
+      "global_never_tooltip": "Impostazione globale: nessun timeout"
+    },
+    "monitor": {
+      "title": "Pool Connessioni",
+      "loading": "Caricamento statistiche...",
+      "idle_timeout": "Inattiva: {{min}}min",
+      "idle_timeout_never": "Inattiva: nessun timeout",
+      "capacity": "Capacità: {{capacity}}",
+      "active": "Attive",
+      "idle": "Inattive",
+      "reconnecting": "Riconnessione",
+      "link_down": "Link Giù",
+      "terminals": "Terminali",
+      "sftp": "SFTP",
+      "forwards": "Inoltri",
+      "summary": "Totale: {{total}} connessioni • Ref: {{refs}}",
+      "live": "Live",
+      "topology_nodes_edges": "Nodes: {{nodes}} • Edges: {{edges}}",
+      "topology_roots_children": "{{roots}} roots / {{children}} children"
+    },
+    "status": {
+      "reconnecting_title": "Riconnessione in corso",
+      "reconnecting_wait": "La connessione è in fase di ripristino. Attendi e riprova.",
+      "reconnect_unstable": "Connessione instabile",
+      "try_again_later": "La connessione non si è ancora stabilizzata. Riprova più tardi.",
+      "connection_failed": "Connessione non riuscita",
+      "no_connection_id": "Nessun ID connessione assegnato dopo la riconnessione."
+    },
+    "failedFetchStats": "Impossibile recuperare le statistiche",
+    "errors": {
+      "chain_busy_desc": "Un'altra catena di connessione è già in corso. Attendi.",
+      "chain_busy_title": "Operazione in corso",
+      "chain_failed_desc": "Errore al nodo {{position}}/{{total}}: {{error}}",
+      "chain_failed_title": "Connessione non riuscita",
+      "generic_title": "Errore di connessione",
+      "node_connecting_desc": "Questo nodo è già in fase di connessione.",
+      "node_connecting_title": "Connessione già in corso"
+    },
+    "reconnect": {
+      "cancelled": "Riconnessione annullata",
+      "completed": "Connessione ripristinata, {{count}} servizio/i recuperato/i",
+      "failed": "Riconnessione fallita: {{error}}",
+      "recovered": "Connessione ripristinata — sessione preservata",
+      "ssh_restored": "Connessione SSH ripristinata",
+      "starting": "{{name}} si sta riconnettendo..."
+    },
+    "toast": {
+      "proxy_chain_desc": "Profondità catena {{depth}}. Topologia sincronizzata.",
+      "proxy_chain_established": "Connessione catena proxy stabilita",
+      "proxy_chain_invalid": "Catena proxy non valida",
+      "proxy_hop_auth_unsupported": "Questo jump host usa un tipo di autenticazione non supportato",
+      "proxy_hop_kbi_unsupported": "Questo jump host non supporta keyboard-interactive/2FA"
+    },
+    "trace": {
+      "connected": "Connesso · {{elapsed}}",
+      "connecting": "Connessione a {{label}}",
+      "connecting_chain": "Connessione {{current}}/{{total}}: {{label}}",
+      "failed": "Connessione non riuscita: {{label}}",
+      "reconnecting": "Riconnessione a {{label}}",
+      "reconnecting_chain": "Riconnessione {{current}}/{{total}}: {{label}}",
+      "diagnostics": {
+        "kind": {
+          "key_exchange": "scambio chiavi",
+          "host_key": "chiave host",
+          "cipher": "cifratura",
+          "mac": "MAC",
+          "compression": "compressione"
+        },
+        "summary": {
+          "key_exchange": "Il server offre solo algoritmi di scambio chiavi non abilitati dalla politica di sicurezza attuale.",
+          "host_key": "Gli algoritmi di chiave host del server non corrispondono alla politica di sicurezza attuale.",
+          "host_key_ssh_rsa": "Il server supporta solo chiavi host ssh-rsa, disabilitate per impostazione predefinita.",
+          "cipher": "La lista delle cifrature del server non si sovrappone alla politica attuale del client.",
+          "cipher_legacy": "Il server offre solo cifrature legacy come CBC o 3DES. Aggiorna il server o abilita esplicitamente una modalità di compatibilità legacy.",
+          "mac": "La lista MAC del server non si sovrappone alla politica attuale del client. Aggiorna il server o abilita una politica MAC compatibile.",
+          "compression": "Le modalità di compressione del server non si sovrappongono alla politica del client."
+        },
+        "client_offered": "Client offerti: {{algorithms}}",
+        "server_offered": "Server offerti: {{algorithms}}",
+        "missing_match": "Corrispondenza mancante: {{reason}}",
+        "no_common": "nessun algoritmo {{kind}} comune"
+      },
+      "stage": {
+        "authentication": "Autenticazione",
+        "host_key": "Verifica chiave host",
+        "opening_transport": "Apertura trasporto",
+        "preparing": "Preparazione connessione",
+        "pty": "Allocazione PTY",
+        "queued": "In coda",
+        "ready": "Pronto",
+        "shell_ready": "Avvio shell",
+        "ssh_handshake": "Handshake SSH"
+      },
+      "target_unknown": "destinazione"
+    }
+  }
+}

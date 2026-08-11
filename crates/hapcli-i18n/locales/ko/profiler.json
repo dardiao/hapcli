@@ -1,0 +1,48 @@
+{
+  "profiler": {
+    "capsule": {
+      "click_expand": "확장하려면 클릭",
+      "no_data": "데이터 없음",
+      "sampling": "샘플링 중..."
+    },
+    "detail": {
+      "load_avg": "평균 부하",
+      "cpu_cores": "CPU 코어",
+      "memory": "메모리",
+      "source": "소스"
+    },
+    "panel": {
+      "no_connection": "활성 연결이 선택되지 않았습니다",
+      "sampling": "샘플링 중...",
+      "no_data": "데이터 없음",
+      "system_information": "시스템 정보",
+      "system": "시스템",
+      "system_version": "시스템 버전",
+      "architecture": "아키텍처",
+      "boot_time": "부팅 시간",
+      "uptime": "가동 시간",
+      "cpu": "CPU",
+      "memory": "메모리",
+      "disk": "디스크",
+      "gpu": "GPU",
+      "gpu_memory": "GPU 메모리",
+      "gpus": "GPU",
+      "network": "네트워크 I/O",
+      "load_avg": "평균 부하",
+      "rtt": "RTT 지연",
+      "source": "소스",
+      "disabled": "모니터링 비활성화됨",
+      "enable": "샘플링 시작",
+      "swap": "스왑",
+      "mounts": "마운트",
+      "interfaces": "네트워크 인터페이스",
+      "top_processes": "메모리 상위 프로세스",
+      "source_full": "전체",
+      "source_partial": "부분",
+      "source_rtt_only": "RTT만",
+      "source_failed": "실패",
+      "source_unsupported": "지원 안 함",
+      "retry": "다시 탐지"
+    }
+  }
+}

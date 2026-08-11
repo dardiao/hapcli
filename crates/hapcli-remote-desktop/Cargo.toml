@@ -1,0 +1,17 @@
+[package]
+name = "hapcli-remote-desktop"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+base64.workspace = true
+hapcli-atomic-file = { path = "../hapcli-atomic-file" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

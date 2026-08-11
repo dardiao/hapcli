@@ -1,0 +1,28 @@
+{
+  "menu": {
+    "app": "hapcli",
+    "services": "Services",
+    "new_terminal": "Nouveau terminal",
+    "close_tab": "Fermer l'onglet",
+    "show_main_window": "Afficher la fenêtre principale",
+    "hide_main_window": "Masquer la fenêtre principale",
+    "quit": "Quitter hapcli",
+    "edit": "Édition",
+    "cut": "Couper",
+    "copy": "Copier",
+    "paste": "Coller",
+    "find": "Rechercher",
+    "find_next": "Rechercher suivant",
+    "find_previous": "Rechercher précédent",
+    "terminal": "Terminal",
+    "split_horizontal": "Fractionner horizontalement",
+    "split_vertical": "Fractionner verticalement",
+    "close_pane": "Fermer le volet",
+    "window": "Fenêtre",
+    "next_tab": "Onglet suivant",
+    "previous_tab": "Onglet précédent",
+    "language": "Langue",
+    "settings": "Paramètres",
+    "view": "Affichage"
+  }
+}

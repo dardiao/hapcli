@@ -1,0 +1,28 @@
+[package]
+name = "hapcli-app-lock"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+argon2.workspace = true
+base64.workspace = true
+hapcli-portable-runtime = { path = "../hapcli-portable-runtime" }
+hapcli-secret-store = { path = "../hapcli-secret-store" }
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+subtle.workspace = true
+whoami.workspace = true
+zeroize.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSError", "NSString"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { workspace = true, features = ["Foundation", "Security_Credentials_UI", "Win32_Foundation", "Win32_System_WinRT"] }
+windows-core.workspace = true
+windows-future = "0.2"

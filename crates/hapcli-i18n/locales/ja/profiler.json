@@ -1,0 +1,48 @@
+{
+  "profiler": {
+    "capsule": {
+      "click_expand": "クリックで展開",
+      "no_data": "データなし",
+      "sampling": "サンプリング中..."
+    },
+    "detail": {
+      "load_avg": "負荷平均",
+      "cpu_cores": "CPUコア数",
+      "memory": "メモリ",
+      "source": "ソース"
+    },
+    "panel": {
+      "no_connection": "アクティブな接続が選択されていません",
+      "sampling": "サンプリング中...",
+      "no_data": "データなし",
+      "system_information": "システム情報",
+      "system": "システム",
+      "system_version": "システムバージョン",
+      "architecture": "アーキテクチャ",
+      "boot_time": "起動時刻",
+      "uptime": "稼働時間",
+      "cpu": "CPU",
+      "memory": "メモリ",
+      "disk": "ディスク",
+      "gpu": "GPU",
+      "gpu_memory": "GPU メモリ",
+      "gpus": "GPU",
+      "network": "ネットワーク I/O",
+      "load_avg": "負荷平均",
+      "rtt": "RTT レイテンシ",
+      "source": "ソース",
+      "disabled": "モニタリング無効",
+      "enable": "サンプリング開始",
+      "swap": "スワップ",
+      "mounts": "マウント",
+      "interfaces": "ネットワークインターフェイス",
+      "top_processes": "メモリ上位プロセス",
+      "source_full": "完全",
+      "source_partial": "部分",
+      "source_rtt_only": "RTT のみ",
+      "source_failed": "失敗",
+      "source_unsupported": "未対応",
+      "retry": "再試行"
+    }
+  }
+}

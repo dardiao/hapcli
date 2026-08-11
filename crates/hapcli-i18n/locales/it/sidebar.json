@@ -1,0 +1,766 @@
+{
+  "sidebar": {
+    "actions": {
+      "expand": "Espandi Barra Laterale",
+      "collapse": "Comprimi Barra Laterale",
+      "new_local_terminal": "Nuovo Terminale Locale",
+      "open_pylance_guide": "Apri Guida Pylance"
+    },
+    "panels": {
+      "sessions": "Sessioni Attive",
+      "saved": "Connessioni Salvate",
+      "saved_title": "Connessioni Salvate",
+      "sftp": "SFTP",
+      "sftp_sessions": "Sessioni SFTP",
+      "files": "Gestione File",
+      "forwards": "Port Forwarding",
+      "forwards_title": "Port Forwarding",
+      "runtime": "Dashboard",
+      "runtime_description": "Monitora l'utilizzo delle connessioni e la topologia",
+      "runtime_overview": "Panoramica",
+      "connection_pool": "Pool Connessioni",
+      "connection_monitor": "Monitor Connessioni",
+      "connection_matrix": "Matrice Connessioni",
+      "ai": "OxideSens",
+      "ai_assistant": "OxideSens (Prossimamente)",
+      "settings": "Impostazioni",
+      "no_saved_connections": "Nessuna connessione salvata",
+      "no_active_sessions": "Nessuna sessione attiva",
+      "no_connected_sessions": "Nessuna sessione connessa",
+      "import_tooltip": "Importa da file .oxide",
+      "export_tooltip": "Esporta in file .oxide",
+      "host_tools": "Strumenti host",
+      "host_monitor": "Monitoraggio",
+      "gpu": "GPU / NPU",
+      "processes": "Processi",
+      "services": "Servizi",
+      "logs": "Log",
+      "tmux": "tmux",
+      "docker": "Docker",
+      "tmux_management": "Gestione tmux",
+      "docker_management": "Gestione Docker",
+      "session_manager": "Gestore sessioni",
+      "open_session_manager": "Apri gestore sessioni",
+      "plugins": "Plugin",
+      "activity": "Attività",
+      "event_log": "Registro eventi",
+      "notifications": "Notifiche",
+      "saved_connections": "Connessioni salvate",
+      "forwarding": "Inoltro porte",
+      "ports": "Porte",
+      "schedules": "Attività pianificate",
+      "filesystems": "Dischi",
+      "packages": "Pacchetti"
+    },
+    "tooltips": {
+      "settings": "Impostazioni",
+      "ai_hint": "OxideSens",
+      "switch_tree": "Vista ad albero",
+      "switch_focus": "Vista focus",
+      "new_connection": "Nuova connessione",
+      "lock_app": "Blocca hapcli",
+      "setup_app_lock": "Configura blocco applicazione",
+      "collapse": "Comprimi"
+    },
+    "active_sessions": "Sessioni attive",
+    "no_sessions": "Nessuna sessione",
+    "add_new_connection": "Clicca + per aggiungere una connessione",
+    "host_gpu": {
+      "count_suffix": "acceleratori",
+      "refresh_interval": "Aggiornamento ogni 2 secondi",
+      "sampling": "Lettura dei dispositivi GPU / NPU...",
+      "unavailable": "Su questo host non è stato trovato uno strumento supportato per il monitoraggio GPU / NPU.",
+      "unsupported": "Il monitoraggio GPU / NPU non è supportato su questo sistema operativo.",
+      "no_devices": "Nessun dispositivo GPU / NPU supportato trovato.",
+      "error": "Query GPU / NPU non riuscita: {{error}}",
+      "actions": { "refresh": "Aggiorna dati GPU / NPU" },
+      "summary": { "utilization": "Utilizzo medio", "memory": "Memoria del dispositivo", "temperature": "Temperatura massima", "power": "Potenza totale" },
+      "columns": { "device": "Dispositivo", "utilization": "Utilizzo", "memory": "Memoria" },
+      "details": { "uuid": "UUID", "driver": "Driver", "performance_state": "Prestazioni", "health": "Stato", "temperature": "Temperatura", "power": "Potenza", "fan": "Ventola" },
+      "processes": { "title": "Processi di calcolo", "empty": "Nessun processo di calcolo usa questo dispositivo." }
+    },
+    "host_processes": {
+      "search_placeholder": "Cerca processi...",
+      "count_suffix": "processi",
+      "sampling": "Campionamento processi...",
+      "empty": "Nessun processo corrispondente",
+      "unknown": "Sconosciuto",
+      "elapsed": "Tempo",
+      "filters": {
+        "all": "Tutti",
+        "running": "In esecuzione",
+        "high_cpu": "CPU alta",
+        "high_memory": "Memoria alta"
+      },
+      "sort": {
+        "cpu": "CPU",
+        "memory": "Memoria",
+        "pid": "PID",
+        "command": "Comando",
+        "user": "Utente"
+      },
+      "states": {
+        "running": "In esecuzione",
+        "sleeping": "In sospensione",
+        "waiting": "In attesa",
+        "stopped": "Fermato",
+        "zombie": "Zombie",
+        "idle": "Inattivo",
+        "unknown": "Sconosciuto"
+      },
+      "actions": {
+        "column": "Azioni",
+        "term": "Termina",
+        "kill": "Forza",
+        "stop": "Pausa",
+        "cont": "Riprendi",
+        "renice": "Priorità",
+        "apply": "Imposta",
+        "renice_placeholder": "nice"
+      },
+      "confirm": {
+        "title": "Conferma azione processo",
+        "cancel": "Annulla",
+        "term_desc": "Inviare TERM al PID {{pid}} ({{command}})?",
+        "kill_desc": "Forzare il PID {{pid}} ({{command}}) con KILL. L’azione non può essere annullata.",
+        "stop_desc": "Mettere in pausa il PID {{pid}} ({{command}}) con STOP?",
+        "cont_desc": "Riprendere il PID {{pid}} ({{command}}) con CONT?",
+        "renice_desc": "Cambiare la priorità del PID {{pid}} ({{command}})?"
+      },
+      "toast": {
+        "action_already_running": "Un’azione processo è già in corso.",
+        "invalid_nice": "Inserisci un valore nice tra -20 e 19.",
+        "connection_missing": "La connessione selezionata non è più disponibile.",
+        "action_failed": "Azione processo non riuscita.",
+        "action_succeeded": "Azione del processo per il PID {{pid}} completata.",
+        "partial_support": "La gestione processi è parziale su {{os}}."
+      }
+    },
+    "host_docker": {
+      "search_placeholder": "Cerca container...",
+      "count_suffix": "container",
+      "sampling": "Campionamento dei container Docker...",
+      "empty": "Nessun container corrispondente",
+      "unavailable": "Docker non è disponibile su questo host.",
+      "error": "Comando Docker non riuscito: {{error}}",
+      "columns": {
+        "container": "Container / Immagine",
+        "image": "Immagine",
+        "state": "Stato",
+        "ports": "Porte"
+      },
+      "states": {
+        "running": "In esecuzione",
+        "exited": "Terminato",
+        "created": "Creato",
+        "paused": "In pausa",
+        "restarting": "Riavvio",
+        "removing": "Rimozione",
+        "dead": "Non attivo",
+        "unknown": "Sconosciuto"
+      },
+      "actions": {
+        "refresh": "Aggiorna container",
+        "logs": "Vedi log",
+        "follow_logs": "Segui log",
+        "exec": "Apri shell",
+        "start": "Avvia",
+        "stop": "Ferma",
+        "restart": "Riavvia"
+      },
+      "exec_title": "Docker: {{name}}",
+      "follow_title": "Log Docker: {{name}}",
+      "logs": {
+        "title": "Log: {{name}}",
+        "loading": "Caricamento log...",
+        "empty": "Nessun log recente.",
+        "close": "Chiudi log"
+      },
+      "confirm": {
+        "title": "Conferma azione Docker",
+        "cancel": "Annulla",
+        "start_desc": "Avviare il container {{name}} ({{id}})?",
+        "stop_desc": "Fermare il container {{name}} ({{id}})? Il lavoro in esecuzione nel container potrebbe essere interrotto.",
+        "restart_desc": "Riavviare il container {{name}} ({{id}})? Il lavoro in esecuzione nel container verrà interrotto."
+      },
+      "toast": {
+        "action_already_running": "Un’azione Docker è già in corso.",
+        "logs_already_running": "I log Docker sono già in caricamento.",
+        "logs_failed": "Impossibile caricare i log Docker.",
+        "exec_terminal_missing": "Nessuna route di terminale SSH attiva è disponibile per questo container.",
+        "exec_opened": "Shell aperta per {{name}}.",
+        "follow_opened": "Log di {{name}} in monitoraggio.",
+        "connection_missing": "La connessione selezionata non è più disponibile.",
+        "action_failed": "Azione Docker non riuscita.",
+        "action_succeeded": "Azione Docker per {{name}} completata."
+      }
+    },
+    "host_services": {
+      "search_placeholder": "Cerca servizi...",
+      "count_suffix": "servizi",
+      "sampling": "Campionamento dei servizi...",
+      "empty": "Nessun servizio corrispondente",
+      "unavailable": "Il gestore dei servizi non è disponibile su questo host.",
+      "error": "Comando del servizio non riuscito: {{error}}",
+      "capability": {
+        "full": "Supporto completo",
+        "partial": "Supporto parziale",
+        "unknown": "Supporto sconosciuto"
+      },
+      "columns": {
+        "service": "Servizio",
+        "state": "Stato",
+        "enabled": "Abilitato",
+        "pid": "PID",
+        "description": "Descrizione",
+        "load": "Caricamento",
+        "sub_state": "Sottostato"
+      },
+      "states": {
+        "running": "In esecuzione",
+        "stopped": "Fermato",
+        "failed": "Non riuscito",
+        "activating": "Attivazione",
+        "deactivating": "Disattivazione",
+        "reloading": "Ricaricamento",
+        "unknown": "Sconosciuto"
+      },
+      "enabled": {
+        "enabled": "Abilitato",
+        "disabled": "Disabilitato",
+        "masked": "Mascherato",
+        "static": "Statico",
+        "unknown": "Sconosciuto"
+      },
+      "actions": {
+        "refresh": "Aggiorna servizi",
+        "logs": "Visualizza log",
+        "follow_logs": "Segui log",
+        "start": "Avvia",
+        "stop": "Ferma",
+        "restart": "Riavvia",
+        "reload": "Ricarica",
+        "enable": "Abilita",
+        "disable": "Disabilita"
+      },
+      "follow_title": "Log del servizio: {{name}}",
+      "logs": {
+        "title": "Log: {{name}}",
+        "loading": "Caricamento log...",
+        "empty": "Nessun log recente.",
+        "close": "Chiudi log"
+      },
+      "confirm": {
+        "title": "Conferma azione servizio",
+        "cancel": "Annulla",
+        "start_desc": "Avviare il servizio {{id}} ({{name}})?",
+        "stop_desc": "Fermare il servizio {{id}} ({{name}})? Il lavoro in esecuzione potrebbe interrompersi.",
+        "restart_desc": "Riavviare il servizio {{id}} ({{name}})? Il lavoro in esecuzione verrà interrotto.",
+        "reload_desc": "Ricaricare il servizio {{id}} ({{name}})?",
+        "enable_desc": "Abilitare il servizio {{id}} ({{name}}) all'avvio?",
+        "disable_desc": "Disabilitare il servizio {{id}} ({{name}}) all'avvio?"
+      },
+      "toast": {
+        "action_already_running": "È già in corso un'azione sul servizio.",
+        "logs_already_running": "I log del servizio sono già in caricamento.",
+        "logs_failed": "Impossibile caricare i log del servizio.",
+        "exec_terminal_missing": "Nessuna route terminale SSH attiva disponibile per questo servizio.",
+        "follow_opened": "Segui log per {{name}}.",
+        "connection_missing": "La connessione selezionata non è più disponibile.",
+        "action_failed": "Azione servizio non riuscita.",
+        "action_succeeded": "Azione del servizio per {{name}} completata.",
+        "partial_support": "La gestione dei servizi è parziale su {{os}}."
+      }
+    },
+    "host_logs": {
+      "search_placeholder": "Cerca log...",
+      "count_suffix": "log",
+      "loading": "Caricamento log...",
+      "empty": "Nessun log corrispondente",
+      "unavailable": "I log host non sono disponibili su questo host.",
+      "error": "Comando log non riuscito: {{error}}",
+      "capability": {
+        "full": "Supporto completo",
+        "partial": "Supporto parziale",
+        "unknown": "Supporto sconosciuto"
+      },
+      "presets": {
+        "all": "Tutti",
+        "errors": "Errori",
+        "auth": "SSH/Auth",
+        "kernel": "Kernel",
+        "system": "Sistema"
+      },
+      "columns": {
+        "time": "Ora",
+        "level": "Livello",
+        "source": "Origine",
+        "unit": "Unità",
+        "message": "Messaggio"
+      },
+      "levels": {
+        "error": "Errore",
+        "warning": "Avviso",
+        "info": "Info",
+        "debug": "Debug",
+        "unknown": "Sconosciuto"
+      },
+      "actions": {
+        "refresh": "Aggiorna log",
+        "follow": "Segui log"
+      },
+      "follow_title": "Log host: {{preset}}",
+      "toast": {
+        "snapshot_already_running": "Uno snapshot dei log è già in esecuzione.",
+        "snapshot_loaded": "{{count}} voci di log caricate.",
+        "snapshot_failed": "Impossibile caricare i log: {{reason}}",
+        "unavailable": "I log host non sono disponibili su questo host.",
+        "connection_missing": "La connessione selezionata non è più disponibile.",
+        "exec_terminal_missing": "Nessuna route terminale SSH attiva è disponibile per i log host.",
+        "follow_opened": "Seguendo i log {{preset}}.",
+        "partial_support": "I log host sono parziali su {{os}}.",
+        "unknown_error": "Errore sconosciuto"
+      }
+    },
+    "host_tmux": {
+      "search_placeholder": "Cerca tmux...",
+      "count_suffix": "sessioni",
+      "loading": "Caricamento sessioni tmux...",
+      "empty": "Nessuna sessione tmux corrispondente",
+      "unavailable": "tmux non è disponibile su questo host.",
+      "error": "Comando tmux non riuscito: {{error}}",
+      "capability": {
+        "full": "Supporto completo",
+        "partial": "Supporto parziale",
+        "unknown": "Supporto sconosciuto"
+      },
+      "columns": {
+        "session": "Sessione",
+        "attached": "Collegata",
+        "windows": "Finestre",
+        "panes": "Pane",
+        "activity": "Attività",
+        "created": "Creata"
+      },
+      "attached": {
+        "yes": "Collegata",
+        "no": "Scollegata"
+      },
+      "actions": {
+        "new_session": "Nuova sessione",
+        "refresh": "Aggiorna tmux",
+        "attach": "Collega",
+        "kill_session": "Termina sessione",
+        "rename_session": "Rinomina sessione",
+        "rename_window": "Rinomina finestra",
+        "kill_window": "Termina finestra",
+        "kill_pane": "Termina pane",
+        "send_command": "Invia comando"
+      },
+      "active_window": "Attiva #{{index}} {{name}}",
+      "no_active_window": "Nessuna finestra attiva",
+      "attach_title": "tmux: {{name}}",
+      "new_session_title": "Nuova sessione tmux",
+      "new_session_name": "nuova sessione",
+      "confirm": {
+        "title": "Conferma azione tmux",
+        "cancel": "Annulla",
+        "kill_session_desc": "Terminare la sessione tmux {{id}} ({{name}})? Tutte le finestre e i pane in questa sessione verranno terminati.",
+        "kill_window_desc": "Terminare la finestra tmux {{target}} nella sessione {{name}}? Tutti i pane in questa finestra verranno terminati.",
+        "kill_pane_desc": "Terminare il pane tmux {{target}} nella sessione {{name}}? Il comando in esecuzione verrà terminato.",
+        "action_desc": "Eseguire l’azione tmux su {{target}} nella sessione {{name}}?"
+      },
+      "toast": {
+        "snapshot_already_running": "Uno snapshot tmux è già in esecuzione.",
+        "snapshot_loaded": "{{count}} sessioni tmux caricate.",
+        "snapshot_failed": "Impossibile caricare le sessioni tmux: {{reason}}",
+        "unavailable": "tmux non è disponibile su questo host.",
+        "connection_missing": "La connessione selezionata non è più disponibile.",
+        "exec_terminal_missing": "Nessuna route terminale SSH attiva è disponibile per tmux.",
+        "attach_opened": "Collegamento a {{name}}.",
+        "new_session_opened": "Apertura di {{name}}.",
+        "action_already_running": "Un'azione tmux è già in esecuzione.",
+        "action_failed": "Azione tmux non riuscita.",
+        "action_succeeded": "Azione tmux per {{target}} completata.",
+        "unknown_error": "Errore sconosciuto",
+        "input_required": "Inserisci un valore prima di continuare."
+      },
+      "input": {
+        "rename_session_title": "Rinomina sessione",
+        "rename_window_title": "Rinomina finestra",
+        "send_command_title": "Invia comando al pane",
+        "rename_session_desc": "Imposta un nuovo nome per la sessione {{target}}.",
+        "rename_window_desc": "Imposta un nuovo nome per la finestra {{target}} nella sessione {{name}}.",
+        "send_command_desc": "Invia un comando seguito da Enter al pane {{target}} nella sessione {{name}}.",
+        "rename_session_placeholder": "Nome sessione",
+        "rename_window_placeholder": "Nome finestra",
+        "send_command_placeholder": "Comando da inviare"
+      }
+    },
+    "host_schedules": {
+      "search_placeholder": "Search attività pianificatas...",
+      "count_suffix": "tasks",
+      "loading": "Scanning attività pianificatas...",
+      "empty": "No attività pianificatas match",
+      "unavailable": "Attività pianificate tools are not available on this host.",
+      "error": "Attività pianificate command failed: {{error}}",
+      "capability": {
+        "full": "Supporto completo",
+        "partial": "Supporto parziale",
+        "unknown": "Supporto sconosciuto"
+      },
+      "filters": {
+        "all": "Tutte",
+        "enabled": "Abilitate",
+        "disabled": "Disabilitate",
+        "systemd": "systemd",
+        "cron": "cron",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "failed": "Non riuscite"
+      },
+      "sources": {
+        "systemd": "systemd",
+        "cron": "cron",
+        "anacron": "anacron",
+        "at": "at",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "unknown": "Unknown"
+      },
+      "enabled": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "static": "Static",
+        "masked": "Masked",
+        "unknown": "Unknown"
+      },
+      "active": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "failed": "Failed",
+        "unknown": "Unknown"
+      },
+      "columns": {
+        "task": "Attività",
+        "source": "Origine",
+        "state": "Stato",
+        "enabled": "Abilitata",
+        "next": "Prossima",
+        "last": "Ultima",
+        "user": "Utente",
+        "schedule": "Pianificazione",
+        "command": "Comando",
+        "result": "Risultato",
+        "description": "Descrizione",
+        "unit": "Unit"
+      },
+      "actions": {
+        "refresh": "Aggiorna attività",
+        "diagnostic": "Apri terminale diagnostico",
+        "logs": "Vedi log",
+        "follow_logs": "Segui log",
+        "enable": "Abilita",
+        "disable": "Disabilita",
+        "run_now": "Esegui ora"
+      },
+      "diagnostic_title": "Attività pianificate diagnostics",
+      "follow_title": "Attività pianificate logs: {{name}}",
+      "logs": {
+        "title": "Logs: {{name}}",
+        "loading": "Loading logs...",
+        "empty": "No recent logs.",
+        "close": "Close logs"
+      },
+      "confirm": {
+        "title": "Confirm attività pianificata action",
+        "cancel": "Annulla",
+        "enable_desc": "Abilitare l’attività pianificata {{name}}? Unit: {{unit}}.",
+        "disable_desc": "Disabilitare l’attività pianificata {{name}}? Le esecuzioni future potrebbero fermarsi. Unit: {{unit}}.",
+        "run_now_desc": "Run attività pianificata {{name}} now? Unit: {{unit}}."
+      },
+      "toast": {
+        "snapshot_already_running": "Schedule scan is already running.",
+        "snapshot_loaded": "Loaded {{count}} scheduled tasks.",
+        "snapshot_failed": "Failed to scan scheduled tasks: {{reason}}",
+        "unavailable": "Scheduled task tools are not available on this host.",
+        "connection_missing": "The selected connection is no longer available.",
+        "exec_terminal_missing": "No live SSH terminal route is available for diagnostics.",
+        "diagnostic_opened": "Opened schedule diagnostics.",
+        "follow_opened": "Opened schedule log follow for {{name}}.",
+        "logs_already_running": "Schedule logs are already loading.",
+        "logs_failed": "Failed to load schedule logs.",
+        "action_already_running": "A scheduled task action is already running.",
+        "action_failed": "Scheduled task action failed.",
+        "enable_succeeded": "{{name}} abilitata.",
+        "disable_succeeded": "{{name}} disabilitata.",
+        "run_now_started": "Started {{name}}.",
+        "partial_support": "Scheduled task support is partial on {{os}}.",
+        "unknown_error": "Unknown scheduled task error."
+      }
+    },
+    "host_ports": {
+      "search_placeholder": "Cerca porte...",
+      "count_suffix": "porte",
+      "loading": "Scansione porte...",
+      "empty": "Nessuna porta corrispondente",
+      "unavailable": "Gli strumenti per le porte non sono disponibili su questo host.",
+      "error": "Comando porte non riuscito: {{error}}",
+      "capability": {
+        "full": "Supporto completo",
+        "partial": "Supporto parziale",
+        "unknown": "Supporto sconosciuto"
+      },
+      "filters": {
+        "all": "Tutte",
+        "listening": "In ascolto",
+        "connected": "Connesse",
+        "tcp": "TCP",
+        "udp": "UDP",
+        "risky": "Alto rischio"
+      },
+      "columns": {
+        "local": "Indirizzo locale",
+        "protocol": "Protocollo",
+        "state": "Stato",
+        "pid": "PID",
+        "process": "Processo",
+        "remote": "Indirizzo remoto",
+        "user": "Utente",
+        "command": "Comando",
+        "source": "Origine",
+        "inode": "Inode"
+      },
+      "states": {
+        "listening": "In ascolto",
+        "established": "Stabilita",
+        "open": "Aperta",
+        "time_wait": "TIME_WAIT",
+        "close_wait": "CLOSE_WAIT",
+        "unknown": "Sconosciuto"
+      },
+      "actions": {
+        "refresh": "Aggiorna porte",
+        "diagnostic": "Apri terminale diagnostico",
+        "copy_endpoint": "Copia indirizzo",
+        "jump_process": "Trova processo"
+      },
+      "diagnostic_title": "Diagnostica porte",
+      "toast": {
+        "snapshot_already_running": "La scansione porte è già in esecuzione.",
+        "snapshot_loaded": "Caricate {{count}} porte.",
+        "snapshot_failed": "Scansione porte non riuscita: {{reason}}",
+        "unavailable": "Gli strumenti per le porte non sono disponibili su questo host.",
+        "connection_missing": "La connessione selezionata non è più disponibile.",
+        "exec_terminal_missing": "Nessuna route terminale SSH attiva per la diagnostica.",
+        "diagnostic_opened": "Diagnostica porte aperta.",
+        "copied_endpoint": "{{endpoint}} copiato.",
+        "partial_support": "L’ispezione porte è parziale su {{os}}.",
+        "unknown_error": "Errore sconosciuto nella scansione porte."
+      }
+    },
+    "host_filesystems": {
+      "search_placeholder": "Cerca file system...",
+      "count_suffix": "elementi",
+      "loading": "Scansione dischi...",
+      "empty": "Nessuna voce del file system corrispondente",
+      "unavailable": "Gli strumenti del file system non sono disponibili su questo host.",
+      "error": "Comando del file system non riuscito: {{error}}",
+      "capability": {
+        "full": "Supporto completo",
+        "partial": "Supporto parziale",
+        "unknown": "Supporto sconosciuto"
+      },
+      "filters": {
+        "all": "Tutti",
+        "mounts": "Mount",
+        "read_only": "Sola lettura",
+        "high_usage": "Uso elevato",
+        "inode_pressure": "Pressione inode",
+        "large_items": "Elementi grandi",
+        "blocks": "Blocchi",
+        "attention": "Da controllare",
+        "inode_hotspots": "Inode / numero file"
+      },
+      "columns": {
+        "path": "Percorso",
+        "kind": "Tipo",
+        "usage": "Uso",
+        "inode": "Inode",
+        "fs": "FS",
+        "size": "Dimensione",
+        "read_only": "RO",
+        "device": "Dispositivo",
+        "used_available": "Usato / disponibile",
+        "source": "Origine",
+        "detail": "Dettaglio",
+        "options": "Opzioni",
+        "attention": "Da controllare"
+      },
+      "kinds": {
+        "mount": "Mount",
+        "large_dir": "Directory grande",
+        "large_file": "File grande",
+        "block": "Dispositivo a blocchi",
+        "unknown": "Sconosciuto",
+        "inode_dir": "Hotspot inode",
+        "count_dir": "Hotspot conteggio file"
+      },
+      "read_only": {
+        "yes": "Sì",
+        "no": "No"
+      },
+      "actions": {
+        "refresh": "Aggiorna dischi",
+        "diagnostic": "Apri terminale diagnostico",
+        "copy_path": "Copia percorso"
+      },
+      "diagnostic_title": "Diagnostica dischi",
+      "toast": {
+        "snapshot_already_running": "La scansione dei dischi è già in corso.",
+        "snapshot_loaded": "Caricate {{count}} voci del file system.",
+        "snapshot_failed": "Scansione dischi non riuscita: {{reason}}",
+        "unavailable": "Gli strumenti del file system non sono disponibili su questo host.",
+        "connection_missing": "La connessione selezionata non è più disponibile.",
+        "exec_terminal_missing": "Nessuna route terminale SSH attiva disponibile per la diagnostica.",
+        "diagnostic_opened": "Diagnostica dischi aperta.",
+        "copied_path": "{{path}} copiato.",
+        "partial_support": "L’ispezione del file system è parziale su {{os}}.",
+        "unknown_error": "Errore sconosciuto nella scansione del file system."
+      },
+      "attention": {
+        "critical_usage": "Uso critico",
+        "high_usage": "Uso elevato",
+        "critical_inode": "Inode critici",
+        "inode_pressure": "Pressione inode",
+        "low_free_space": "Poco spazio libero",
+        "read_only": "Sola lettura",
+        "large_item": "Elemento grande",
+        "inode_hotspot": "Hotspot inode",
+        "file_count_hotspot": "Hotspot conteggio file"
+      },
+      "values": {
+        "inode_count": "{{count}} inode",
+        "file_count": "{{count}} file"
+      }
+    },
+    "host_packages": {
+      "search_placeholder": "Cerca pacchetti...",
+      "count_suffix": "pacchetti",
+      "loading": "Scansione pacchetti...",
+      "empty": "Nessun pacchetto corrispondente",
+      "unavailable": "Nessuno strumento di pacchetti disponibile su questo host.",
+      "error": "Comando pacchetti non riuscito: {{error}}",
+      "capability": {
+        "full": "Supporto completo",
+        "partial": "Supporto in sola lettura",
+        "unknown": "Supporto sconosciuto"
+      },
+      "filters": {
+        "all": "Tutti",
+        "upgradable": "Aggiornabili",
+        "installed": "Installati",
+        "services": "Servizi",
+        "apt": "apt",
+        "dnf": "dnf",
+        "yum": "yum",
+        "pacman": "pacman",
+        "brew": "Homebrew"
+      },
+      "columns": {
+        "package": "Pacchetto",
+        "status": "Stato",
+        "installed": "Installato",
+        "candidate": "Candidato",
+        "manager": "Gestore",
+        "service": "Servizio",
+        "arch": "Architettura",
+        "repository": "Repository",
+        "summary": "Riepilogo",
+        "source": "Origine",
+        "owner_paths": "Percorsi proprietari"
+      },
+      "status": {
+        "upgradable": "Aggiornabile",
+        "installed": "Installato",
+        "unknown": "Sconosciuto"
+      },
+      "actions": {
+        "refresh": "Aggiorna pacchetti",
+        "inspect": "Apri dettagli pacchetto",
+        "copy_name": "Copia nome pacchetto"
+      },
+      "inspect_title": "Dettagli pacchetto",
+      "toast": {
+        "snapshot_already_running": "La scansione dei pacchetti è già in corso.",
+        "snapshot_loaded": "{{count}} pacchetti caricati.",
+        "snapshot_failed": "Impossibile analizzare i pacchetti: {{reason}}",
+        "unavailable": "Nessuno strumento di pacchetti disponibile su questo host.",
+        "connection_missing": "La connessione selezionata non è più disponibile.",
+        "exec_terminal_missing": "Nessun percorso terminale SSH attivo disponibile per i dettagli del pacchetto.",
+        "inspect_unsupported": "I dettagli dei pacchetti non sono ancora supportati per {{manager}}.",
+        "inspect_opened": "Dettagli aperti per {{name}}.",
+        "copied_name": "{{name}} copiato.",
+        "partial_support": "L'ispezione dei pacchetti su {{os}} è in sola lettura.",
+        "unknown_error": "Errore sconosciuto durante la scansione dei pacchetti."
+      }
+    }
+  },
+  "sessions": {
+    "tree": {
+      "no_sessions": "Nessuna sessione",
+      "click_to_add": "Clicca + per aggiungere una connessione",
+      "actions": {
+        "new_terminal": "Nuovo terminale",
+        "sftp": "SFTP",
+        "disconnect": "Disconnetti",
+        "reconnect": "Riconnetti",
+        "edit_and_reconnect": "Modifica e riconnetti",
+        "remove_session": "Rimuovi sessione",
+        "cancel_reconnect": "Annulla riconnessione",
+        "port_forwarding": "Port Forwarding",
+        "drill_in": "Drill In (Prossimo Hop)",
+        "saved_next_hop": "Usa connessione salvata come prossimo hop...",
+        "connect": "Connetti",
+        "save_as_connection": "Salva come connessione..."
+      }
+    },
+    "focused_list": {
+      "all_servers": "Tutti i Server",
+      "child": "figlio",
+      "children": "figli",
+      "no_child_nodes": "Questo nodo non ha nodi figli",
+      "no_servers": "Nessun server ancora",
+      "add_by_drilling": "Puoi aggiungere nodi figli tramite drill down",
+      "click_to_add": "Clicca + per aggiungere una nuova connessione",
+      "terminal": "Terminale #{{number}}",
+      "close_terminal": "Chiudi terminale"
+    },
+    "actions": {
+      "connect": "Connetti",
+      "new_terminal": "Nuovo Terminale",
+      "sftp_explorer": "Esplora SFTP",
+      "port_forwarding": "Port Forwarding",
+      "disconnect": "Disconnetti",
+      "reconnect": "Riconnetti",
+      "drill_in": "Drill In (Prossimo Hop)",
+      "saved_next_hop": "Usa connessione salvata come prossimo hop...",
+      "save_as_connection": "Salva come connessione..."
+    },
+    "saved_next_hop": {
+      "title": "Usa connessione salvata come prossimo hop",
+      "description": "Scegli una connessione salvata da collegare sotto {{host}}.",
+      "empty": "Nessuna connessione salvata disponibile.",
+      "cancel": "Annulla",
+      "proxy_chain_badge": "{{count}} hop",
+      "parent_not_ready": "Connetti prima il nodo padre prima di aggiungere un prossimo hop salvato.",
+      "not_found": "Connessione salvata non trovata.",
+      "missing_credentials": "Questa connessione salvata non contiene le credenziali necessarie.",
+      "materialize_failed": "Impossibile aggiungere la connessione salvata all'albero delle sessioni."
+    },
+    "breadcrumb": {
+      "back_to_root": "Torna alla vista radice",
+      "all_servers": "Tutti i Server"
+    }
+  }
+}

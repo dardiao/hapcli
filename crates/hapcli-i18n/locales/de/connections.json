@@ -1,0 +1,135 @@
+{
+  "connections": {
+    "state": {
+      "connecting": "Verbindung wird hergestellt...",
+      "active": "Aktiv",
+      "idle": "Inaktiv",
+      "disconnecting": "Verbindung wird getrennt...",
+      "disconnected": "Getrennt",
+      "error": "Fehler: {{error}}"
+    },
+    "events": {
+      "connection_lost_reconnecting": "Verbindung verloren - Wiederverbindung läuft...",
+      "connection_closed": "Verbindung geschlossen"
+    },
+    "time": {
+      "just_now": "Gerade eben",
+      "mins_ago": "vor {{count}} Min.",
+      "hrs_ago": "vor {{count}} Std."
+    },
+    "panel": {
+      "title": "SSH-Hintergrundverbindungen",
+      "description": "Aktive SSH-Verbindungen und Keep-Alive-Einstellungen verwalten",
+      "refresh": "Aktualisieren",
+      "no_connections": "Keine aktiven SSH-Verbindungen",
+      "no_connections_hint": "Neue Verbindungen werden hier angezeigt",
+      "terminals": "{{count}} Terminals",
+      "sftp": "{{count}} SFTP",
+      "forwards": "{{count}} Weiterleitungen",
+      "created": "Erstellt: {{time}}",
+      "idle_hint": "Inaktiv - {{keepAlive}}",
+      "keep_alive_enabled": "Keep Alive",
+      "disconnect_in": "Trennung in {{min}} Min."
+    },
+    "keep_alive": {
+      "enable_tooltip": "Keep Alive aktivieren (Nie trennen)",
+      "disable_tooltip": "Keep Alive deaktivieren (Nach {{min}} Min. Inaktivität trennen)",
+      "legend_enabled": "Keep Alive: Nie automatisch trennen",
+      "legend_disabled": "Standard: Nach {{min}} Min. Inaktivität automatisch trennen",
+      "global_never_tooltip": "Globale Einstellung: Kein Timeout"
+    },
+    "monitor": {
+      "title": "Verbindungspool",
+      "loading": "Statistiken werden geladen...",
+      "idle_timeout": "Inaktiv: {{min}} Min.",
+      "idle_timeout_never": "Inaktiv: Kein Timeout",
+      "capacity": "Kapazität: {{capacity}}",
+      "active": "Aktiv",
+      "idle": "Inaktiv",
+      "reconnecting": "Wiederverbindung",
+      "link_down": "Verbindung unterbrochen",
+      "terminals": "Terminals",
+      "sftp": "SFTP",
+      "forwards": "Weiterleitungen",
+      "summary": "Gesamt: {{total}} Verbindungen • Referenzen: {{refs}}",
+      "live": "Live",
+      "topology_nodes_edges": "Nodes: {{nodes}} • Edges: {{edges}}",
+      "topology_roots_children": "{{roots}} roots / {{children}} children"
+    },
+    "status": {
+      "reconnecting_title": "Verbindung wird wiederhergestellt",
+      "reconnecting_wait": "Die Verbindung wird wiederhergestellt. Bitte warten Sie und versuchen Sie es erneut.",
+      "reconnect_unstable": "Verbindung instabil",
+      "try_again_later": "Die Verbindung ist noch nicht stabil. Bitte versuchen Sie es später erneut.",
+      "connection_failed": "Verbindung fehlgeschlagen",
+      "no_connection_id": "Nach der Wiederverbindung wurde keine Verbindungs-ID zugewiesen."
+    },
+    "failedFetchStats": "Statistiken konnten nicht abgerufen werden",
+    "errors": {
+      "chain_busy_desc": "Eine andere Verbindungskette wird gerade aufgebaut. Bitte warten Sie.",
+      "chain_busy_title": "Vorgang läuft",
+      "chain_failed_desc": "Fehler bei Knoten {{position}}/{{total}}: {{error}}",
+      "chain_failed_title": "Verbindung fehlgeschlagen",
+      "generic_title": "Verbindungsfehler",
+      "node_connecting_desc": "Dieser Knoten wird bereits verbunden.",
+      "node_connecting_title": "Bereits am Verbinden"
+    },
+    "reconnect": {
+      "cancelled": "Neuverbindung abgebrochen",
+      "completed": "Verbindung wiederhergestellt, {{count}} Dienst(e) wiederhergestellt",
+      "failed": "Neuverbindung fehlgeschlagen: {{error}}",
+      "recovered": "Verbindung wiederhergestellt — Sitzung erhalten",
+      "ssh_restored": "SSH-Verbindung wiederhergestellt",
+      "starting": "{{name}} wird neu verbunden..."
+    },
+    "toast": {
+      "proxy_chain_desc": "Kettentiefe {{depth}}. Topologie synchronisiert.",
+      "proxy_chain_established": "Proxy-Ketten-Verbindung hergestellt",
+      "proxy_chain_invalid": "Proxy-Kette ist ungültig",
+      "proxy_hop_auth_unsupported": "Dieser Jump-Host verwendet einen nicht unterstützten Auth-Typ",
+      "proxy_hop_kbi_unsupported": "Dieser Jump-Host unterstützt Keyboard-Interactive/2FA nicht"
+    },
+    "trace": {
+      "connected": "Verbunden · {{elapsed}}",
+      "connecting": "Verbinde {{label}}",
+      "connecting_chain": "Verbinde {{current}}/{{total}}: {{label}}",
+      "failed": "Verbindung fehlgeschlagen: {{label}}",
+      "reconnecting": "Verbinde {{label}} erneut",
+      "reconnecting_chain": "Verbinde {{current}}/{{total}} erneut: {{label}}",
+      "diagnostics": {
+        "kind": {
+          "key_exchange": "Schlüsselaustausch",
+          "host_key": "Hostschlüssel",
+          "cipher": "Verschlüsselung",
+          "mac": "MAC",
+          "compression": "Komprimierung"
+        },
+        "summary": {
+          "key_exchange": "Der Server bietet nur Schlüsselaustausch-Algorithmen an, die in der aktuellen Sicherheitsrichtlinie nicht aktiviert sind.",
+          "host_key": "Die Hostschlüssel-Algorithmen des Servers passen nicht zur aktuellen Sicherheitsrichtlinie.",
+          "host_key_ssh_rsa": "Der Server unterstützt nur ssh-rsa-Hostschlüssel, die standardmäßig deaktiviert sind.",
+          "cipher": "Die Verschlüsselungsliste des Servers überschneidet sich nicht mit der aktuellen Client-Richtlinie.",
+          "cipher_legacy": "Der Server bietet nur alte Verschlüsselungen wie CBC oder 3DES an. Aktualisieren Sie den Server oder aktivieren Sie ausdrücklich einen Legacy-Kompatibilitätsmodus.",
+          "mac": "Die MAC-Liste des Servers überschneidet sich nicht mit der aktuellen Client-Richtlinie. Aktualisieren Sie den Server oder aktivieren Sie eine kompatible MAC-Richtlinie.",
+          "compression": "Die Komprimierungsmodi des Servers überschneiden sich nicht mit der Client-Richtlinie."
+        },
+        "client_offered": "Client angeboten: {{algorithms}}",
+        "server_offered": "Server angeboten: {{algorithms}}",
+        "missing_match": "Fehlende Übereinstimmung: {{reason}}",
+        "no_common": "kein gemeinsamer {{kind}}-Algorithmus"
+      },
+      "stage": {
+        "authentication": "Authentifizierung",
+        "host_key": "Hostschlüssel wird geprüft",
+        "opening_transport": "Transport wird geöffnet",
+        "preparing": "Verbindung wird vorbereitet",
+        "pty": "PTY wird zugewiesen",
+        "queued": "In Warteschlange",
+        "ready": "Bereit",
+        "shell_ready": "Shell wird gestartet",
+        "ssh_handshake": "SSH-Handshake"
+      },
+      "target_unknown": "Ziel"
+    }
+  }
+}

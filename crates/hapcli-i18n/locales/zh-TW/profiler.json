@@ -1,0 +1,48 @@
+{
+  "profiler": {
+    "capsule": {
+      "click_expand": "點擊展開",
+      "no_data": "暫無數據",
+      "sampling": "採樣中..."
+    },
+    "detail": {
+      "load_avg": "平均負載",
+      "cpu_cores": "CPU 核心數",
+      "memory": "記憶體",
+      "source": "資料來源"
+    },
+    "panel": {
+      "no_connection": "未選擇活動連線",
+      "sampling": "採樣中...",
+      "no_data": "暫無資料",
+      "system_information": "系統資訊",
+      "system": "系統",
+      "system_version": "系統版本",
+      "architecture": "系統架構",
+      "boot_time": "開機時間",
+      "uptime": "運行時長",
+      "cpu": "CPU",
+      "memory": "記憶體",
+      "disk": "磁碟",
+      "gpu": "顯示卡",
+      "gpu_memory": "顯示記憶體",
+      "gpus": "顯示卡",
+      "network": "網路 I/O",
+      "load_avg": "平均負載",
+      "rtt": "RTT 延遲",
+      "source": "資料來源",
+      "disabled": "監控已關閉",
+      "enable": "開啟採樣",
+      "swap": "交換空間",
+      "mounts": "掛載點",
+      "interfaces": "網路介面",
+      "top_processes": "高記憶體程序",
+      "source_full": "完整",
+      "source_partial": "部分",
+      "source_rtt_only": "僅 RTT",
+      "source_failed": "失敗",
+      "source_unsupported": "不支援",
+      "retry": "重新探測"
+    }
+  }
+}

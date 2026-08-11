@@ -1,0 +1,33 @@
+[package]
+name = "hapcli-ssh"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+base64.workspace = true
+dashmap.workspace = true
+dirs.workspace = true
+hapcli-backend-classification = { path = "../hapcli-backend-classification" }
+hapcli-connection-monitor = { path = "../hapcli-connection-monitor" }
+hapcli-portable-runtime = { path = "../hapcli-portable-runtime" }
+hapcli-sftp = { path = "../hapcli-sftp" }
+hapcli-topology = { path = "../hapcli-topology" }
+hapcli-x11-forwarding = { path = "../hapcli-x11-forwarding" }
+parking_lot.workspace = true
+russh = { path = "../russh" }
+serde.workspace = true
+sha2.workspace = true
+signature.workspace = true
+ssh-encoding.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+zeroize.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows.workspace = true
+
+[dev-dependencies]
+rand10.workspace = true

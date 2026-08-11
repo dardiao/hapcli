@@ -1,0 +1,73 @@
+hapcli
+Copyright (c) 2026 hapcli contributors.
+
+This project includes code, assets, or protocol implementations from the
+following projects:
+
+Generated dependency notices are maintained separately:
+
+- THIRD_PARTY_NOTICES.md covers the native Rust workspace.
+- agent/THIRD_PARTY_NOTICES.md covers the standalone remote agent.
+
+Regenerate them with:
+
+- python3 scripts/release/generate_third_party_notices.py --cwd . --output THIRD_PARTY_NOTICES.md --title "Third-Party Notices (Native / Rust Workspace)" --exclude-prefix hapcli-
+- python3 scripts/release/generate_third_party_notices.py --cwd agent --output THIRD_PARTY_NOTICES.md --title "Third-Party Notices (hapcli Agent)" --exclude-name hapcli-agent
+
+Bundled background artwork
+Copyright (c) 2026 hapcli contributors.
+Licensed under the Creative Commons Attribution 4.0 International license
+(CC BY 4.0). The license applies to the artwork's copyright and similar rights;
+it does not grant trademark rights in the hapcli name or project marks.
+The bundled Oxide Ambient, Oxide Nocturne, and Oxide Verdant backgrounds are
+project artwork rather than third-party assets. Oxide Nocturne and Oxide
+Verdant were generated for the project with OpenAI image generation and then
+selected, edited, and encoded by hapcli contributors.
+
+Alacritty
+Copyright 2016-2025 The Alacritty Project Contributors.
+Licensed under the Apache License, Version 2.0.
+Used through the alacritty_terminal crate for terminal emulation, PTY state,
+and terminal protocol behavior.
+The native local graphics PTY loop adapts Alacritty's event-loop structure
+under the same Apache-2.0 OR MIT terms, with hapcli-specific graphics
+protocol interception added before ANSI parsing.
+
+Lucide
+Copyright (c) 2020, Lucide Contributors.
+Licensed under the ISC License.
+Used for the native workspace sidebar and toolbar SVG icons.
+
+GPUI-CE / GPUI
+Copyright 2022-2025 Zed Industries, Inc.
+Additional GPUI-CE contributions are included under the same license.
+Licensed under the Apache License, Version 2.0.
+Vendored from https://github.com/gpui-ce/gpui-ce at commit
+6c799b8e994266233014cea66d7769675ec1967c for the native UI framework and
+Metal, DirectX, Vulkan, and OpenGL rendering backends. hapcli modifications
+are recorded in crates/gpui-ce/gpui/hapcli_PATCHES.md.
+
+Microsoft Terminal
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT License.
+GPUI text contrast and gamma correction code is adapted from Microsoft
+Terminal commit 1283c0f5b99a2961673249fa77c6b986efb5086c. The complete license
+is shipped as MICROSOFT-TERMINAL-LICENSE-MIT.
+
+Linux graphics runtime
+The GPUI WGPU backend loads Vulkan and OpenGL/EGL loaders at runtime. As a
+result, libvulkan.so.1 and libEGL.so.1 may not appear in link-time dependency
+scans such as ldd, dpkg-shlibdeps, or RPM automatic dependency generation.
+Debian and RPM packages recommend the corresponding system loaders. The
+AppImage does not bundle system GPU loaders or drivers; the host or virtual
+machine must provide a compatible graphics stack.
+
+Russh
+Copyright 2016 Pierre-Étienne Meunier.
+Copyright 2024-2026 Eugeny contributors and Russh contributors.
+Licensed under the Apache License, Version 2.0.
+Vendored as crates/russh from the Tauri application vendor copy
+src-tauri/vendor/russh-0.59.0. That vendored copy is based on Eugeny's
+russh fork (https://github.com/Eugeny/russh), which in turn derives from
+Pierre-Étienne Meunier's Thrussh/Russh lineage. Original source copyright
+and license headers are preserved in the vendored files.

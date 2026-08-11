@@ -1,0 +1,13 @@
+[package]
+name = "hapcli-settings-model"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+hapcli-ai = { path = "../hapcli-ai" }
+hapcli-cloud-sync = { path = "../hapcli-cloud-sync" }
+hapcli-settings = { path = "../hapcli-settings" }
+hapcli-theme = { path = "../hapcli-theme" }
+serde_json.workspace = true
+zeroize.workspace = true

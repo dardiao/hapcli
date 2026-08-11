@@ -1,0 +1,48 @@
+{
+  "profiler": {
+    "capsule": {
+      "click_expand": "Nhấn để mở rộng",
+      "no_data": "Không có dữ liệu",
+      "sampling": "Đang lấy mẫu..."
+    },
+    "detail": {
+      "load_avg": "Tải TB",
+      "cpu_cores": "Lõi CPU",
+      "memory": "Bộ nhớ",
+      "source": "Nguồn"
+    },
+    "panel": {
+      "no_connection": "Chưa chọn kết nối hoạt động",
+      "sampling": "Đang lấy mẫu...",
+      "no_data": "Không có dữ liệu",
+      "system_information": "Thông tin hệ thống",
+      "system": "Hệ thống",
+      "system_version": "Phiên bản hệ thống",
+      "architecture": "Kiến trúc",
+      "boot_time": "Thời điểm khởi động",
+      "uptime": "Thời gian hoạt động",
+      "cpu": "CPU",
+      "memory": "Bộ nhớ",
+      "disk": "Đĩa",
+      "gpu": "GPU",
+      "gpu_memory": "Bộ nhớ GPU",
+      "gpus": "GPU",
+      "network": "I/O Mạng",
+      "load_avg": "Tải trung bình",
+      "rtt": "Độ trễ RTT",
+      "source": "Nguồn",
+      "disabled": "Giám sát đã tắt",
+      "enable": "Bật lấy mẫu",
+      "swap": "Swap",
+      "mounts": "Điểm gắn",
+      "interfaces": "Giao diện mạng",
+      "top_processes": "Tiến trình dùng nhiều bộ nhớ",
+      "source_full": "Đầy đủ",
+      "source_partial": "Một phần",
+      "source_rtt_only": "Chỉ RTT",
+      "source_failed": "Thất bại",
+      "source_unsupported": "Không hỗ trợ",
+      "retry": "Dò lại"
+    }
+  }
+}

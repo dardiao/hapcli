@@ -1,0 +1,14 @@
+[package]
+name = "hapcli-x11-forwarding"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+rand.workspace = true
+serde.workspace = true
+subtle.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+zeroize.workspace = true
+tempfile = "3.23"

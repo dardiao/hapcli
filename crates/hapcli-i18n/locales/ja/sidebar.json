@@ -1,0 +1,766 @@
+{
+  "sidebar": {
+    "actions": {
+      "expand": "サイドバーを展開",
+      "collapse": "サイドバーを折りたたむ",
+      "new_local_terminal": "新規ローカルターミナル",
+      "open_pylance_guide": "Pylanceガイドを開く"
+    },
+    "panels": {
+      "sessions": "アクティブセッション",
+      "saved": "保存済み接続",
+      "saved_title": "保存済み接続",
+      "sftp": "SFTP",
+      "sftp_sessions": "SFTPセッション",
+      "files": "ファイルマネージャー",
+      "forwards": "ポートフォワーディング",
+      "forwards_title": "ポートフォワーディング",
+      "runtime": "ダッシュボード",
+      "runtime_description": "接続の使用状況とトポロジーを監視",
+      "runtime_overview": "概要",
+      "connection_pool": "接続プール",
+      "connection_monitor": "接続モニター",
+      "connection_matrix": "接続マトリックス",
+      "ai": "OxideSens",
+      "ai_assistant": "OxideSens（近日公開）",
+      "settings": "設定",
+      "no_saved_connections": "保存済み接続がありません",
+      "no_active_sessions": "アクティブなセッションがありません",
+      "no_connected_sessions": "接続中のセッションがありません",
+      "import_tooltip": ".oxideファイルからインポート",
+      "export_tooltip": ".oxideファイルにエクスポート",
+      "host_tools": "ホストツール",
+      "host_monitor": "監視",
+      "gpu": "GPU / NPU",
+      "processes": "プロセス",
+      "services": "サービス",
+      "logs": "ログ",
+      "tmux": "tmux",
+      "docker": "Docker",
+      "tmux_management": "tmux 管理",
+      "docker_management": "Docker 管理",
+      "session_manager": "セッションマネージャー",
+      "open_session_manager": "セッションマネージャーを開く",
+      "plugins": "プラグイン",
+      "activity": "アクティビティ",
+      "event_log": "イベントログ",
+      "notifications": "通知",
+      "saved_connections": "保存済み接続",
+      "forwarding": "ポート転送",
+      "ports": "ポート",
+      "schedules": "スケジュール",
+      "filesystems": "ディスク",
+      "packages": "パッケージ"
+    },
+    "tooltips": {
+      "settings": "設定",
+      "ai_hint": "OxideSens",
+      "switch_tree": "ツリービューに切替",
+      "switch_focus": "フォーカスビューに切替",
+      "new_connection": "新規接続",
+      "lock_app": "hapcli をロック",
+      "setup_app_lock": "アプリロックを設定",
+      "collapse": "折りたたむ"
+    },
+    "active_sessions": "アクティブなセッション",
+    "no_sessions": "セッションなし",
+    "add_new_connection": "+ をクリックして新しい接続を追加",
+    "host_gpu": {
+      "count_suffix": "アクセラレーター",
+      "refresh_interval": "2 秒ごとに更新",
+      "sampling": "GPU / NPU デバイスの状態を取得中...",
+      "unavailable": "このホストでは対応する GPU / NPU 監視ツールが見つかりません。",
+      "unsupported": "このオペレーティングシステムでは GPU / NPU の監視をサポートしていません。",
+      "no_devices": "対応する GPU / NPU デバイスが見つかりません。",
+      "error": "GPU / NPU の照会に失敗しました：{{error}}",
+      "actions": { "refresh": "GPU / NPU データを更新" },
+      "summary": { "utilization": "平均使用率", "memory": "デバイスメモリ", "temperature": "最高温度", "power": "合計消費電力" },
+      "columns": { "device": "デバイス", "utilization": "使用率", "memory": "メモリ" },
+      "details": { "uuid": "UUID", "driver": "ドライバー", "performance_state": "性能状態", "health": "健康状態", "temperature": "温度", "power": "消費電力", "fan": "ファン" },
+      "processes": { "title": "計算プロセス", "empty": "このデバイスを使用している計算プロセスはありません。" }
+    },
+    "host_processes": {
+      "search_placeholder": "プロセスを検索...",
+      "count_suffix": "件のプロセス",
+      "sampling": "プロセスをサンプリング中...",
+      "empty": "一致するプロセスはありません",
+      "unknown": "不明",
+      "elapsed": "実行時間",
+      "filters": {
+        "all": "すべて",
+        "running": "実行中",
+        "high_cpu": "高 CPU",
+        "high_memory": "高メモリ"
+      },
+      "sort": {
+        "cpu": "CPU",
+        "memory": "メモリ",
+        "pid": "PID",
+        "command": "コマンド",
+        "user": "ユーザー"
+      },
+      "states": {
+        "running": "実行中",
+        "sleeping": "スリープ",
+        "waiting": "待機",
+        "stopped": "停止",
+        "zombie": "ゾンビ",
+        "idle": "アイドル",
+        "unknown": "不明"
+      },
+      "actions": {
+        "column": "操作",
+        "term": "終了",
+        "kill": "強制",
+        "stop": "一時停止",
+        "cont": "再開",
+        "renice": "優先度",
+        "apply": "変更",
+        "renice_placeholder": "nice"
+      },
+      "confirm": {
+        "title": "プロセス操作の確認",
+        "cancel": "キャンセル",
+        "term_desc": "PID {{pid}}（{{command}}）に TERM を送信しますか？",
+        "kill_desc": "PID {{pid}}（{{command}}）を KILL で強制終了します。元に戻せません。",
+        "stop_desc": "PID {{pid}}（{{command}}）を STOP で一時停止しますか？",
+        "cont_desc": "PID {{pid}}（{{command}}）を CONT で再開しますか？",
+        "renice_desc": "PID {{pid}}（{{command}}）の優先度を変更しますか？"
+      },
+      "toast": {
+        "action_already_running": "プロセス操作を実行中です。",
+        "invalid_nice": "nice 値は -20 から 19 の範囲で入力してください。",
+        "connection_missing": "選択した接続は利用できません。",
+        "action_failed": "プロセス操作に失敗しました。",
+        "action_succeeded": "PID {{pid}} のプロセス操作が完了しました。",
+        "partial_support": "{{os}} のプロセス管理は部分対応です。"
+      }
+    },
+    "host_docker": {
+      "search_placeholder": "コンテナを検索...",
+      "count_suffix": "コンテナ",
+      "sampling": "Docker コンテナを取得中...",
+      "empty": "一致するコンテナはありません",
+      "unavailable": "このホストでは Docker を利用できません。",
+      "error": "Docker コマンドに失敗しました: {{error}}",
+      "columns": {
+        "container": "コンテナ / イメージ",
+        "image": "イメージ",
+        "state": "状態",
+        "ports": "ポート"
+      },
+      "states": {
+        "running": "実行中",
+        "exited": "終了",
+        "created": "作成済み",
+        "paused": "一時停止",
+        "restarting": "再起動中",
+        "removing": "削除中",
+        "dead": "停止不能",
+        "unknown": "不明"
+      },
+      "actions": {
+        "refresh": "コンテナを更新",
+        "logs": "ログを表示",
+        "follow_logs": "ログを追跡",
+        "exec": "シェルを開く",
+        "start": "開始",
+        "stop": "停止",
+        "restart": "再起動"
+      },
+      "exec_title": "Docker: {{name}}",
+      "follow_title": "Docker ログ: {{name}}",
+      "logs": {
+        "title": "ログ: {{name}}",
+        "loading": "ログを読み込み中...",
+        "empty": "最近のログはありません。",
+        "close": "ログを閉じる"
+      },
+      "confirm": {
+        "title": "Docker 操作の確認",
+        "cancel": "キャンセル",
+        "start_desc": "コンテナ {{name}}（{{id}}）を開始しますか？",
+        "stop_desc": "コンテナ {{name}}（{{id}}）を停止しますか？コンテナ内の実行中の処理が中断される可能性があります。",
+        "restart_desc": "コンテナ {{name}}（{{id}}）を再起動しますか？コンテナ内の実行中の処理は中断されます。"
+      },
+      "toast": {
+        "action_already_running": "Docker 操作を実行中です。",
+        "logs_already_running": "Docker ログを読み込み中です。",
+        "logs_failed": "Docker ログの読み込みに失敗しました。",
+        "exec_terminal_missing": "このコンテナで利用できるライブ SSH ターミナル経路がありません。",
+        "exec_opened": "{{name}} のシェルを開きました。",
+        "follow_opened": "{{name}} のログを追跡しています。",
+        "connection_missing": "選択した接続は利用できません。",
+        "action_failed": "Docker 操作に失敗しました。",
+        "action_succeeded": "{{name}} の Docker 操作が完了しました。"
+      }
+    },
+    "host_services": {
+      "search_placeholder": "サービスを検索...",
+      "count_suffix": "サービス",
+      "sampling": "サービスを取得中...",
+      "empty": "一致するサービスはありません",
+      "unavailable": "このホストではサービスマネージャーを利用できません。",
+      "error": "サービスコマンドに失敗しました: {{error}}",
+      "capability": {
+        "full": "完全対応",
+        "partial": "一部対応",
+        "unknown": "対応状況不明"
+      },
+      "columns": {
+        "service": "サービス",
+        "state": "状態",
+        "enabled": "有効化",
+        "pid": "PID",
+        "description": "説明",
+        "load": "ロード",
+        "sub_state": "サブ状態"
+      },
+      "states": {
+        "running": "実行中",
+        "stopped": "停止",
+        "failed": "失敗",
+        "activating": "起動中",
+        "deactivating": "停止中",
+        "reloading": "再読み込み中",
+        "unknown": "不明"
+      },
+      "enabled": {
+        "enabled": "有効",
+        "disabled": "無効",
+        "masked": "マスク済み",
+        "static": "静的",
+        "unknown": "不明"
+      },
+      "actions": {
+        "refresh": "サービスを更新",
+        "logs": "ログを表示",
+        "follow_logs": "ログを追跡",
+        "start": "開始",
+        "stop": "停止",
+        "restart": "再起動",
+        "reload": "再読み込み",
+        "enable": "有効化",
+        "disable": "無効化"
+      },
+      "follow_title": "サービスログ: {{name}}",
+      "logs": {
+        "title": "ログ: {{name}}",
+        "loading": "ログを読み込み中...",
+        "empty": "最近のログはありません。",
+        "close": "ログを閉じる"
+      },
+      "confirm": {
+        "title": "サービス操作の確認",
+        "cancel": "キャンセル",
+        "start_desc": "サービス {{id}}（{{name}}）を開始しますか？",
+        "stop_desc": "サービス {{id}}（{{name}}）を停止しますか？実行中の作業が中断される可能性があります。",
+        "restart_desc": "サービス {{id}}（{{name}}）を再起動しますか？実行中の作業は中断されます。",
+        "reload_desc": "サービス {{id}}（{{name}}）を再読み込みしますか？",
+        "enable_desc": "サービス {{id}}（{{name}}）を起動時に有効化しますか？",
+        "disable_desc": "サービス {{id}}（{{name}}）を起動時に無効化しますか？"
+      },
+      "toast": {
+        "action_already_running": "サービス操作はすでに実行中です。",
+        "logs_already_running": "サービスログはすでに読み込み中です。",
+        "logs_failed": "サービスログの読み込みに失敗しました。",
+        "exec_terminal_missing": "このサービスで利用できるライブ SSH ターミナル経路がありません。",
+        "follow_opened": "{{name}} のログを追跡しています。",
+        "connection_missing": "選択した接続は利用できなくなりました。",
+        "action_failed": "サービス操作に失敗しました。",
+        "action_succeeded": "{{name}} のサービス操作が完了しました。",
+        "partial_support": "{{os}} でのサービス管理は一部対応です。"
+      }
+    },
+    "host_logs": {
+      "search_placeholder": "ログを検索...",
+      "count_suffix": "件のログ",
+      "loading": "ログを読み込み中...",
+      "empty": "一致するログはありません",
+      "unavailable": "このホストではホストログを利用できません。",
+      "error": "ログコマンドに失敗しました: {{error}}",
+      "capability": {
+        "full": "完全対応",
+        "partial": "一部対応",
+        "unknown": "対応状況不明"
+      },
+      "presets": {
+        "all": "すべて",
+        "errors": "エラー",
+        "auth": "SSH/認証",
+        "kernel": "カーネル",
+        "system": "システム"
+      },
+      "columns": {
+        "time": "時刻",
+        "level": "レベル",
+        "source": "ソース",
+        "unit": "ユニット",
+        "message": "メッセージ"
+      },
+      "levels": {
+        "error": "エラー",
+        "warning": "警告",
+        "info": "情報",
+        "debug": "デバッグ",
+        "unknown": "不明"
+      },
+      "actions": {
+        "refresh": "ログを更新",
+        "follow": "ログを追跡"
+      },
+      "follow_title": "ホストログ: {{preset}}",
+      "toast": {
+        "snapshot_already_running": "ログスナップショットはすでに実行中です。",
+        "snapshot_loaded": "{{count}} 件のログを読み込みました。",
+        "snapshot_failed": "ログを読み込めませんでした: {{reason}}",
+        "unavailable": "このホストではホストログを利用できません。",
+        "connection_missing": "選択した接続は利用できなくなりました。",
+        "exec_terminal_missing": "ホストログ用の有効な SSH ターミナル経路がありません。",
+        "follow_opened": "{{preset}} ログを追跡しています。",
+        "partial_support": "{{os}} でのホストログは一部対応です。",
+        "unknown_error": "不明なエラー"
+      }
+    },
+    "host_tmux": {
+      "search_placeholder": "tmux を検索...",
+      "count_suffix": "件のセッション",
+      "loading": "tmux セッションを読み込み中...",
+      "empty": "一致する tmux セッションはありません",
+      "unavailable": "このホストでは tmux を利用できません。",
+      "error": "tmux コマンドに失敗しました: {{error}}",
+      "capability": {
+        "full": "完全対応",
+        "partial": "一部対応",
+        "unknown": "対応状況不明"
+      },
+      "columns": {
+        "session": "セッション",
+        "attached": "接続",
+        "windows": "ウィンドウ",
+        "panes": "Pane",
+        "activity": "アクティビティ",
+        "created": "作成"
+      },
+      "attached": {
+        "yes": "接続中",
+        "no": "切断中"
+      },
+      "actions": {
+        "new_session": "新規セッション",
+        "refresh": "tmux を更新",
+        "attach": "接続",
+        "kill_session": "セッションを強制終了",
+        "rename_session": "セッション名を変更",
+        "rename_window": "ウィンドウ名を変更",
+        "kill_window": "ウィンドウを終了",
+        "kill_pane": "Pane を終了",
+        "send_command": "コマンドを送信"
+      },
+      "active_window": "アクティブ #{{index}} {{name}}",
+      "no_active_window": "アクティブなウィンドウなし",
+      "attach_title": "tmux: {{name}}",
+      "new_session_title": "新規 tmux セッション",
+      "new_session_name": "新規セッション",
+      "confirm": {
+        "title": "tmux 操作の確認",
+        "cancel": "キャンセル",
+        "kill_session_desc": "tmux セッション {{id}}（{{name}}）を強制終了しますか？このセッション内のすべてのウィンドウと pane が終了します。",
+        "kill_window_desc": "セッション {{name}} の tmux ウィンドウ {{target}} を終了しますか？このウィンドウ内のすべての Pane が終了します。",
+        "kill_pane_desc": "セッション {{name}} の tmux Pane {{target}} を終了しますか？実行中のコマンドも終了します。",
+        "action_desc": "セッション {{name}} の {{target}} に tmux 操作を実行しますか？"
+      },
+      "toast": {
+        "snapshot_already_running": "tmux スナップショットはすでに実行中です。",
+        "snapshot_loaded": "{{count}} 件の tmux セッションを読み込みました。",
+        "snapshot_failed": "tmux セッションを読み込めませんでした: {{reason}}",
+        "unavailable": "このホストでは tmux を利用できません。",
+        "connection_missing": "選択した接続は利用できなくなりました。",
+        "exec_terminal_missing": "tmux 用の有効な SSH ターミナル経路がありません。",
+        "attach_opened": "{{name}} に接続しています。",
+        "new_session_opened": "{{name}} を開いています。",
+        "action_already_running": "tmux 操作はすでに実行中です。",
+        "action_failed": "tmux 操作に失敗しました。",
+        "action_succeeded": "{{target}} の tmux 操作が完了しました。",
+        "unknown_error": "不明なエラー",
+        "input_required": "続行する前に値を入力してください。"
+      },
+      "input": {
+        "rename_session_title": "セッション名を変更",
+        "rename_window_title": "ウィンドウ名を変更",
+        "send_command_title": "Pane にコマンドを送信",
+        "rename_session_desc": "セッション {{target}} の新しい名前を設定します。",
+        "rename_window_desc": "セッション {{name}} のウィンドウ {{target}} に新しい名前を設定します。",
+        "send_command_desc": "セッション {{name}} の Pane {{target}} に 1 行のコマンドを送信して Enter を押します。",
+        "rename_session_placeholder": "セッション名",
+        "rename_window_placeholder": "ウィンドウ名",
+        "send_command_placeholder": "送信するコマンド"
+      }
+    },
+    "host_schedules": {
+      "search_placeholder": "スケジュールタスクを検索...",
+      "count_suffix": "件",
+      "loading": "スケジュールタスクをスキャン中...",
+      "empty": "一致するスケジュールタスクはありません",
+      "unavailable": "スケジュール tools are not available on this host.",
+      "error": "スケジュール command failed: {{error}}",
+      "capability": {
+        "full": "完全サポート",
+        "partial": "部分サポート",
+        "unknown": "サポート不明"
+      },
+      "filters": {
+        "all": "すべて",
+        "enabled": "有効",
+        "disabled": "無効",
+        "systemd": "systemd",
+        "cron": "cron",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "failed": "失敗"
+      },
+      "sources": {
+        "systemd": "systemd",
+        "cron": "cron",
+        "anacron": "anacron",
+        "at": "at",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "unknown": "Unknown"
+      },
+      "enabled": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "static": "Static",
+        "masked": "Masked",
+        "unknown": "Unknown"
+      },
+      "active": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "failed": "Failed",
+        "unknown": "Unknown"
+      },
+      "columns": {
+        "task": "タスク",
+        "source": "ソース",
+        "state": "状態",
+        "enabled": "有効",
+        "next": "次回",
+        "last": "前回",
+        "user": "ユーザー",
+        "schedule": "スケジュール",
+        "command": "コマンド",
+        "result": "結果",
+        "description": "説明",
+        "unit": "Unit"
+      },
+      "actions": {
+        "refresh": "スケジュールを更新",
+        "diagnostic": "診断ターミナルを開く",
+        "logs": "ログを表示",
+        "follow_logs": "ログを追跡",
+        "enable": "有効化",
+        "disable": "無効化",
+        "run_now": "今すぐ実行"
+      },
+      "diagnostic_title": "スケジュール diagnostics",
+      "follow_title": "スケジュール logs: {{name}}",
+      "logs": {
+        "title": "Logs: {{name}}",
+        "loading": "Loading logs...",
+        "empty": "No recent logs.",
+        "close": "Close logs"
+      },
+      "confirm": {
+        "title": "Confirm スケジュールタスク action",
+        "cancel": "キャンセル",
+        "enable_desc": "スケジュールタスク {{name}} を有効化しますか？Unit: {{unit}}。",
+        "disable_desc": "スケジュールタスク {{name}} を無効化しますか？今後の実行が停止する可能性があります。Unit: {{unit}}。",
+        "run_now_desc": "Run スケジュールタスク {{name}} now? Unit: {{unit}}."
+      },
+      "toast": {
+        "snapshot_already_running": "Schedule scan is already running.",
+        "snapshot_loaded": "Loaded {{count}} scheduled tasks.",
+        "snapshot_failed": "Failed to scan scheduled tasks: {{reason}}",
+        "unavailable": "Scheduled task tools are not available on this host.",
+        "connection_missing": "The selected connection is no longer available.",
+        "exec_terminal_missing": "No live SSH terminal route is available for diagnostics.",
+        "diagnostic_opened": "Opened schedule diagnostics.",
+        "follow_opened": "Opened schedule log follow for {{name}}.",
+        "logs_already_running": "Schedule logs are already loading.",
+        "logs_failed": "Failed to load schedule logs.",
+        "action_already_running": "A scheduled task action is already running.",
+        "action_failed": "Scheduled task action failed.",
+        "enable_succeeded": "{{name}} を有効化しました。",
+        "disable_succeeded": "{{name}} を無効化しました。",
+        "run_now_started": "Started {{name}}.",
+        "partial_support": "Scheduled task support is partial on {{os}}.",
+        "unknown_error": "Unknown scheduled task error."
+      }
+    },
+    "host_ports": {
+      "search_placeholder": "ポートを検索...",
+      "count_suffix": "ポート",
+      "loading": "ポートをスキャン中...",
+      "empty": "一致するポートがありません",
+      "unavailable": "このホストではポートツールを使用できません。",
+      "error": "ポートコマンドに失敗しました: {{error}}",
+      "capability": {
+        "full": "完全対応",
+        "partial": "部分対応",
+        "unknown": "対応状況不明"
+      },
+      "filters": {
+        "all": "すべて",
+        "listening": "待受",
+        "connected": "接続済み",
+        "tcp": "TCP",
+        "udp": "UDP",
+        "risky": "高リスク"
+      },
+      "columns": {
+        "local": "ローカルアドレス",
+        "protocol": "プロトコル",
+        "state": "状態",
+        "pid": "PID",
+        "process": "プロセス",
+        "remote": "リモートアドレス",
+        "user": "ユーザー",
+        "command": "コマンド",
+        "source": "ソース",
+        "inode": "Inode"
+      },
+      "states": {
+        "listening": "待受中",
+        "established": "確立済み",
+        "open": "オープン",
+        "time_wait": "TIME_WAIT",
+        "close_wait": "CLOSE_WAIT",
+        "unknown": "不明"
+      },
+      "actions": {
+        "refresh": "ポートを更新",
+        "diagnostic": "診断ターミナルを開く",
+        "copy_endpoint": "アドレスをコピー",
+        "jump_process": "プロセスを検索"
+      },
+      "diagnostic_title": "ポート診断",
+      "toast": {
+        "snapshot_already_running": "ポートスキャンは実行中です。",
+        "snapshot_loaded": "{{count}} 件のポートを読み込みました。",
+        "snapshot_failed": "ポートスキャンに失敗しました: {{reason}}",
+        "unavailable": "このホストではポートツールを使用できません。",
+        "connection_missing": "選択した接続は利用できません。",
+        "exec_terminal_missing": "診断に使える SSH ターミナル経路がありません。",
+        "diagnostic_opened": "ポート診断を開きました。",
+        "copied_endpoint": "{{endpoint}} をコピーしました。",
+        "partial_support": "{{os}} ではポート検査は部分対応です。",
+        "unknown_error": "不明なポートスキャンエラーです。"
+      }
+    },
+    "host_filesystems": {
+      "search_placeholder": "ファイルシステムを検索...",
+      "count_suffix": "件",
+      "loading": "ディスクをスキャン中...",
+      "empty": "一致するファイルシステム項目はありません",
+      "unavailable": "このホストではファイルシステムツールを利用できません。",
+      "error": "ファイルシステムコマンドに失敗しました: {{error}}",
+      "capability": {
+        "full": "完全サポート",
+        "partial": "部分サポート",
+        "unknown": "サポート状況不明"
+      },
+      "filters": {
+        "all": "すべて",
+        "mounts": "マウント",
+        "read_only": "読み取り専用",
+        "high_usage": "高使用率",
+        "inode_pressure": "Inode 圧迫",
+        "large_items": "大きい項目",
+        "blocks": "ブロック",
+        "attention": "要確認",
+        "inode_hotspots": "Inode / ファイル数"
+      },
+      "columns": {
+        "path": "パス",
+        "kind": "種類",
+        "usage": "使用率",
+        "inode": "Inode",
+        "fs": "FS",
+        "size": "サイズ",
+        "read_only": "RO",
+        "device": "デバイス",
+        "used_available": "使用済み / 空き",
+        "source": "ソース",
+        "detail": "詳細",
+        "options": "オプション",
+        "attention": "要確認"
+      },
+      "kinds": {
+        "mount": "マウント",
+        "large_dir": "大きいディレクトリ",
+        "large_file": "大きいファイル",
+        "block": "ブロックデバイス",
+        "unknown": "不明",
+        "inode_dir": "Inode ホットスポット",
+        "count_dir": "ファイル数ホットスポット"
+      },
+      "read_only": {
+        "yes": "はい",
+        "no": "いいえ"
+      },
+      "actions": {
+        "refresh": "ディスクを更新",
+        "diagnostic": "診断ターミナルを開く",
+        "copy_path": "パスをコピー"
+      },
+      "diagnostic_title": "ディスク診断",
+      "toast": {
+        "snapshot_already_running": "ディスクスキャンはすでに実行中です。",
+        "snapshot_loaded": "{{count}} 件のファイルシステム項目を読み込みました。",
+        "snapshot_failed": "ディスクスキャンに失敗しました: {{reason}}",
+        "unavailable": "このホストではファイルシステムツールを利用できません。",
+        "connection_missing": "選択した接続は利用できなくなりました。",
+        "exec_terminal_missing": "診断に使えるライブ SSH ターミナル経路がありません。",
+        "diagnostic_opened": "ディスク診断を開きました。",
+        "copied_path": "{{path}} をコピーしました。",
+        "partial_support": "{{os}} でのファイルシステム検査は部分サポートです。",
+        "unknown_error": "不明なファイルシステムスキャンエラーです。"
+      },
+      "attention": {
+        "critical_usage": "使用率危険",
+        "high_usage": "高使用率",
+        "critical_inode": "Inode 危険",
+        "inode_pressure": "Inode 圧迫",
+        "low_free_space": "空き不足",
+        "read_only": "読み取り専用",
+        "large_item": "大きい項目",
+        "inode_hotspot": "Inode ホットスポット",
+        "file_count_hotspot": "ファイル数ホットスポット"
+      },
+      "values": {
+        "inode_count": "{{count}} inode",
+        "file_count": "{{count}} ファイル"
+      }
+    },
+    "host_packages": {
+      "search_placeholder": "パッケージを検索...",
+      "count_suffix": "パッケージ",
+      "loading": "パッケージをスキャン中...",
+      "empty": "一致するパッケージはありません",
+      "unavailable": "このホストではパッケージ管理ツールを使用できません。",
+      "error": "パッケージコマンドに失敗しました: {{error}}",
+      "capability": {
+        "full": "完全対応",
+        "partial": "読み取り専用対応",
+        "unknown": "対応状況不明"
+      },
+      "filters": {
+        "all": "すべて",
+        "upgradable": "更新可能",
+        "installed": "インストール済み",
+        "services": "サービス関連",
+        "apt": "apt",
+        "dnf": "dnf",
+        "yum": "yum",
+        "pacman": "pacman",
+        "brew": "Homebrew"
+      },
+      "columns": {
+        "package": "パッケージ",
+        "status": "状態",
+        "installed": "インストール済み",
+        "candidate": "候補版",
+        "manager": "管理ツール",
+        "service": "サービス",
+        "arch": "アーキテクチャ",
+        "repository": "リポジトリ",
+        "summary": "概要",
+        "source": "ソース",
+        "owner_paths": "所有パス"
+      },
+      "status": {
+        "upgradable": "更新可能",
+        "installed": "インストール済み",
+        "unknown": "不明"
+      },
+      "actions": {
+        "refresh": "パッケージを更新",
+        "inspect": "パッケージ詳細を開く",
+        "copy_name": "パッケージ名をコピー"
+      },
+      "inspect_title": "パッケージ詳細",
+      "toast": {
+        "snapshot_already_running": "パッケージスキャンは既に実行中です。",
+        "snapshot_loaded": "{{count}} 件のパッケージを読み込みました。",
+        "snapshot_failed": "パッケージのスキャンに失敗しました: {{reason}}",
+        "unavailable": "このホストではパッケージ管理ツールを使用できません。",
+        "connection_missing": "選択した接続は利用できなくなりました。",
+        "exec_terminal_missing": "パッケージ詳細に使えるライブ SSH 端末ルートがありません。",
+        "inspect_unsupported": "{{manager}} のパッケージ詳細コマンドはまだ対応していません。",
+        "inspect_opened": "{{name}} の詳細を開きました。",
+        "copied_name": "{{name}} をコピーしました。",
+        "partial_support": "{{os}} のパッケージ検査は読み取り専用対応です。",
+        "unknown_error": "不明なパッケージスキャンエラーです。"
+      }
+    }
+  },
+  "sessions": {
+    "tree": {
+      "no_sessions": "セッションなし",
+      "click_to_add": "+ をクリックして新しい接続を追加",
+      "actions": {
+        "new_terminal": "新しいターミナル",
+        "sftp": "SFTP",
+        "disconnect": "切断",
+        "reconnect": "再接続",
+        "edit_and_reconnect": "編集して再接続",
+        "remove_session": "セッションを削除",
+        "cancel_reconnect": "再接続をキャンセル",
+        "port_forwarding": "ポートフォワーディング",
+        "drill_in": "ドリルイン（次のホップ）",
+        "saved_next_hop": "保存済み接続を次のホップとして使用...",
+        "connect": "接続",
+        "save_as_connection": "接続として保存..."
+      }
+    },
+    "focused_list": {
+      "all_servers": "すべてのサーバー",
+      "child": "子",
+      "children": "子",
+      "no_child_nodes": "このノードには子ノードがありません",
+      "no_servers": "サーバーがまだありません",
+      "add_by_drilling": "ドリルダウンして子ノードを追加できます",
+      "click_to_add": "+をクリックして新しい接続を追加",
+      "terminal": "ターミナル #{{number}}",
+      "close_terminal": "ターミナルを閉じる"
+    },
+    "actions": {
+      "connect": "接続",
+      "new_terminal": "新規ターミナル",
+      "sftp_explorer": "SFTPエクスプローラー",
+      "port_forwarding": "ポートフォワーディング",
+      "disconnect": "切断",
+      "reconnect": "再接続",
+      "drill_in": "ドリルイン（次のホップ）",
+      "saved_next_hop": "保存済み接続を次のホップとして使用...",
+      "save_as_connection": "接続として保存..."
+    },
+    "saved_next_hop": {
+      "title": "保存済み接続を次のホップとして使用",
+      "description": "{{host}} の下に接続する保存済み接続を選択します。",
+      "empty": "利用できる保存済み接続はありません。",
+      "cancel": "キャンセル",
+      "proxy_chain_badge": "{{count}} ホップ",
+      "parent_not_ready": "保存済みの次のホップを追加する前に親ノードへ接続してください。",
+      "not_found": "保存済み接続が見つかりません。",
+      "missing_credentials": "この保存済み接続には接続に必要な認証情報がありません。",
+      "materialize_failed": "保存済み接続をセッションツリーに追加できませんでした。"
+    },
+    "breadcrumb": {
+      "back_to_root": "ルートビューに戻る",
+      "all_servers": "すべてのサーバー"
+    }
+  }
+}

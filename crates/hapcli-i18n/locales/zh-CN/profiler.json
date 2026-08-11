@@ -1,0 +1,48 @@
+{
+  "profiler": {
+    "capsule": {
+      "click_expand": "点击展开",
+      "no_data": "暂无数据",
+      "sampling": "采样中..."
+    },
+    "detail": {
+      "load_avg": "平均负载",
+      "cpu_cores": "CPU 核心数",
+      "memory": "内存",
+      "source": "数据来源"
+    },
+    "panel": {
+      "no_connection": "未选择活动连接",
+      "sampling": "采样中...",
+      "no_data": "暂无数据",
+      "system_information": "系统信息",
+      "system": "系统",
+      "system_version": "系统版本",
+      "architecture": "系统架构",
+      "boot_time": "开机时间",
+      "uptime": "运行时长",
+      "cpu": "CPU",
+      "memory": "内存",
+      "disk": "磁盘",
+      "gpu": "显卡",
+      "gpu_memory": "显存",
+      "gpus": "显卡",
+      "network": "网络 I/O",
+      "load_avg": "平均负载",
+      "rtt": "RTT 延迟",
+      "source": "数据来源",
+      "disabled": "监控已关闭",
+      "enable": "开启采样",
+      "swap": "交换空间",
+      "mounts": "挂载点",
+      "interfaces": "网卡",
+      "top_processes": "高内存进程",
+      "source_full": "完整",
+      "source_partial": "部分",
+      "source_rtt_only": "仅 RTT",
+      "source_failed": "失败",
+      "source_unsupported": "不支持",
+      "retry": "重新探测"
+    }
+  }
+}

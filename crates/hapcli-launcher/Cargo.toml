@@ -1,0 +1,9 @@
+[package]
+name = "hapcli-launcher"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+hapcli-settings = { path = "../hapcli-settings" }
+hapcli-wsl-graphics = { path = "../hapcli-wsl-graphics" }

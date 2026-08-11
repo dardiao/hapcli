@@ -1,0 +1,16 @@
+[package]
+name = "hapcli-settings"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+hapcli-atomic-file = { path = "../hapcli-atomic-file" }
+hapcli-portable-runtime = { path = "../hapcli-portable-runtime" }
+hapcli-render-policy = { path = "../hapcli-render-policy" }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile = "3.23"

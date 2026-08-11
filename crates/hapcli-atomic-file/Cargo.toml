@@ -1,0 +1,8 @@
+[package]
+name = "hapcli-atomic-file"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dev-dependencies]
+tempfile = "3.23"

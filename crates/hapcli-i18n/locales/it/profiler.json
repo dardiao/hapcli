@@ -1,0 +1,48 @@
+{
+  "profiler": {
+    "capsule": {
+      "click_expand": "Clicca per espandere",
+      "no_data": "Nessun dato",
+      "sampling": "Campionamento..."
+    },
+    "detail": {
+      "load_avg": "Carico medio",
+      "cpu_cores": "Core CPU",
+      "memory": "Memoria",
+      "source": "Fonte"
+    },
+    "panel": {
+      "no_connection": "Nessuna connessione attiva selezionata",
+      "sampling": "Campionamento...",
+      "no_data": "Nessun dato",
+      "system_information": "Informazioni di sistema",
+      "system": "Sistema",
+      "system_version": "Versione del sistema",
+      "architecture": "Architettura",
+      "boot_time": "Ora di avvio",
+      "uptime": "Tempo di attività",
+      "cpu": "CPU",
+      "memory": "Memoria",
+      "disk": "Disco",
+      "gpu": "GPU",
+      "gpu_memory": "Memoria GPU",
+      "gpus": "GPU",
+      "network": "I/O di Rete",
+      "load_avg": "Carico medio",
+      "rtt": "Latenza RTT",
+      "source": "Fonte",
+      "disabled": "Monitoraggio disattivato",
+      "enable": "Attiva campionamento",
+      "swap": "Swap",
+      "mounts": "Mount",
+      "interfaces": "Interfacce di rete",
+      "top_processes": "Processi per memoria",
+      "source_full": "Completo",
+      "source_partial": "Parziale",
+      "source_rtt_only": "Solo RTT",
+      "source_failed": "Non riuscito",
+      "source_unsupported": "Non supportato",
+      "retry": "Rileva di nuovo"
+    }
+  }
+}

@@ -1,0 +1,576 @@
+struct PooledSshConnection {
+    target: client::Handle<NativeClientHandler>,
+    _jump_handles: Vec<client::Handle<NativeClientHandler>>,
+    remote_forward_handler: RemoteForwardHandlerSlot,
+    x11_forward_handler: X11ForwardHandlerSlot,
+    x11_dispatcher: X11ForwardDispatcher,
+    auth_banners: AuthBannerSink,
+    agent_forwarding_accepted: Arc<AtomicBool>,
+}
+
+fn append_limited_command_output(
+    output: &mut Vec<u8>,
+    data: &[u8],
+    max_output_size: usize,
+    total_output_size: &mut usize,
+    truncated: &mut bool,
+) {
+    if *total_output_size >= max_output_size {
+        *truncated = true;
+        return;
+    }
+    let remaining = max_output_size.saturating_sub(*total_output_size);
+    if data.len() > remaining {
+        output.extend_from_slice(&data[..remaining]);
+        *total_output_size += remaining;
+        *truncated = true;
+    } else {
+        output.extend_from_slice(data);
+        *total_output_size += data.len();
+    }
+}
+
+impl PooledSshConnection {
+    fn direct(
+        handle: client::Handle<NativeClientHandler>,
+        remote_forward_handler: RemoteForwardHandlerSlot,
+        x11_forward_handler: X11ForwardHandlerSlot,
+        x11_dispatcher: X11ForwardDispatcher,
+        auth_banners: AuthBannerSink,
+        agent_forwarding_accepted: Arc<AtomicBool>,
+    ) -> Self {
+        Self {
+            target: handle,
+            _jump_handles: Vec::new(),
+            remote_forward_handler,
+            x11_forward_handler,
+            x11_dispatcher,
+            auth_banners,
+            agent_forwarding_accepted,
+        }
+    }
+
+    fn tunneled(
+        target: client::Handle<NativeClientHandler>,
+        jump_handles: Vec<client::Handle<NativeClientHandler>>,
+        remote_forward_handler: RemoteForwardHandlerSlot,
+        x11_forward_handler: X11ForwardHandlerSlot,
+        x11_dispatcher: X11ForwardDispatcher,
+        auth_banners: AuthBannerSink,
+        agent_forwarding_accepted: Arc<AtomicBool>,
+    ) -> Self {
+        Self {
+            target,
+            _jump_handles: jump_handles,
+            remote_forward_handler,
+            x11_forward_handler,
+            x11_dispatcher,
+            auth_banners,
+            agent_forwarding_accepted,
+        }
+    }
+
+    async fn is_closed(&self) -> bool {
+        self.target.is_closed()
+    }
+}
+
+impl SshConnectionHandle {
+    /// Returns the real pooled SSH transport state behind this registry handle.
+    ///
+    /// Node-first consumers such as SFTP and port forwarding use this to avoid
+    /// the old native bug where an `Active` registry entry with a closed
+    /// terminal-created russh handle was borrowed as if it were healthy. Tauri
+    /// `ConnectionEntry` ownership requires the physical transport to be valid,
+    /// independent of whether any terminal pane still exists.
+    pub async fn transport_status(&self) -> ConnectionTransportStatus {
+        if let Some(pooled) = self.physical::<PooledSshConnection>() {
+            if pooled.is_closed().await {
+                ConnectionTransportStatus::Closed
+            } else {
+                ConnectionTransportStatus::Open
+            }
+        } else if self.has_physical() {
+            // Tests and embedders may install a non-russh physical marker. Treat
+            // that as open so the pool contract stays type-agnostic outside the
+            // real transport module.
+            ConnectionTransportStatus::Open
+        } else {
+            ConnectionTransportStatus::Missing
+        }
+    }
+
+    pub async fn probe_alive(&self, probe_timeout: Duration) -> KeepaliveProbeResult {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return KeepaliveProbeResult::IoError;
+        };
+        if pooled.is_closed().await {
+            return KeepaliveProbeResult::IoError;
+        }
+
+        let handle = &pooled.target;
+        // Tauri's app-level heartbeat calls russh `send_keepalive(true)`.
+        // Use the same API and frame (`keepalive@openssh.com` with
+        // want_reply=true) so native preserves Tauri's timeout/error surface
+        // instead of using the stricter local `send_ping()` helper.
+        match timeout(probe_timeout, handle.send_keepalive(true)).await {
+            Ok(Ok(())) => KeepaliveProbeResult::Ok,
+            Ok(Err(error)) => {
+                let error = format!("{error:?}");
+                if error.contains("Disconnect") || error.contains("disconnect") {
+                    KeepaliveProbeResult::IoError
+                } else {
+                    KeepaliveProbeResult::Timeout
+                }
+            }
+            Err(_) => KeepaliveProbeResult::Timeout,
+        }
+    }
+
+    pub async fn open_direct_tcpip(
+        &self,
+        host: &str,
+        port: u16,
+        origin_host: &str,
+        origin_port: u16,
+    ) -> Result<BoxedSshForwardStream, SshTransportError> {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return Err(SshTransportError::ConnectionFailed(
+                "no active SSH connection is available for port forwarding".to_string(),
+            ));
+        };
+        if pooled.is_closed().await {
+            return Err(SshTransportError::ConnectionFailed(
+                "SSH connection is closed and cannot open a port forward".to_string(),
+            ));
+        }
+
+        let handle = &pooled.target;
+        let stream =
+            open_direct_tcpip_stream_with_origin(handle, host, port, origin_host, origin_port)
+                .await?;
+        Ok(Box::new(stream))
+    }
+
+    pub async fn open_x11_channel(
+        &self,
+        origin_host: &str,
+        origin_port: u16,
+    ) -> Result<BoxedSshForwardStream, SshTransportError> {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return Err(SshTransportError::ConnectionFailed(
+                "no active SSH connection is available for X11 forwarding".to_string(),
+            ));
+        };
+        if pooled.is_closed().await {
+            return Err(SshTransportError::ConnectionFailed(
+                "SSH connection is closed and cannot open an X11 channel".to_string(),
+            ));
+        }
+
+        let channel = pooled
+            .target
+            .channel_open_x11(origin_host, origin_port as u32)
+            .await
+            .map_err(|error| SshTransportError::Channel(error.to_string()))?;
+        Ok(Box::new(channel.into_stream()))
+    }
+
+    pub async fn allocate_remote_x11_display(
+        &self,
+        allocator: &X11RemoteDisplayAllocator,
+        command_timeout: Duration,
+    ) -> Result<u16, SshTransportError> {
+        let command = allocator.probe_command();
+        let output = self.run_command(&command, command_timeout, 4096).await?;
+        allocator
+            .parse_probe_output(&output)
+            .map_err(|error| SshTransportError::Channel(error.to_string()))
+    }
+
+    pub async fn install_remote_x11_authority(
+        &self,
+        update: &X11RemoteXauthUpdate,
+        command_timeout: Duration,
+    ) -> Result<(), SshTransportError> {
+        let command = update.command();
+        // The command carries the fake X11 cookie. Keep it inside Zeroizing and
+        // return only a redacted failure surface if the remote xauth call fails.
+        let output = self
+            .run_command_capture(command.as_str(), command_timeout, 4096)
+            .await?;
+        if output.exit_code == Some(0) {
+            Ok(())
+        } else {
+            Err(SshTransportError::Channel(
+                "remote xauth update failed".to_string(),
+            ))
+        }
+    }
+
+    pub async fn preflight_host_key_via_direct_tcpip(
+        &self,
+        host: &str,
+        port: u16,
+        timeout_secs: u64,
+    ) -> HostKeyStatus {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return HostKeyStatus::Error {
+                message: "no active parent SSH connection is available for host-key preflight"
+                    .to_string(),
+            };
+        };
+        if pooled.is_closed().await {
+            return HostKeyStatus::Error {
+                message: "parent SSH connection is closed and cannot preflight child host key"
+                    .to_string(),
+            };
+        }
+
+        let handle = &pooled.target;
+        // Tauri `preflightTreeNode` verifies a child host key through the
+        // already-connected parent node. Keep the stream type inside the SSH
+        // crate so GPUI can request node-scoped preflight without depending on
+        // russh internals.
+        match open_direct_tcpip_stream_with_origin(handle, host, port, "127.0.0.1", 0).await {
+            Ok(stream) => check_host_key_via_stream(host, port, stream, timeout_secs).await,
+            Err(error) => HostKeyStatus::Error {
+                message: error.to_string(),
+            },
+        }
+    }
+
+    pub async fn request_remote_tcpip_forward(
+        &self,
+        bind_address: &str,
+        bind_port: u16,
+    ) -> Result<u16, SshTransportError> {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return Err(SshTransportError::ConnectionFailed(
+                "no active SSH connection is available for remote port forwarding".to_string(),
+            ));
+        };
+        if pooled.is_closed().await {
+            return Err(SshTransportError::ConnectionFailed(
+                "SSH connection is closed and cannot request remote port forwarding".to_string(),
+            ));
+        }
+
+        let handle = &pooled.target;
+        let server_port = handle
+            .tcpip_forward(bind_address, bind_port as u32)
+            .await
+            .map_err(|error| SshTransportError::ConnectionFailed(error.to_string()))?;
+        resolve_remote_forward_port(bind_port, server_port)
+    }
+
+    pub async fn cancel_remote_tcpip_forward(
+        &self,
+        bind_address: &str,
+        bind_port: u16,
+    ) -> Result<(), SshTransportError> {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return Err(SshTransportError::ConnectionFailed(
+                "no active SSH connection is available for remote port forwarding".to_string(),
+            ));
+        };
+        let handle = &pooled.target;
+        handle
+            .cancel_tcpip_forward(bind_address, bind_port as u32)
+            .await
+            .map_err(|error| {
+                SshTransportError::ConnectionFailed(format!(
+                    "failed to cancel remote port forward {bind_address}:{bind_port}: {error}"
+                ))
+            })
+    }
+
+    pub async fn run_command(
+        &self,
+        command: &str,
+        timeout: Duration,
+        max_output_size: usize,
+    ) -> Result<String, SshTransportError> {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return Err(SshTransportError::ConnectionFailed(
+                "no active SSH connection is available for remote command execution".to_string(),
+            ));
+        };
+        if pooled.is_closed().await {
+            return Err(SshTransportError::ConnectionFailed(
+                "SSH connection is closed and cannot execute remote commands".to_string(),
+            ));
+        }
+
+        let mut channel = {
+            let handle = &pooled.target;
+            handle
+                .channel_open_session()
+                .await
+                .map_err(|error| SshTransportError::Channel(error.to_string()))?
+        };
+        channel
+            .exec(true, command)
+            .await
+            .map_err(|error| SshTransportError::Channel(error.to_string()))?;
+
+        let mut output = Vec::new();
+        let mut exit_status = None;
+        tokio::time::timeout(timeout, async {
+            while let Some(message) = channel.wait().await {
+                match message {
+                    ChannelMsg::Data { data } => {
+                        output.extend_from_slice(&data);
+                    }
+                    ChannelMsg::ExtendedData { data, ext } if ext == 1 => {
+                        output.extend_from_slice(&data);
+                    }
+                    ChannelMsg::ExitStatus {
+                        exit_status: status,
+                    } => {
+                        exit_status = Some(status);
+                    }
+                    // EOF only closes the remote output stream. ExitStatus can
+                    // still follow, so wait for Close before evaluating the
+                    // command result.
+                    ChannelMsg::Eof => {}
+                    ChannelMsg::Close => break,
+                    _ => {}
+                }
+                if output.len() > max_output_size {
+                    output.truncate(max_output_size);
+                    break;
+                }
+            }
+        })
+        .await
+        .map_err(|_| SshTransportError::Timeout)?;
+        let _ = channel.close().await;
+
+        if let Some(status) = exit_status
+            && status != 0
+        {
+            return Err(SshTransportError::Channel(format!(
+                "remote command exited with status {status}"
+            )));
+        }
+
+        String::from_utf8(output).map_err(|error| {
+            SshTransportError::Channel(format!("remote command output was not UTF-8: {error}"))
+        })
+    }
+
+    pub async fn run_command_capture(
+        &self,
+        command: &str,
+        timeout: Duration,
+        max_output_size: usize,
+    ) -> Result<SshCommandOutput, SshTransportError> {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return Err(SshTransportError::ConnectionFailed(
+                "no active SSH connection is available for remote command execution".to_string(),
+            ));
+        };
+        if pooled.is_closed().await {
+            return Err(SshTransportError::ConnectionFailed(
+                "SSH connection is closed and cannot execute remote commands".to_string(),
+            ));
+        }
+
+        let mut channel = {
+            let handle = &pooled.target;
+            handle
+                .channel_open_session()
+                .await
+                .map_err(|error| SshTransportError::Channel(error.to_string()))?
+        };
+        channel
+            .exec(true, command)
+            .await
+            .map_err(|error| SshTransportError::Channel(error.to_string()))?;
+
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let mut exit_status = None;
+        let mut total_output_size = 0;
+        let mut truncated = false;
+        tokio::time::timeout(timeout, async {
+            while let Some(message) = channel.wait().await {
+                match message {
+                    ChannelMsg::Data { data } => {
+                        append_limited_command_output(
+                            &mut stdout,
+                            &data,
+                            max_output_size,
+                            &mut total_output_size,
+                            &mut truncated,
+                        );
+                    }
+                    ChannelMsg::ExtendedData { data, ext } if ext == 1 => {
+                        append_limited_command_output(
+                            &mut stderr,
+                            &data,
+                            max_output_size,
+                            &mut total_output_size,
+                            &mut truncated,
+                        );
+                    }
+                    ChannelMsg::ExitStatus {
+                        exit_status: status,
+                    } => {
+                        exit_status = Some(status);
+                    }
+                    // RFC 4254 allows the exit status to arrive after EOF.
+                    // Keep the capture channel alive until Close so successful
+                    // host-tool probes are not reported with an unknown status.
+                    ChannelMsg::Eof => {}
+                    ChannelMsg::Close => break,
+                    _ => {}
+                }
+            }
+        })
+        .await
+        .map_err(|_| SshTransportError::Timeout)?;
+        let _ = channel.close().await;
+
+        Ok(SshCommandOutput {
+            stdout: String::from_utf8_lossy(&stdout).to_string(),
+            stderr: String::from_utf8_lossy(&stderr).to_string(),
+            exit_code: exit_status.and_then(|status| i32::try_from(status).ok()),
+            truncated,
+        })
+    }
+
+    pub(crate) async fn open_session_channel(
+        &self,
+    ) -> Result<russh::Channel<client::Msg>, SshTransportError> {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return Err(SshTransportError::ConnectionFailed(
+                "no active SSH connection is available for SFTP".to_string(),
+            ));
+        };
+        if pooled.is_closed().await {
+            return Err(SshTransportError::ConnectionFailed(
+                "SSH connection is closed and cannot open an SFTP channel".to_string(),
+            ));
+        }
+
+        let handle = &pooled.target;
+        handle
+            .channel_open_session()
+            .await
+            .map_err(|error| SshTransportError::Channel(error.to_string()))
+    }
+
+    pub async fn open_persistent_shell_channel(
+        &self,
+        init_command: &str,
+    ) -> Result<SshShellChannel, SshTransportError> {
+        let channel = self.open_session_channel().await?;
+        channel
+            .request_shell(false)
+            .await
+            .map_err(|error| SshTransportError::Channel(error.to_string()))?;
+        if !init_command.is_empty() {
+            channel
+                .data(init_command.as_bytes())
+                .await
+                .map_err(|error| SshTransportError::Channel(error.to_string()))?;
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
+        Ok(SshShellChannel { channel })
+    }
+
+    pub fn set_remote_forward_handler(
+        &self,
+        handler: Arc<dyn RemoteForwardHandler>,
+    ) -> Result<(), SshTransportError> {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return Err(SshTransportError::ConnectionFailed(
+                "no active SSH connection is available for remote port forwarding".to_string(),
+            ));
+        };
+        *pooled.remote_forward_handler.write() = Some(RemoteForwardRegistration {
+            connection_id: self.connection_id().to_string(),
+            handler,
+        });
+        Ok(())
+    }
+
+    pub fn clear_remote_forward_handler(&self) {
+        if let Some(pooled) = self.physical::<PooledSshConnection>() {
+            *pooled.remote_forward_handler.write() = None;
+        }
+    }
+
+    pub fn set_x11_forward_handler(
+        &self,
+        handler: Arc<dyn X11ForwardHandler>,
+    ) -> Result<(), SshTransportError> {
+        let Some(pooled) = self.physical::<PooledSshConnection>() else {
+            return Err(SshTransportError::ConnectionFailed(
+                "no active SSH connection is available for X11 forwarding".to_string(),
+            ));
+        };
+        *pooled.x11_forward_handler.write() = Some(X11ForwardRegistration {
+            connection_id: self.connection_id().to_string(),
+            handler,
+        });
+        Ok(())
+    }
+
+    pub fn clear_x11_forward_handler(&self) {
+        if let Some(pooled) = self.physical::<PooledSshConnection>() {
+            *pooled.x11_forward_handler.write() = None;
+        }
+    }
+}
+
+fn resolve_remote_forward_port(
+    requested_port: u16,
+    server_port: u32,
+) -> Result<u16, SshTransportError> {
+    if server_port == 0 {
+        if requested_port == 0 {
+            return Err(SshTransportError::ConnectionFailed(
+                "remote forwarding server accepted a port allocation request without returning the allocated port"
+                    .to_string(),
+            ));
+        }
+
+        // RFC 4254 includes a port in the success response only for allocation
+        // requests. Russh represents an empty explicit-port response as zero.
+        return Ok(requested_port);
+    }
+
+    u16::try_from(server_port).map_err(|_| {
+        SshTransportError::ConnectionFailed(format!(
+            "remote forwarding server returned invalid port {server_port}"
+        ))
+    })
+}
+
+#[cfg(test)]
+mod remote_forward_port_tests {
+    use super::*;
+
+    #[test]
+    fn explicit_remote_forward_keeps_requested_port_for_empty_success_response() {
+        assert_eq!(resolve_remote_forward_port(58_627, 0).unwrap(), 58_627);
+    }
+
+    #[test]
+    fn allocated_remote_forward_uses_server_port() {
+        assert_eq!(resolve_remote_forward_port(0, 42_000).unwrap(), 42_000);
+    }
+
+    #[test]
+    fn allocated_remote_forward_rejects_missing_server_port() {
+        assert!(resolve_remote_forward_port(0, 0).is_err());
+    }
+
+    #[test]
+    fn remote_forward_rejects_out_of_range_server_port() {
+        assert!(resolve_remote_forward_port(0, u16::MAX as u32 + 1).is_err());
+    }
+}

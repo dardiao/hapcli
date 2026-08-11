@@ -1,0 +1,21 @@
+[package]
+name = "hapcli-ide-fs"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+hapcli-backend-classification = { path = "../hapcli-backend-classification" }
+hapcli-ide-core = { path = "../hapcli-ide-core" }
+hapcli-sftp = { path = "../hapcli-sftp" }
+hapcli-ssh = { path = "../hapcli-ssh" }
+base64.workspace = true
+dashmap.workspace = true
+futures-util.workspace = true
+russh = { path = "../russh" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+zstd = "0.13"

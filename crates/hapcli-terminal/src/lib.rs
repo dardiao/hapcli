@@ -1,0 +1,142 @@
+use std::{
+    borrow::Cow,
+    collections::{HashMap, VecDeque},
+    env,
+    path::PathBuf,
+    sync::Arc,
+    thread::JoinHandle,
+};
+
+use alacritty_terminal::{
+    event::{Event as AlacEvent, EventListener, Notify, OnResize, WindowSize},
+    grid::{Dimensions, Scroll},
+    index::Line,
+    sync::FairMutex,
+    term::{Config, Osc52, Term, TermDamage, cell::Flags},
+    tty::{self, Shell},
+};
+use anyhow::{Context, Result};
+use crossbeam_channel::{Receiver, Sender, unbounded};
+use hapcli_modem_transfer::{ModemTransfer, ModemTransferRequest};
+use hapcli_terminal_encoding::{EncodingHint, TerminalInputEncoder};
+use hapcli_terminal_graphics::{
+    DEFAULT_STORAGE_LIMIT_MB, GraphicsCursor, TerminalGraphicsEvent, TerminalImagePlacement,
+};
+
+mod activity;
+mod backpressure;
+mod color;
+mod command_sender;
+mod data;
+mod editor_integration;
+mod local_graphics_event_loop;
+mod local_shell;
+mod local_shell_integration;
+mod privilege_prompt;
+mod process;
+mod process_lifecycle;
+mod remote_shell_integration;
+mod search;
+mod session;
+mod shell_completion;
+mod shell_integration;
+
+pub use activity::TerminalActivityReceiver;
+pub use alacritty_terminal::term::TermMode;
+pub use command_sender::{
+    TerminalSenderFrame, TerminalSenderInputMode, TerminalSenderPacing, TerminalSenderPlan,
+    TerminalSenderPlanError, build_terminal_sender_plan,
+};
+pub use data::{
+    GraphicsOptions, TerminalAttrs, TerminalCell, TerminalColor, TerminalCursorShape,
+    TerminalImageAnimationState, TerminalImageData, TerminalImageFrame, TerminalImageId,
+    TerminalImageProtocol, TerminalImageSnapshot, TerminalRow, TerminalSearchMatch,
+    TerminalSearchRange, TerminalSnapshot,
+};
+pub use editor_integration::{
+    EMACS_FREE_TYPE_INTEGRATION_SOURCE, TerminalEditorApplication, TerminalEditorCapabilities,
+    TerminalEditorClipboardEvent, TerminalEditorClipboardOperation, TerminalEditorIntegrationEvent,
+    TerminalEditorMode, TerminalEditorSelection, VIM_FREE_TYPE_INTEGRATION_SOURCE,
+};
+pub use local_shell::{LocalPtyConfig, ShellInfo, default_shell, scan_shells};
+pub use local_shell_integration::TerminalCwdIntegrationLaunchState;
+pub use hapcli_modem_transfer::{
+    DetectedModemProtocol, ModemTransferDirection,
+    ModemTransferRequest as TerminalModemTransferRequest,
+};
+pub use hapcli_terminal_encoding::{
+    EncodingMismatchDetector, TERMINAL_ENCODINGS, TerminalEncoding,
+    TerminalInputEncoder as RawTerminalInputEncoder, TerminalOutputDecoder,
+};
+pub use hapcli_trzsz::{TrzszTransferDirection, TrzszTransferPolicy, TrzszTransferSelection};
+pub use privilege_prompt::{
+    TerminalPrivilegePrompt, TerminalPrivilegePromptEvent, detect_terminal_privilege_prompt,
+};
+pub use process::{TerminalLifecycle, TerminalProcessInfo, TerminalProcessProbe};
+pub use remote_shell_integration::{
+    REMOTE_SHELL_INTEGRATION_RELATIVE_DIR, REMOTE_SHELL_INTEGRATION_VERSION,
+    RemoteShellIntegrationState, RemoteShellIntegrationStatus, RemoteShellKind,
+    inspect_remote_shell_integration, install_remote_shell_integration,
+    remove_remote_shell_integration,
+};
+pub use search::TerminalSearchSource;
+pub use session::{
+    SerialControlLine, SerialControlState, SerialDisplayMode, SerialError, SerialErrorCode,
+    SerialFlowControl, SerialLineEnding, SerialParity, SerialPortInfo, SerialRuntimeOptions,
+    SerialSendMode, SerialSessionConfig, SshPtySession, SshSessionConfig, TelnetControlCommand,
+    TelnetSessionConfig, TerminalDrainBudget, TerminalDrainReport, TerminalMagicKind,
+    TerminalOutputProcessor, TerminalResize, TerminalSession, TerminalSessionBackend,
+    TerminalSessionKind, TerminalSessionStatus, serial_list_ports,
+};
+pub use shell_completion::{
+    TerminalShellParseResult, TerminalShellToken, escape_terminal_path_for_shell,
+    is_likely_secret_terminal_command, load_local_shell_history_commands,
+    normalize_terminal_autosuggest_command, terminal_autosuggest_fuzzy_score,
+    tokenize_terminal_command_line,
+};
+pub use shell_integration::{
+    ShellIntegrationEvent, ShellIntegrationEventKind, ShellIntegrationLifecycleState,
+    ShellIntegrationSource, ShellIntegrationStatus, TerminalCommandMark,
+    TerminalCommandMarkClosedBy, TerminalCommandMarkConfidence, TerminalCommandMarkDetectionSource,
+    TerminalCommandMarkEvent,
+};
+
+use color::{
+    HAPCLI_DARK_THEME, attrs_from_flags, color_for_alacritty_request_with_override,
+    style_colors_for_cell,
+};
+use local_graphics_event_loop::{
+    LocalGraphicsEventLoop, LocalGraphicsMsg, LocalGraphicsNotifier, LocalPtyReadReport,
+};
+use local_shell::shell_args_for_profile;
+use local_shell_integration::{LocalShellIntegration, prepare_local_shell_launch};
+use process::{ProcessState, TerminalSignal, signal_process_group};
+#[cfg(windows)]
+use process_lifecycle::WindowsTerminalJob;
+#[cfg(not(windows))]
+use process_lifecycle::cleanup_local_pty_process_tree;
+#[cfg(test)]
+use search::search_logical_line_matches;
+pub(crate) use search::search_matches_from_term;
+use search::{append_grid_line_text, viewport_row_for_grid_line};
+
+fn interactive_terminal_config(scrollback_lines: usize) -> Config {
+    let mut config = Config::default();
+    config.scrolling_history = scrollback_lines;
+    config.kitty_keyboard = true;
+    // Parse OSC 52 queries for interactive sessions; the GPUI permission gate decides whether
+    // local clipboard contents are returned to the requesting process.
+    config.osc52 = Osc52::CopyPaste;
+    config
+}
+
+// Local PTY pieces stay included in this module so crate-private terminal
+// state and the public `hapcli_terminal` API remain unchanged while the
+// previous monolithic lib.rs is split by responsibility.
+include!("local/events.rs");
+include!("local/graphics_state.rs");
+include!("local/env.rs");
+include!("local/pty.rs");
+include!("local/controls.rs");
+#[cfg(test)]
+include!("local/tests.rs");

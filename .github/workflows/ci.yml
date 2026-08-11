@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, experiment/rust-native-v2]
+    paths:
+      - 'crates/**'
+      - 'scripts/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'deny.toml'
+      - 'rustfmt.toml'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main, experiment/rust-native-v2]
+
+permissions:
+  contents: read
+
+# Match the Tauri CI behavior: newer commits replace stale checks for the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: Rust workspace (check + fmt + test)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: 1.94.1
+          components: rustfmt
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          cache-on-failure: false
+
+      - name: Install Linux system dependencies
+        uses: ./.github/actions/install-linux-deps
+
+      - name: cargo check
+        run: cargo check --workspace --all-targets
+
+      - name: cargo fmt
+        run: cargo fmt --check
+
+      - name: cargo test
+        run: cargo test --workspace
+
+  i18n:
+    name: i18n completeness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Audit native locale catalogs
+        run: python scripts/quality/audit_i18n.py
+
+      - name: Test release helper scripts
+        run: python -m unittest scripts.tests.test_compose_release_notes
+
+  repository-policy:
+    name: Repository automation policies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Test issue and maintenance policies
+        run: >-
+          node --test
+          scripts/quality/tests/*.test.cjs
+          scripts/automation/tests/*.test.cjs

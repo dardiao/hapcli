@@ -1,0 +1,1087 @@
+use std::time::{Duration, Instant};
+
+use eframe::egui::{self, FontFamily, FontId, RichText, Vec2};
+use hapcli_terminal::{
+    TerminalEvent, TerminalSessionKind, TrzszTransferDirection, TrzszTransferSelection,
+};
+use hapcli_trzsz::{TrzszState, TrzszTransferPolicy};
+
+use crate::connect::{ConnectForm, ConnectTarget, DialogOutcome};
+use crate::render::build_theme;
+use crate::settings::{AppSettings, ThemeChoice, load_settings, save_settings};
+use crate::sftp;
+use crate::terminal::{TerminalPrefs, TerminalTab};
+use crate::trzsz::{TrzszPromptRequest, TrzszPromptSelection, TrzszWorkerEvent, spawn_trzsz_worker};
+
+const MIN_FONT_SIZE: f32 = 9.0;
+const MAX_FONT_SIZE: f32 = 24.0;
+const MAX_RECONNECT_ATTEMPTS: u32 = 3;
+const RECONNECT_DELAY: Duration = Duration::from_millis(2500);
+
+/// 释放当前焦点（弹窗关闭后调用，避免键盘焦点滞留导致终端无法输入）。
+fn surrender_focus(ctx: &egui::Context) {
+    ctx.memory_mut(|memory| {
+        if let Some(id) = memory.focused() {
+            memory.surrender_focus(id);
+        }
+    });
+}
+
+pub struct HapcliApp {
+    tabs: Vec<TerminalTab>,
+    active_tab: usize,
+    settings: AppSettings,
+    custom_font_loaded: bool,
+    window_focused: bool,
+    show_connect_dialog: bool,
+    show_settings: bool,
+    settings_error: Option<String>,
+    connect_form: ConnectForm,
+    trzsz_state: std::sync::Arc<TrzszState>,
+    ssh_registry: hapcli_ssh::SshConnectionRegistry,
+}
+
+impl HapcliApp {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> anyhow::Result<Self> {
+        let settings = load_settings();
+        let custom_font_loaded = install_fonts(&cc.egui_ctx, &settings);
+
+        let local = TerminalTab::new_local(&cc.egui_ctx, 100, 30)?;
+        Ok(Self {
+            tabs: vec![local],
+            active_tab: 0,
+            settings,
+            custom_font_loaded,
+            window_focused: true,
+            show_connect_dialog: false,
+            show_settings: false,
+            settings_error: None,
+            connect_form: ConnectForm::default(),
+            trzsz_state: TrzszState::new(),
+            ssh_registry: hapcli_ssh::SshConnectionRegistry::new(
+                hapcli_ssh::ConnectionPoolConfig::default(),
+            ),
+        })
+    }
+
+    fn active_tab(&mut self) -> &mut TerminalTab {
+        &mut self.tabs[self.active_tab]
+    }
+
+    fn activate_tab(&mut self, index: usize) {
+        if index == self.active_tab {
+            return;
+        }
+        self.active_tab = index;
+        self.tabs[index].focused = self.window_focused;
+        let _ = self.tabs[index].session.set_focused(self.window_focused);
+    }
+
+    fn close_tab(&mut self, index: usize) {
+        if self.tabs.len() <= 1 {
+            return;
+        }
+        self.tabs[index].session.shutdown();
+        self.tabs.remove(index);
+        if self.active_tab >= self.tabs.len() {
+            self.active_tab = self.tabs.len() - 1;
+        } else if self.active_tab > index {
+            self.active_tab -= 1;
+        }
+    }
+
+    fn add_local_tab(&mut self, ctx: &egui::Context, cols: usize, rows: usize) {
+        if let Ok(tab) = TerminalTab::new_local(ctx, cols, rows) {
+            self.tabs.push(tab);
+            self.active_tab = self.tabs.len() - 1;
+        }
+    }
+
+    fn add_connect_tab(
+        &mut self,
+        ctx: &egui::Context,
+        request: crate::connect::ConnectRequest,
+        cols: usize,
+        rows: usize,
+    ) -> bool {
+        let label = request.label;
+        let save_password = request.save_password;
+        let mut tab = match request.target {
+            ConnectTarget::Ssh(spec) => {
+                let session_config = spec.session_config.with_registry(
+                    self.ssh_registry.clone(),
+                    hapcli_ssh::ConnectionConsumer::Terminal("egui-terminal".to_string()),
+                );
+                TerminalTab::new_ssh(
+                    ctx,
+                    session_config,
+                    Some(spec.reconnect_config),
+                    Some(self.ssh_registry.clone()),
+                    label,
+                    cols,
+                    rows,
+                )
+            }
+            ConnectTarget::Telnet(config) => {
+                TerminalTab::new_telnet(ctx, config, label, cols, rows)
+            }
+            ConnectTarget::Serial(config) => match TerminalTab::new_serial(
+                ctx, config, label, cols, rows,
+            ) {
+                Ok(tab) => tab,
+                Err(error) => {
+                    self.connect_form.show_error(format!("串口打开失败: {error}"));
+                    return false;
+                }
+            },
+        };
+        tab.pending_keychain_save = save_password;
+        self.tabs.push(tab);
+        self.active_tab = self.tabs.len() - 1;
+        true
+    }
+
+    fn status_line(&self) -> String {
+        let tab = &self.tabs[self.active_tab];
+        let status = tab.session.status();
+        let kind = match status.kind {
+            hapcli_terminal::TerminalSessionKind::LocalPty => "本地",
+            hapcli_terminal::TerminalSessionKind::SshPty => "SSH",
+            hapcli_terminal::TerminalSessionKind::Telnet => "Telnet",
+            hapcli_terminal::TerminalSessionKind::Serial => "串口",
+        };
+        let lifecycle = match &status.lifecycle {
+            hapcli_terminal::TerminalLifecycle::Running => "运行中".to_string(),
+            hapcli_terminal::TerminalLifecycle::Exited(code) => {
+                format!("已退出 (code {})", code.unwrap_or(-1))
+            }
+            hapcli_terminal::TerminalLifecycle::Closed => "已关闭".to_string(),
+        };
+        let title = status.title.clone().unwrap_or_else(|| "zsh".to_string());
+        let trzsz = if tab.trzsz_active {
+            " · Trzsz 传输中…".to_string()
+        } else if let Some(status) = &tab.trzsz_status {
+            format!(" · {status}")
+        } else {
+            String::new()
+        };
+        let keychain = tab
+            .keychain_status
+            .as_ref()
+            .map(|status| format!(" · {status}"))
+            .unwrap_or_default();
+        let reconnect = tab
+            .reconnect_status
+            .as_ref()
+            .map(|status| format!(" · {status}"))
+            .unwrap_or_default();
+        format!(
+            "{kind} · {title} · {lifecycle} · {}x{} · 滚动 {} · {:.0}pt{trzsz}{keychain}{reconnect}",
+            tab.snapshot.cols,
+            tab.snapshot.rows,
+            tab.snapshot.display_offset,
+            self.settings.font_size,
+        )
+    }
+
+    /// SSH 断线自动重连调度。
+    fn handle_reconnects(&mut self, ctx: &egui::Context) {
+        let now = Instant::now();
+        for index in 0..self.tabs.len() {
+            let tab = &mut self.tabs[index];
+            if tab.ssh_reconnect_config.is_none() {
+                continue;
+            }
+            let status = tab.session.status();
+            if status.title.is_some() {
+                tab.ever_connected = true;
+                if tab.reconnect_attempts > 0 || tab.reconnect_at.is_some() {
+                    tab.reconnect_attempts = 0;
+                    tab.reconnect_at = None;
+                    tab.reconnect_dismissed = false;
+                    tab.reconnect_status = Some("SSH 已重连".to_string());
+                }
+            }
+            if status.lifecycle.is_running() {
+                continue;
+            }
+
+            // 会话已退出：安排自动重连。
+            if tab.reconnect_at.is_none() && tab.ever_connected {
+                if self.settings.ssh_auto_reconnect
+                    && tab.reconnect_attempts < MAX_RECONNECT_ATTEMPTS
+                {
+                    tab.reconnect_at = Some(now + RECONNECT_DELAY);
+                    tab.reconnect_status = Some("连接已断开，即将自动重连…".to_string());
+                } else if tab.reconnect_attempts >= MAX_RECONNECT_ATTEMPTS {
+                    tab.reconnect_status = Some("自动重连失败，可手动重连".to_string());
+                }
+            }
+
+            if let Some(deadline) = tab.reconnect_at {
+                if now >= deadline {
+                    tab.reconnect_at = None;
+                    tab.reconnect_attempts += 1;
+                    let (cols, rows) = tab.last_terminal_size;
+                    tab.reconnect_with(ctx, cols, rows);
+                    tab.reconnect_status =
+                        Some(format!("正在重连（第 {} 次）…", tab.reconnect_attempts));
+                }
+            }
+        }
+    }
+
+    /// 断开提示窗口（仅活动 SSH 会话、自动重连未在进行时显示）。
+    fn reconnect_banner(&mut self, ctx: &egui::Context) {
+        let index = self.active_tab;
+        let tab = &self.tabs[index];
+        if tab.ssh_reconnect_config.is_none()
+            || tab.session.lifecycle().is_running()
+            || !tab.ever_connected
+            || tab.reconnect_at.is_some()
+            || tab.reconnect_dismissed
+        {
+            return;
+        }
+
+        let mut manual_reconnect = false;
+        let mut dismiss = false;
+        let default_pos = ctx.screen_rect().center() - egui::vec2(100.0, 40.0);
+        egui::Window::new("连接已断开")
+            .collapsible(false)
+            .resizable(false)
+            .default_pos(default_pos)
+            .show(ctx, |ui| {
+                ui.label("SSH 连接已断开。");
+                ui.horizontal(|ui| {
+                    if ui.button("立即重连").clicked() {
+                        manual_reconnect = true;
+                    }
+                    if ui.button("关闭提示").clicked() {
+                        dismiss = true;
+                    }
+                });
+            });
+
+        if manual_reconnect {
+            let tab = &mut self.tabs[index];
+            tab.reconnect_attempts = 0;
+            tab.reconnect_at = None;
+            let (cols, rows) = tab.last_terminal_size;
+            tab.reconnect_with(ctx, cols, rows);
+            tab.reconnect_status = Some("正在手动重连…".to_string());
+        }
+        if dismiss {
+            self.tabs[index].reconnect_dismissed = true;
+            self.tabs[index].reconnect_status = None;
+            surrender_focus(ctx);
+        }
+    }
+
+    /// SSH 连接成功后把待保存密码写入系统钥匙串。
+    fn handle_keychain_saves(&mut self) {
+        for tab in &mut self.tabs {
+            let Some((key, password)) = tab.pending_keychain_save.take() else {
+                continue;
+            };
+            let status = tab.session.status();
+            if status.kind != TerminalSessionKind::SshPty || !status.lifecycle.is_running() {
+                // 非 SSH 或连接失败：不保存。
+                continue;
+            }
+            if status.title.is_none() {
+                // 仍在连接中，下一帧再检查。
+                tab.pending_keychain_save = Some((key, password));
+                continue;
+            }
+            tab.keychain_status = Some(
+                match hapcli_secret_store::NativeSecretStore::new("hapcli")
+                    .store(&key, password.as_str())
+                {
+                    Ok(()) => "密码已保存到钥匙串".to_string(),
+                    Err(error) => format!("钥匙串保存失败: {error}"),
+                },
+            );
+        }
+    }
+
+    /// 轮询 SFTP worker 事件并应用；列表变化时自动刷新。
+    fn poll_sftp(&mut self) {
+        let index = self.active_tab;
+        let mut refresh = false;
+        if let Some(panel) = &mut self.tabs[index].sftp {
+            loop {
+                match panel.rx.try_recv() {
+                    Ok(event) => {
+                        if panel.apply_event(event) {
+                            refresh = true;
+                        }
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+                }
+            }
+        }
+        if refresh {
+            if let Some(panel) = &self.tabs[index].sftp {
+                panel.refresh();
+            }
+        }
+    }
+
+    fn terminal_font_id(&self) -> FontId {
+        if self.custom_font_loaded {
+            FontId::new(
+                self.settings.font_size,
+                FontFamily::Name("hapcli-terminal-font".into()),
+            )
+        } else {
+            FontId::monospace(self.settings.font_size)
+        }
+    }
+
+    fn settings_window(&mut self, ctx: &egui::Context) {
+        let mut save = false;
+        let mut reset = false;
+        let mut pick_font = false;
+        let mut clear_font = false;
+        let mut toggle_transparent: Option<bool> = None;
+
+        let default_pos = ctx.screen_rect().center() - egui::vec2(150.0, 190.0);
+        egui::Window::new("设置")
+            .collapsible(false)
+            .resizable(false)
+            .default_pos(default_pos)
+            .show(ctx, |ui| {
+                ui.label(egui::RichText::new("外观").strong());
+                ui.add_space(4.0);
+                egui::Grid::new("settings_grid")
+                    .num_columns(2)
+                    .spacing([10.0, 8.0])
+                    .show(ui, |ui| {
+                        ui.label("主题");
+                        let theme_label = match self.settings.theme {
+                            ThemeChoice::Dark => "深色",
+                            ThemeChoice::Light => "浅色",
+                        };
+                        egui::ComboBox::from_id_salt("theme_choice")
+                            .selected_text(theme_label)
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(
+                                    &mut self.settings.theme,
+                                    ThemeChoice::Dark,
+                                    "深色",
+                                );
+                                ui.selectable_value(
+                                    &mut self.settings.theme,
+                                    ThemeChoice::Light,
+                                    "浅色",
+                                );
+                            });
+                        ui.end_row();
+
+                        ui.label("字体大小");
+                        ui.add(
+                            egui::Slider::new(
+                                &mut self.settings.font_size,
+                                MIN_FONT_SIZE..=MAX_FONT_SIZE,
+                            )
+                            .suffix(" pt"),
+                        );
+                        ui.end_row();
+
+                        ui.label("背景不透明度");
+                        ui.add(
+                            egui::Slider::new(&mut self.settings.background_alpha, 0.3..=1.0),
+                        );
+                        ui.end_row();
+
+                        ui.label("透明窗口");
+                        let before = self.settings.transparent_window;
+                        ui.checkbox(&mut self.settings.transparent_window, "启用");
+                        if before != self.settings.transparent_window {
+                            toggle_transparent = Some(self.settings.transparent_window);
+                        }
+                        ui.end_row();
+
+                        ui.label("终端字体");
+                        ui.horizontal(|ui| {
+                            ui.label(if self.custom_font_loaded {
+                                "自定义字体已加载"
+                            } else {
+                                "默认 (Hack)"
+                            });
+                            if ui.small_button("选择字体文件…").clicked() {
+                                pick_font = true;
+                            }
+                            if self.custom_font_loaded && ui.small_button("恢复默认").clicked() {
+                                clear_font = true;
+                            }
+                        });
+                        ui.end_row();
+                    });
+
+                ui.add_space(8.0);
+                ui.label(egui::RichText::new("行为").strong());
+                ui.add_space(2.0);
+                ui.checkbox(
+                    &mut self.settings.copy_on_select,
+                    "选中即复制（拖选、双击、三击完成后自动复制）",
+                );
+                ui.checkbox(
+                    &mut self.settings.middle_click_paste,
+                    "鼠标中键点击粘贴剪贴板内容",
+                );
+                ui.checkbox(
+                    &mut self.settings.ssh_auto_reconnect,
+                    "SSH 断线自动重连（最多 3 次，间隔 2.5 秒）",
+                );
+
+                if let Some(path) = &self.settings.terminal_font_path {
+                    ui.label(
+                        egui::RichText::new(format!("字体: {path}"))
+                            .size(10.0)
+                            .weak(),
+                    );
+                }
+                if let Some(error) = &self.settings_error {
+                    ui.colored_label(egui::Color32::from_rgb(0xff, 0x77, 0x77), error);
+                }
+
+                ui.add_space(10.0);
+                ui.horizontal(|ui| {
+                    if ui.button("保存").clicked() {
+                        save = true;
+                    }
+                    if ui.button("恢复默认设置").clicked() {
+                        reset = true;
+                    }
+                    if ui.button("关闭").clicked() {
+                        self.show_settings = false;
+                        surrender_focus(ctx);
+                    }
+                });
+            });
+
+        if let Some(transparent) = toggle_transparent {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(transparent));
+        }
+        if pick_font {
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter("字体文件", &["ttf", "otf", "ttc"])
+                .pick_file()
+            {
+                let path = path.display().to_string();
+                self.settings.terminal_font_path = Some(path);
+                self.custom_font_loaded = install_fonts(ctx, &self.settings);
+            }
+        }
+        if clear_font {
+            self.settings.terminal_font_path = None;
+            self.custom_font_loaded = install_fonts(ctx, &self.settings);
+        }
+        if reset {
+            self.settings = AppSettings::default();
+            self.custom_font_loaded = install_fonts(ctx, &self.settings);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(false));
+            self.settings_error = None;
+        }
+        if save {
+            self.settings_error = None;
+            if let Err(message) = save_settings(&self.settings) {
+                self.settings_error = Some(format!("保存失败: {message}"));
+            }
+        }
+    }
+
+    /// 处理 Trzsz：内核事件 → 提示窗 → 启动 worker → 轮询进度。
+    fn handle_trzsz(&mut self, ctx: &egui::Context) {
+        let index = self.active_tab;
+
+        // 1. 内核事件 → 传输提示请求。
+        {
+            let tab = &mut self.tabs[index];
+            if tab.trzsz_prompt.is_none() && !tab.trzsz_active {
+                for event in tab.session.take_events() {
+                    if let TerminalEvent::TrzszTransferPrompt {
+                        direction,
+                        selection,
+                        remote_is_windows,
+                    } = event
+                    {
+                        tab.trzsz_prompt = Some(TrzszPromptRequest {
+                            direction,
+                            selection,
+                            remote_is_windows,
+                        });
+                        break;
+                    }
+                }
+            } else {
+                let _ = tab.session.take_events();
+            }
+        }
+
+        // 2. 轮询 worker 事件。
+        self.poll_trzsz_worker();
+
+        // 3. 连接断开时中断传输。
+        {
+            let tab = &mut self.tabs[index];
+            if tab.trzsz_active && !tab.session.lifecycle().is_running() {
+                tab.session.interrupt_trzsz_transfer();
+                tab.trzsz_status = Some("连接已断开，传输已中断".to_string());
+                tab.trzsz_active = false;
+                tab.trzsz_rx = None;
+                tab.trzsz_prompt = None;
+            }
+        }
+
+        // 4. 传输提示窗口。
+        let request = self.tabs[index].trzsz_prompt;
+        if let Some(request) = request {
+            let mut action: Option<TrzszPromptSelection> = None;
+            let default_pos = ctx.screen_rect().center() - egui::vec2(140.0, 50.0);
+            egui::Window::new("Trzsz 文件传输")
+                .collapsible(false)
+                .resizable(false)
+                .default_pos(default_pos)
+                .show(ctx, |ui| {
+                    let (title, hint) = match (request.direction, request.selection) {
+                        (TrzszTransferDirection::Upload, TrzszTransferSelection::File) => {
+                            ("上传文件 (trz)", "远程请求上传文件")
+                        }
+                        (TrzszTransferDirection::Upload, TrzszTransferSelection::Directory) => {
+                            ("上传目录 (trz)", "远程请求上传目录")
+                        }
+                        (TrzszTransferDirection::Download, _) => {
+                            ("下载文件 (tsz)", "远程请求下载文件")
+                        }
+                    };
+                    ui.label(egui::RichText::new(title).strong());
+                    ui.label(hint);
+                    ui.add_space(6.0);
+                    ui.horizontal(|ui| {
+                        match request.direction {
+                            TrzszTransferDirection::Upload => {
+                                let directory =
+                                    request.selection == TrzszTransferSelection::Directory;
+                                if directory {
+                                    if ui.button("选择目录…").clicked() {
+                                        action = Some(match rfd::FileDialog::new().pick_folder() {
+                                            Some(path) => TrzszPromptSelection::Upload(vec![
+                                                path.display().to_string(),
+                                            ]),
+                                            None => TrzszPromptSelection::Cancelled,
+                                        });
+                                    }
+                                } else if ui.button("选择文件…").clicked() {
+                                    action = Some(match rfd::FileDialog::new().pick_files() {
+                                        Some(paths) => TrzszPromptSelection::Upload(
+                                            paths
+                                                .iter()
+                                                .map(|path| path.display().to_string())
+                                                .collect(),
+                                        ),
+                                        None => TrzszPromptSelection::Cancelled,
+                                    });
+                                }
+                            }
+                            TrzszTransferDirection::Download => {
+                                if ui.button("选择保存目录…").clicked() {
+                                    action = Some(match rfd::FileDialog::new().pick_folder() {
+                                        Some(path) => {
+                                            TrzszPromptSelection::DownloadRoot(
+                                                path.display().to_string(),
+                                            )
+                                        }
+                                        None => TrzszPromptSelection::Cancelled,
+                                    });
+                                }
+                            }
+                        }
+                        if ui.button("取消").clicked() {
+                            action = Some(TrzszPromptSelection::Cancelled);
+                        }
+                    });
+                });
+
+            if let Some(action) = action {
+                self.start_trzsz_worker(index, action);
+                surrender_focus(ctx);
+            }
+        }
+    }
+
+    fn start_trzsz_worker(&mut self, index: usize, selection: TrzszPromptSelection) {
+        let tab = &mut self.tabs[index];
+        let Some(request) = tab.trzsz_prompt.take() else {
+            return;
+        };
+        let Some(transfer) = tab.session.take_trzsz_transfer() else {
+            tab.trzsz_status = Some("未能取得传输句柄".to_string());
+            return;
+        };
+        tab.trzsz_status = None;
+        tab.trzsz_active = true;
+        let columns = tab.snapshot.cols.max(1);
+        let owner_id = tab.trzsz_owner_id.clone();
+        let rx = spawn_trzsz_worker(
+            transfer,
+            request,
+            selection,
+            self.trzsz_state.clone(),
+            owner_id,
+            TrzszTransferPolicy::default(),
+            columns,
+        );
+        tab.trzsz_rx = Some(rx);
+    }
+
+    fn poll_trzsz_worker(&mut self) {
+        let index = self.active_tab;
+        let rx = self.tabs[index].trzsz_rx.take();
+        let mut events = Vec::new();
+        let mut disconnected = false;
+        if let Some(receiver) = rx.as_ref() {
+            loop {
+                match receiver.try_recv() {
+                    Ok(event) => events.push(event),
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        disconnected = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if events.is_empty() && rx.is_some() && !disconnected {
+            self.tabs[index].trzsz_rx = rx;
+            return;
+        }
+
+        let tab = &mut self.tabs[index];
+        let mut finished = false;
+        for event in events {
+            match event {
+                TrzszWorkerEvent::TerminalOutput(bytes) => {
+                    tab.session.feed_trzsz_terminal_output(&bytes);
+                }
+                TrzszWorkerEvent::Completed => {
+                    tab.trzsz_status = Some("Trzsz 传输完成".to_string());
+                    finished = true;
+                }
+                TrzszWorkerEvent::Cancelled => {
+                    tab.trzsz_status = Some("Trzsz 传输已取消".to_string());
+                    finished = true;
+                }
+                TrzszWorkerEvent::Failed { code, detail, message } => {
+                    let detail_suffix =
+                        detail.map(|detail| format!(" ({detail})")).unwrap_or_default();
+                    tab.trzsz_status =
+                        Some(format!("Trzsz 传输失败 [{code}]{detail_suffix}: {message}"));
+                    finished = true;
+                }
+            }
+        }
+
+        if finished {
+            tab.finish_trzsz();
+        } else if disconnected && tab.trzsz_active {
+            tab.trzsz_status = Some("Trzsz worker 意外退出".to_string());
+            tab.finish_trzsz();
+        } else {
+            tab.trzsz_rx = rx;
+        }
+    }
+}
+
+impl eframe::App for HapcliApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let font_id = self.terminal_font_id();
+        let cell_size = ctx.fonts(|fonts| {
+            Vec2::new(
+                fonts.glyph_width(&font_id, 'W').ceil().max(1.0),
+                fonts.row_height(&font_id).ceil().max(1.0),
+            )
+        });
+
+        // 1. 全局事件：缩放、窗口焦点、SSH 弹窗开关。
+        self.process_global_input(ctx);
+
+        // 2. 顶部标签栏。
+        let mut clicked_tab: Option<usize> = None;
+        let mut close_tab: Option<usize> = None;
+        let mut want_connect = false;
+        let mut want_local = false;
+        let mut want_settings = false;
+        let mut toggle_sftp = false;
+        let active_is_ssh = self.tabs[self.active_tab].session.status().kind
+            == TerminalSessionKind::SshPty;
+        let sftp_connected = active_is_ssh
+            && self.tabs[self.active_tab]
+                .session
+                .ssh_connection_handle()
+                .is_some();
+        let sftp_open = self.tabs[self.active_tab].sftp.is_some();
+        egui::TopBottomPanel::top("tab_bar").show(ctx, |ui| {
+            egui::ScrollArea::horizontal().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    for index in 0..self.tabs.len() {
+                        let tab = &self.tabs[index];
+                        let selected = index == self.active_tab;
+                        if ui
+                            .selectable_label(selected, tab.display_label())
+                            .clicked()
+                        {
+                            clicked_tab = Some(index);
+                        }
+                        if ui.small_button("✕").on_hover_text("关闭会话").clicked() {
+                            close_tab = Some(index);
+                        }
+                    }
+                    ui.separator();
+                    if ui.button("＋ SSH").clicked() {
+                        want_connect = true;
+                    }
+                    if ui.button("＋ 本地").clicked() {
+                        want_local = true;
+                    }
+                    if ui.button("⚙").on_hover_text("设置").clicked() {
+                        want_settings = true;
+                    }
+                    if active_is_ssh
+                        && ui
+                            .add_enabled(
+                                sftp_connected,
+                                egui::Button::new(if sftp_open { "SFTP ✕" } else { "SFTP" }),
+                            )
+                            .on_hover_text("SFTP 文件传输（需已连接）")
+                            .clicked()
+                    {
+                        toggle_sftp = true;
+                    }
+                });
+            });
+        });
+
+        if let Some(index) = clicked_tab {
+            self.activate_tab(index);
+        }
+        if let Some(index) = close_tab {
+            self.close_tab(index);
+        }
+        if want_connect {
+            self.show_connect_dialog = true;
+            self.show_settings = false;
+        }
+        if want_settings {
+            self.show_settings = true;
+            self.show_connect_dialog = false;
+        }
+        if toggle_sftp {
+            let index = self.active_tab;
+            if self.tabs[index].sftp.is_some() {
+                self.tabs[index].sftp = None;
+            } else if let Some(handle) = self.tabs[index].session.ssh_connection_handle() {
+                let panel = sftp::spawn_sftp_worker(handle);
+                panel.send(sftp::SftpCommand::List(".".to_string()));
+                self.tabs[index].sftp = Some(panel);
+            }
+        }
+
+        // 2.5 搜索栏（仅活动会话开启搜索时显示）。
+        if self.tabs[self.active_tab].search_open {
+            let mut query_changed = false;
+            let mut next = false;
+            let mut prev = false;
+            let mut close = false;
+            egui::TopBottomPanel::top("search_bar").show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("🔍");
+                    let tab = &mut self.tabs[self.active_tab];
+                    let response = ui.add(
+                        egui::TextEdit::singleline(&mut tab.search_query)
+                            .hint_text("搜索终端内容 · Enter 下一个 · Shift+Enter 上一个 · Esc 关闭")
+                            .desired_width(320.0),
+                    );
+                    if tab.search_focus_requested {
+                        response.request_focus();
+                        tab.search_focus_requested = false;
+                    }
+                    let count = tab.search_matches.len();
+                    let current = tab.search_current.map_or(0, |index| index + 1);
+                    ui.label(format!("{current}/{count}"));
+                    if ui.button("↑").on_hover_text("上一个").clicked() {
+                        prev = true;
+                    }
+                    if ui.button("↓").on_hover_text("下一个").clicked() {
+                        next = true;
+                    }
+                    if ui.button("✕").on_hover_text("关闭搜索").clicked() {
+                        close = true;
+                    }
+                    query_changed = response.changed();
+                });
+            });
+            if query_changed {
+                self.tabs[self.active_tab].refresh_search();
+            }
+            if next {
+                self.tabs[self.active_tab].search_next();
+            }
+            if prev {
+                self.tabs[self.active_tab].search_prev();
+            }
+            if close {
+                self.tabs[self.active_tab].search_open = false;
+            }
+        }
+
+        // 3. SSH 连接弹窗。
+        if self.show_connect_dialog {
+            let mut outcome = None;
+            let default_pos = ctx.screen_rect().center() - egui::vec2(170.0, 130.0);
+            egui::Window::new("新建连接")
+                .collapsible(false)
+                .resizable(false)
+                .default_pos(default_pos)
+                .show(ctx, |ui| {
+                    outcome = self.connect_form.ui(ui);
+                });
+            match outcome {
+                Some(DialogOutcome::Connect(request)) => {
+                    let (cols, rows) = self.tabs[self.active_tab].last_terminal_size;
+                    if self.add_connect_tab(ctx, request, cols, rows) {
+                        self.show_connect_dialog = false;
+                        surrender_focus(ctx);
+                    }
+                }
+                Some(DialogOutcome::Cancel) => {
+                    self.show_connect_dialog = false;
+                    self.connect_form = ConnectForm::default();
+                    surrender_focus(ctx);
+                }
+                None => {}
+            }
+        }
+        if want_local {
+            let (cols, rows) = self.tabs[self.active_tab].last_terminal_size;
+            self.add_local_tab(ctx, cols, rows);
+        }
+
+        // 3.5 设置窗口。
+        if self.show_settings {
+            self.settings_window(ctx);
+        }
+
+        // 3.6 断开提示窗口。
+        self.reconnect_banner(ctx);
+
+        // 4. 所有会话读取输出；仅活动会话渲染。
+        for tab in &mut self.tabs {
+            tab.session.read_pending();
+        }
+
+        // 4.5 SSH 连接成功后写入钥匙串。
+        self.handle_keychain_saves();
+
+        // 4.6 SSH 断线自动重连。
+        self.handle_reconnects(ctx);
+
+        // 5. 活动会话输入事件。
+        let prefs = TerminalPrefs {
+            copy_on_select: self.settings.copy_on_select,
+            middle_click_paste: self.settings.middle_click_paste,
+        };
+        self.active_tab().process_input(ctx, cell_size, prefs);
+
+        // 5.5 Trzsz 事件 / 提示窗 / worker 轮询。
+        self.handle_trzsz(ctx);
+
+        // 6. 底部状态栏。
+        let transparent = self.settings.transparent_window;
+        let status_frame = if transparent {
+            egui::Frame::default().fill(egui::Color32::TRANSPARENT)
+        } else {
+            egui::Frame::default()
+        };
+        egui::TopBottomPanel::bottom("status_bar")
+            .frame(status_frame)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.add_space(8.0);
+                    ui.label(
+                        RichText::new(self.status_line())
+                            .monospace()
+                            .size(11.0)
+                            .color(egui::Color32::from_rgb(0x8a, 0x8f, 0x98)),
+                    );
+                });
+            });
+
+        // 6.5 SFTP：轮询事件 + 右侧面板。
+        self.poll_sftp();
+        if self.tabs[self.active_tab].sftp.is_some() {
+            egui::SidePanel::right("sftp_panel")
+                .resizable(true)
+                .default_width(360.0)
+                .show(ctx, |ui| {
+                    ui.add_space(4.0);
+                    ui.heading("SFTP");
+                    ui.separator();
+                    let index = self.active_tab;
+                    let panel = self.tabs[index].sftp.as_mut().expect("sftp panel");
+                    let mut transfer_started = false;
+                    let commands = sftp::sftp_panel_ui(ui, panel);
+                    for command in commands {
+                        if matches!(
+                            command,
+                            sftp::SftpCommand::Download { .. }
+                                | sftp::SftpCommand::DownloadDir { .. }
+                                | sftp::SftpCommand::Upload { .. }
+                                | sftp::SftpCommand::UploadDir { .. }
+                        ) {
+                            transfer_started = true;
+                        }
+                        panel.send(command);
+                    }
+                    if transfer_started {
+                        panel.busy = true;
+                    }
+                });
+        }
+
+        // 7. 中央终端区：尺寸同步所有会话，渲染活动会话。
+        let mut central_frame = egui::Frame::default().inner_margin(0.0);
+        if transparent {
+            central_frame = central_frame.fill(egui::Color32::TRANSPARENT);
+        }
+        egui::CentralPanel::default().frame(central_frame).show(ctx, |ui| {
+                let avail = ui.available_size();
+                let cols = (avail.x / cell_size.x).floor().max(2.0) as usize;
+                let rows = (avail.y / cell_size.y).floor().max(2.0) as usize;
+                for tab in &mut self.tabs {
+                    tab.resize(cols, rows, cell_size);
+                }
+
+                let now = ctx.input(|i| i.time);
+                if self.window_focused && self.tabs[self.active_tab].focused {
+                    ctx.request_repaint_after(Duration::from_millis(280));
+                }
+                let cursor_blink_on = if self.window_focused && self.tabs[self.active_tab].focused {
+                    (now * 1.8).fract() < 0.5
+                } else {
+                    true
+                };
+
+                let theme = build_theme(self.settings.theme, self.settings.background_alpha);
+                self.active_tab()
+                    .draw(ui, &font_id, cell_size, cursor_blink_on, &theme);
+            });
+
+        // 8. 窗口标题跟随活动会话。
+        let title = format!(
+            "hapcli — {}",
+            self.tabs[self.active_tab].display_label()
+        );
+        ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
+    }
+}
+
+impl HapcliApp {
+    fn process_global_input(&mut self, ctx: &egui::Context) {
+        let mut zoom: f32 = 1.0;
+        let mut focused: Option<bool> = None;
+        ctx.input(|i| {
+            for event in &i.events {
+                match event {
+                    egui::Event::Zoom(z) => zoom *= z,
+                    egui::Event::WindowFocused(f) => focused = Some(*f),
+                    _ => {}
+                }
+            }
+        });
+
+        if zoom != 1.0 {
+            self.settings.font_size =
+                (self.settings.font_size * zoom).clamp(MIN_FONT_SIZE, MAX_FONT_SIZE);
+        }
+        if let Some(focused) = focused {
+            self.window_focused = focused;
+            let _ = self.active_tab().session.set_focused(focused);
+        }
+    }
+}
+
+impl Drop for HapcliApp {
+    fn drop(&mut self) {
+        for tab in &mut self.tabs {
+            tab.session.shutdown();
+        }
+    }
+}
+
+/// 安装 CJK 兜底字体与（可选的）自定义终端字体。
+fn install_fonts(ctx: &egui::Context, settings: &AppSettings) -> bool {
+    const CANDIDATES: &[&str] = &[
+        // macOS
+        "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+        "/System/Library/Fonts/Hiragino Sans GB.ttc",
+        "/System/Library/Fonts/PingFang.ttc",
+        // Windows
+        "C:\\Windows\\Fonts\\msyh.ttc",
+        // Linux
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+    ];
+
+    let mut fonts = egui::FontDefinitions::default();
+    let mut custom_loaded = false;
+
+    if let Some(path) = &settings.terminal_font_path {
+        if let Ok(bytes) = std::fs::read(path) {
+            fonts.font_data.insert(
+                "hapcli-terminal-font".to_owned(),
+                egui::FontData::from_owned(bytes),
+            );
+            custom_loaded = true;
+        }
+    }
+
+    let mut cjk_name = None;
+    for path in CANDIDATES {
+        if let Ok(bytes) = std::fs::read(path) {
+            fonts.font_data.insert(
+                "hapcli-cjk".to_owned(),
+                egui::FontData::from_owned(bytes),
+            );
+            cjk_name = Some("hapcli-cjk".to_owned());
+            break;
+        }
+    }
+
+    if custom_loaded {
+        let mut family = vec!["hapcli-terminal-font".to_owned(), "Hack".to_owned()];
+        if let Some(cjk) = &cjk_name {
+            family.push(cjk.clone());
+        }
+        fonts.families.insert(
+            egui::FontFamily::Name("hapcli-terminal-font".into()),
+            family,
+        );
+        if let Some(mono) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
+            mono.insert(0, "hapcli-terminal-font".to_owned());
+        }
+    }
+
+    if let Some(cjk) = cjk_name {
+        for family in [egui::FontFamily::Monospace, egui::FontFamily::Proportional] {
+            fonts.families.entry(family).or_default().push(cjk.clone());
+        }
+    }
+
+    ctx.set_fonts(fonts);
+    custom_loaded
+}

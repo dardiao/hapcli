@@ -1,0 +1,130 @@
+// Copyright (C) 2026 AnalyseDeCircuit
+// SPDX-License-Identifier: GPL-3.0-only
+
+//! Knowledge settings import and dialog models.
+
+use std::{fmt, fs, path::Path, path::PathBuf};
+
+pub const KNOWLEDGE_MAX_IMPORT_FILE_SIZE: u64 = 5 * 1024 * 1024;
+pub const KNOWLEDGE_IMPORT_EXTENSIONS: &[&str] = &["md", "txt", "markdown"];
+pub const KNOWLEDGE_EMBEDDING_BATCH_SIZE: usize = 32;
+
+#[derive(Clone, Debug)]
+pub enum KnowledgeDeleteTarget {
+    Collection,
+    Document,
+}
+
+#[derive(Clone)]
+pub struct KnowledgeDeleteConfirm {
+    pub target: KnowledgeDeleteTarget,
+    pub id: String,
+    pub name: String,
+}
+
+impl fmt::Debug for KnowledgeDeleteConfirm {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("KnowledgeDeleteConfirm")
+            .field("target", &self.target)
+            .field("id", &self.id)
+            .field("name", &"<redacted>")
+            .finish()
+    }
+}
+
+#[derive(Clone)]
+pub struct KnowledgeExternalEdit {
+    pub doc_id: String,
+    pub path: PathBuf,
+    pub version: u64,
+}
+
+impl fmt::Debug for KnowledgeExternalEdit {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("KnowledgeExternalEdit")
+            .field("doc_id", &self.doc_id)
+            .field("path", &"<redacted>")
+            .field("version", &self.version)
+            .finish()
+    }
+}
+
+pub fn import_knowledge_file(
+    store: &hapcli_ai::RagStore,
+    collection_id: &str,
+    path: &Path,
+) -> Result<(), String> {
+    let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
+    if metadata.len() > KNOWLEDGE_MAX_IMPORT_FILE_SIZE {
+        let file_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("document");
+        return Err(format!(
+            "File \"{file_name}\" exceeds 5 MB limit ({} MB)",
+            (metadata.len() as f64 / 1024.0 / 1024.0).round() as u64
+        ));
+    }
+
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("document")
+        .to_string();
+    let extension = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if !KNOWLEDGE_IMPORT_EXTENSIONS.contains(&extension.as_str()) {
+        return Err(format!("Unsupported document type: {file_name}"));
+    }
+    let format = match extension.as_str() {
+        "md" | "markdown" => "markdown",
+        "txt" => "plaintext",
+        _ => "plaintext",
+    };
+    let content = fs::read_to_string(path).map_err(|error| error.to_string())?;
+    hapcli_ai::rag_add_document(
+        store,
+        hapcli_ai::RagAddDocumentRequest {
+            collection_id: collection_id.to_string(),
+            title: file_name,
+            content,
+            format: format.to_string(),
+            source_path: Some(path.to_string_lossy().to_string()),
+        },
+    )
+    .map(|_| ())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn knowledge_extension_allowlist_is_lowercase() {
+        assert!(KNOWLEDGE_IMPORT_EXTENSIONS.contains(&"md"));
+        assert!(!KNOWLEDGE_IMPORT_EXTENSIONS.contains(&"pdf"));
+    }
+
+    #[test]
+    fn knowledge_debug_output_redacts_user_names_and_paths() {
+        let secret = "private-customer-secret";
+        let confirm = KnowledgeDeleteConfirm {
+            target: KnowledgeDeleteTarget::Document,
+            id: "document-id".to_string(),
+            name: secret.to_string(),
+        };
+        let edit = KnowledgeExternalEdit {
+            doc_id: "document-id".to_string(),
+            path: PathBuf::from(format!("/tmp/{secret}.md")),
+            version: 1,
+        };
+
+        assert!(!format!("{confirm:?}").contains(secret));
+        assert!(!format!("{edit:?}").contains(secret));
+    }
+}

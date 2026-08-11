@@ -1,0 +1,48 @@
+{
+  "profiler": {
+    "capsule": {
+      "click_expand": "Clique para expandir",
+      "no_data": "Sem dados",
+      "sampling": "Amostrando..."
+    },
+    "detail": {
+      "load_avg": "Carga méd.",
+      "cpu_cores": "Núcleos CPU",
+      "memory": "Memória",
+      "source": "Fonte"
+    },
+    "panel": {
+      "no_connection": "Nenhuma conexão ativa selecionada",
+      "sampling": "Amostrando...",
+      "no_data": "Sem dados",
+      "system_information": "Informações do sistema",
+      "system": "Sistema",
+      "system_version": "Versão do sistema",
+      "architecture": "Arquitetura",
+      "boot_time": "Hora de inicialização",
+      "uptime": "Tempo de atividade",
+      "cpu": "CPU",
+      "memory": "Memória",
+      "disk": "Disco",
+      "gpu": "GPU",
+      "gpu_memory": "Memória da GPU",
+      "gpus": "GPUs",
+      "network": "E/S de Rede",
+      "load_avg": "Carga média",
+      "rtt": "Latência RTT",
+      "source": "Fonte",
+      "disabled": "Monitoramento desativado",
+      "enable": "Ativar amostragem",
+      "swap": "Swap",
+      "mounts": "Montagens",
+      "interfaces": "Interfaces de rede",
+      "top_processes": "Processos por memória",
+      "source_full": "Completo",
+      "source_partial": "Parcial",
+      "source_rtt_only": "Somente RTT",
+      "source_failed": "Falhou",
+      "source_unsupported": "Sem suporte",
+      "retry": "Detectar novamente"
+    }
+  }
+}

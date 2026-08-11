@@ -1,0 +1,15 @@
+[package]
+name = "hapcli-session-adapter"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+hapcli-connections = { path = "../hapcli-connections" }
+hapcli-settings = { path = "../hapcli-settings" }
+hapcli-sftp = { path = "../hapcli-sftp" }
+hapcli-ssh = { path = "../hapcli-ssh" }
+hapcli-terminal = { path = "../hapcli-terminal" }
+
+[dev-dependencies]
+chrono.workspace = true

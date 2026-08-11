@@ -1,0 +1,13 @@
+[package]
+name = "hapcli-network-proxy"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+hapcli-connections = { path = "../hapcli-connections" }
+hapcli-settings = { path = "../hapcli-settings" }
+parking_lot.workspace = true
+reqwest.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true

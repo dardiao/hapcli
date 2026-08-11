@@ -1,0 +1,48 @@
+{
+  "profiler": {
+    "capsule": {
+      "click_expand": "Cliquez pour développer",
+      "no_data": "Pas de données",
+      "sampling": "Échantillonnage..."
+    },
+    "detail": {
+      "load_avg": "Charge moy.",
+      "cpu_cores": "Cœurs CPU",
+      "memory": "Mémoire",
+      "source": "Source"
+    },
+    "panel": {
+      "no_connection": "Aucune connexion active sélectionnée",
+      "sampling": "Échantillonnage...",
+      "no_data": "Pas de données",
+      "system_information": "Informations système",
+      "system": "Système",
+      "system_version": "Version du système",
+      "architecture": "Architecture",
+      "boot_time": "Heure de démarrage",
+      "uptime": "Durée de fonctionnement",
+      "cpu": "CPU",
+      "memory": "Mémoire",
+      "disk": "Disque",
+      "gpu": "GPU",
+      "gpu_memory": "Mémoire GPU",
+      "gpus": "GPU",
+      "network": "E/S Réseau",
+      "load_avg": "Charge moyenne",
+      "rtt": "Latence RTT",
+      "source": "Source",
+      "disabled": "Surveillance désactivée",
+      "enable": "Activer l'échantillonnage",
+      "swap": "Swap",
+      "mounts": "Points de montage",
+      "interfaces": "Interfaces réseau",
+      "top_processes": "Processus mémoire",
+      "source_full": "Complet",
+      "source_partial": "Partiel",
+      "source_rtt_only": "RTT seul",
+      "source_failed": "Échec",
+      "source_unsupported": "Non pris en charge",
+      "retry": "Relancer la détection"
+    }
+  }
+}

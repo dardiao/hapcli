@@ -1,0 +1,766 @@
+{
+  "sidebar": {
+    "actions": {
+      "expand": "展開側邊欄",
+      "collapse": "收合側邊欄",
+      "new_local_terminal": "新增本機終端機",
+      "open_pylance_guide": "開啟 Pylance 指南"
+    },
+    "panels": {
+      "sessions": "使用中的工作階段",
+      "saved": "已儲存的連線",
+      "saved_title": "已儲存的連線",
+      "sftp": "SFTP",
+      "sftp_sessions": "SFTP 工作階段",
+      "files": "檔案管理器",
+      "forwards": "連接埠轉發",
+      "forwards_title": "連接埠轉發",
+      "runtime": "儀表板",
+      "runtime_description": "監控連線使用情況與拓撲",
+      "runtime_overview": "概覽",
+      "connection_pool": "連線池",
+      "connection_monitor": "連線監控",
+      "connection_matrix": "連線矩陣",
+      "ai": "OxideSens",
+      "ai_assistant": "OxideSens（即將推出）",
+      "settings": "設定",
+      "no_saved_connections": "沒有已儲存的連線",
+      "no_active_sessions": "沒有使用中的工作階段",
+      "no_connected_sessions": "沒有已連線的工作階段",
+      "import_tooltip": "從 .oxide 檔案匯入",
+      "export_tooltip": "匯出為 .oxide 檔案",
+      "host_tools": "主機工具",
+      "host_monitor": "監控",
+      "gpu": "GPU / NPU",
+      "processes": "程序",
+      "services": "服務",
+      "logs": "日誌",
+      "tmux": "tmux",
+      "docker": "Docker",
+      "tmux_management": "tmux 管理",
+      "docker_management": "Docker 管理",
+      "session_manager": "工作階段管理器",
+      "open_session_manager": "開啟工作階段管理器",
+      "plugins": "外掛",
+      "activity": "活動",
+      "event_log": "事件日誌",
+      "notifications": "通知中心",
+      "saved_connections": "已儲存的連線",
+      "forwarding": "連接埠轉發",
+      "ports": "連接埠",
+      "schedules": "排程任務",
+      "filesystems": "磁碟",
+      "packages": "套件"
+    },
+    "tooltips": {
+      "settings": "設定",
+      "ai_hint": "OxideSens",
+      "switch_tree": "切換到樹形視圖",
+      "switch_focus": "切換到聚焦視圖",
+      "new_connection": "新建連線",
+      "lock_app": "鎖定 hapcli",
+      "setup_app_lock": "設定應用程式鎖定",
+      "collapse": "收起"
+    },
+    "active_sessions": "使用中的工作階段",
+    "no_sessions": "無工作階段",
+    "add_new_connection": "按 + 新增連線",
+    "host_gpu": {
+      "count_suffix": "個加速裝置",
+      "refresh_interval": "每 2 秒更新",
+      "sampling": "正在讀取 GPU / NPU 狀態...",
+      "unavailable": "此主機未提供受支援的 GPU / NPU 監控工具。",
+      "unsupported": "此作業系統暫不支援 GPU / NPU 監控。",
+      "no_devices": "未發現受支援的 GPU / NPU 裝置。",
+      "error": "GPU / NPU 查詢失敗：{{error}}",
+      "actions": { "refresh": "重新整理 GPU / NPU 資料" },
+      "summary": { "utilization": "平均使用率", "memory": "裝置記憶體", "temperature": "最高溫度", "power": "總功耗" },
+      "columns": { "device": "裝置", "utilization": "使用率", "memory": "顯示記憶體" },
+      "details": { "uuid": "UUID", "driver": "驅動程式", "performance_state": "效能狀態", "health": "健康狀態", "temperature": "溫度", "power": "功耗", "fan": "風扇" },
+      "processes": { "title": "運算程序", "empty": "目前沒有運算程序使用此裝置。" }
+    },
+    "host_processes": {
+      "search_placeholder": "搜尋程序...",
+      "count_suffix": "個程序",
+      "sampling": "正在取樣程序...",
+      "empty": "沒有符合的程序",
+      "unknown": "未知",
+      "elapsed": "執行時間",
+      "filters": {
+        "all": "全部",
+        "running": "執行中",
+        "high_cpu": "高 CPU",
+        "high_memory": "高記憶體"
+      },
+      "sort": {
+        "cpu": "CPU",
+        "memory": "記憶體",
+        "pid": "PID",
+        "command": "命令",
+        "user": "使用者"
+      },
+      "states": {
+        "running": "執行中",
+        "sleeping": "睡眠",
+        "waiting": "等待",
+        "stopped": "已停止",
+        "zombie": "殭屍",
+        "idle": "閒置",
+        "unknown": "未知"
+      },
+      "actions": {
+        "column": "操作",
+        "term": "終止",
+        "kill": "強制",
+        "stop": "暫停",
+        "cont": "恢復",
+        "renice": "優先級",
+        "apply": "調整",
+        "renice_placeholder": "nice"
+      },
+      "confirm": {
+        "title": "確認程序操作",
+        "cancel": "取消",
+        "term_desc": "要向 PID {{pid}}（{{command}}）傳送 TERM 嗎？",
+        "kill_desc": "要用 KILL 強制結束 PID {{pid}}（{{command}}）嗎？此操作無法復原。",
+        "stop_desc": "要用 STOP 暫停 PID {{pid}}（{{command}}）嗎？",
+        "cont_desc": "要用 CONT 恢復 PID {{pid}}（{{command}}）嗎？",
+        "renice_desc": "要調整 PID {{pid}}（{{command}}）的優先權嗎？"
+      },
+      "toast": {
+        "action_already_running": "已有程序操作正在執行。",
+        "invalid_nice": "請輸入 -20 到 19 之間的 nice 值。",
+        "connection_missing": "所選連線已無法使用。",
+        "action_failed": "程序操作失敗。",
+        "action_succeeded": "PID {{pid}} 的程序操作已完成。",
+        "partial_support": "{{os}} 上的程序管理為部分支援。"
+      }
+    },
+    "host_docker": {
+      "search_placeholder": "搜尋容器...",
+      "count_suffix": "個容器",
+      "sampling": "正在採樣 Docker 容器...",
+      "empty": "沒有符合的容器",
+      "unavailable": "此主機上 Docker 無法使用。",
+      "error": "Docker 命令失敗：{{error}}",
+      "columns": {
+        "container": "容器 / 映像檔",
+        "image": "映像檔",
+        "state": "狀態",
+        "ports": "連接埠"
+      },
+      "states": {
+        "running": "執行中",
+        "exited": "已退出",
+        "created": "已建立",
+        "paused": "已暫停",
+        "restarting": "重新啟動中",
+        "removing": "移除中",
+        "dead": "已失效",
+        "unknown": "未知"
+      },
+      "actions": {
+        "refresh": "重新整理容器",
+        "logs": "查看日誌",
+        "follow_logs": "追蹤日誌",
+        "exec": "開啟 Shell",
+        "start": "啟動",
+        "stop": "停止",
+        "restart": "重新啟動"
+      },
+      "exec_title": "Docker：{{name}}",
+      "follow_title": "Docker 日誌：{{name}}",
+      "logs": {
+        "title": "日誌：{{name}}",
+        "loading": "正在載入日誌...",
+        "empty": "沒有近期日誌。",
+        "close": "關閉日誌"
+      },
+      "confirm": {
+        "title": "確認 Docker 操作",
+        "cancel": "取消",
+        "start_desc": "要啟動容器 {{name}}（{{id}}）嗎？",
+        "stop_desc": "要停止容器 {{name}}（{{id}}）嗎？容器內正在執行的工作可能會中斷。",
+        "restart_desc": "要重新啟動容器 {{name}}（{{id}}）嗎？容器內正在執行的工作會中斷。"
+      },
+      "toast": {
+        "action_already_running": "已有 Docker 操作正在執行。",
+        "logs_already_running": "Docker 日誌正在載入。",
+        "logs_failed": "Docker 日誌載入失敗。",
+        "exec_terminal_missing": "此容器沒有可用的即時 SSH 終端機路由。",
+        "exec_opened": "已為 {{name}} 開啟 Shell。",
+        "follow_opened": "正在追蹤 {{name}} 的日誌。",
+        "connection_missing": "所選連線已無法使用。",
+        "action_failed": "Docker 操作失敗。",
+        "action_succeeded": "容器 {{name}} 的 Docker 操作已完成。"
+      }
+    },
+    "host_services": {
+      "search_placeholder": "搜尋服務...",
+      "count_suffix": "個服務",
+      "sampling": "正在取樣服務...",
+      "empty": "沒有符合的服務",
+      "unavailable": "此主機上服務管理器不可用。",
+      "error": "服務命令失敗：{{error}}",
+      "capability": {
+        "full": "完整支援",
+        "partial": "部分支援",
+        "unknown": "支援狀態未知"
+      },
+      "columns": {
+        "service": "服務",
+        "state": "狀態",
+        "enabled": "啟用",
+        "pid": "PID",
+        "description": "描述",
+        "load": "載入",
+        "sub_state": "子狀態"
+      },
+      "states": {
+        "running": "執行中",
+        "stopped": "已停止",
+        "failed": "失敗",
+        "activating": "啟動中",
+        "deactivating": "停止中",
+        "reloading": "重新載入中",
+        "unknown": "未知"
+      },
+      "enabled": {
+        "enabled": "已啟用",
+        "disabled": "已停用",
+        "masked": "已遮蔽",
+        "static": "靜態",
+        "unknown": "未知"
+      },
+      "actions": {
+        "refresh": "重新整理服務",
+        "logs": "檢視日誌",
+        "follow_logs": "追蹤日誌",
+        "start": "啟動",
+        "stop": "停止",
+        "restart": "重新啟動",
+        "reload": "重新載入",
+        "enable": "啟用",
+        "disable": "停用"
+      },
+      "follow_title": "服務日誌：{{name}}",
+      "logs": {
+        "title": "日誌：{{name}}",
+        "loading": "正在載入日誌...",
+        "empty": "沒有近期日誌。",
+        "close": "關閉日誌"
+      },
+      "confirm": {
+        "title": "確認服務操作",
+        "cancel": "取消",
+        "start_desc": "要啟動服務 {{id}}（{{name}}）嗎？",
+        "stop_desc": "要停止服務 {{id}}（{{name}}）嗎？正在執行的工作可能會中斷。",
+        "restart_desc": "要重新啟動服務 {{id}}（{{name}}）嗎？正在執行的工作會被中斷。",
+        "reload_desc": "要重新載入服務 {{id}}（{{name}}）嗎？",
+        "enable_desc": "要將服務 {{id}}（{{name}}）設為開機啟用嗎？",
+        "disable_desc": "要將服務 {{id}}（{{name}}）設為開機停用嗎？"
+      },
+      "toast": {
+        "action_already_running": "已有服務操作正在執行。",
+        "logs_already_running": "服務日誌正在載入。",
+        "logs_failed": "服務日誌載入失敗。",
+        "exec_terminal_missing": "此服務沒有可用的即時 SSH 終端路由。",
+        "follow_opened": "正在追蹤 {{name}} 的日誌。",
+        "connection_missing": "所選連線已不可用。",
+        "action_failed": "服務操作失敗。",
+        "action_succeeded": "服務 {{name}} 的操作已完成。",
+        "partial_support": "{{os}} 上的服務管理為部分支援。"
+      }
+    },
+    "host_logs": {
+      "search_placeholder": "搜尋日誌...",
+      "count_suffix": "則日誌",
+      "loading": "正在載入日誌...",
+      "empty": "沒有符合的日誌",
+      "unavailable": "此主機上日誌不可用。",
+      "error": "日誌命令失敗：{{error}}",
+      "capability": {
+        "full": "完整支援",
+        "partial": "部分支援",
+        "unknown": "支援狀態未知"
+      },
+      "presets": {
+        "all": "全部",
+        "errors": "錯誤",
+        "auth": "SSH/認證",
+        "kernel": "核心",
+        "system": "系統"
+      },
+      "columns": {
+        "time": "時間",
+        "level": "級別",
+        "source": "來源",
+        "unit": "單元",
+        "message": "訊息"
+      },
+      "levels": {
+        "error": "錯誤",
+        "warning": "警告",
+        "info": "資訊",
+        "debug": "除錯",
+        "unknown": "未知"
+      },
+      "actions": {
+        "refresh": "重新整理日誌",
+        "follow": "追蹤日誌"
+      },
+      "follow_title": "主機日誌：{{preset}}",
+      "toast": {
+        "snapshot_already_running": "已有日誌快照正在執行。",
+        "snapshot_loaded": "已載入 {{count}} 則日誌。",
+        "snapshot_failed": "日誌載入失敗：{{reason}}",
+        "unavailable": "此主機上日誌不可用。",
+        "connection_missing": "所選連線已不可用。",
+        "exec_terminal_missing": "主機日誌沒有可用的即時 SSH 終端路由。",
+        "follow_opened": "正在追蹤 {{preset}} 日誌。",
+        "partial_support": "{{os}} 上的主機日誌為部分支援。",
+        "unknown_error": "未知錯誤"
+      }
+    },
+    "host_tmux": {
+      "search_placeholder": "搜尋 tmux...",
+      "count_suffix": "個會話",
+      "loading": "正在載入 tmux 會話...",
+      "empty": "沒有符合的 tmux 會話",
+      "unavailable": "此主機上 tmux 不可用。",
+      "error": "tmux 命令失敗：{{error}}",
+      "capability": {
+        "full": "完整支援",
+        "partial": "部分支援",
+        "unknown": "支援狀態未知"
+      },
+      "columns": {
+        "session": "會話",
+        "attached": "連線",
+        "windows": "視窗",
+        "panes": "Pane",
+        "activity": "活動",
+        "created": "建立"
+      },
+      "attached": {
+        "yes": "已連線",
+        "no": "未連線"
+      },
+      "actions": {
+        "new_session": "新增會話",
+        "refresh": "重新整理 tmux",
+        "attach": "連線",
+        "kill_session": "殺死會話",
+        "rename_session": "重新命名工作階段",
+        "rename_window": "重新命名視窗",
+        "kill_window": "強制結束視窗",
+        "kill_pane": "強制結束 Pane",
+        "send_command": "傳送命令"
+      },
+      "active_window": "活動 #{{index}} {{name}}",
+      "no_active_window": "無活動視窗",
+      "attach_title": "tmux：{{name}}",
+      "new_session_title": "新增 tmux 會話",
+      "new_session_name": "新會話",
+      "confirm": {
+        "title": "確認 tmux 操作",
+        "cancel": "取消",
+        "kill_session_desc": "要殺死 tmux 會話 {{id}}（{{name}}）嗎？此會話中的所有視窗和 pane 都會被終止。",
+        "kill_window_desc": "要強制結束工作階段 {{name}} 中的 tmux 視窗 {{target}} 嗎？此視窗內所有 Pane 都會被終止。",
+        "kill_pane_desc": "要強制結束工作階段 {{name}} 中的 tmux Pane {{target}} 嗎？其中執行的命令會被終止。",
+        "action_desc": "要對工作階段 {{name}} 中的 {{target}} 執行 tmux 操作嗎？"
+      },
+      "toast": {
+        "snapshot_already_running": "已有 tmux 快照正在執行。",
+        "snapshot_loaded": "已載入 {{count}} 個 tmux 會話。",
+        "snapshot_failed": "tmux 會話載入失敗：{{reason}}",
+        "unavailable": "此主機上 tmux 不可用。",
+        "connection_missing": "所選連線已不可用。",
+        "exec_terminal_missing": "tmux 沒有可用的即時 SSH 終端路由。",
+        "attach_opened": "正在連線到 {{name}}。",
+        "new_session_opened": "正在開啟 {{name}}。",
+        "action_already_running": "已有 tmux 操作正在執行。",
+        "action_failed": "tmux 操作失敗。",
+        "action_succeeded": "tmux 對 {{target}} 的操作已完成。",
+        "unknown_error": "未知錯誤",
+        "input_required": "繼續前請輸入內容。"
+      },
+      "input": {
+        "rename_session_title": "重新命名工作階段",
+        "rename_window_title": "重新命名視窗",
+        "send_command_title": "向 Pane 傳送命令",
+        "rename_session_desc": "為工作階段 {{target}} 設定新名稱。",
+        "rename_window_desc": "為工作階段 {{name}} 中的視窗 {{target}} 設定新名稱。",
+        "send_command_desc": "向工作階段 {{name}} 中的 Pane {{target}} 傳送一條命令並按 Enter。",
+        "rename_session_placeholder": "工作階段名稱",
+        "rename_window_placeholder": "視窗名稱",
+        "send_command_placeholder": "要傳送的命令"
+      }
+    },
+    "host_schedules": {
+      "search_placeholder": "搜尋排程任務...",
+      "count_suffix": "個任務",
+      "loading": "正在掃描排程任務...",
+      "empty": "沒有符合的排程任務",
+      "unavailable": "此主機不支援排程任務工具。",
+      "error": "排程任務命令失敗：{{error}}",
+      "capability": {
+        "full": "完整支援",
+        "partial": "部分支援",
+        "unknown": "支援未知"
+      },
+      "filters": {
+        "all": "全部",
+        "enabled": "已啟用",
+        "disabled": "已停用",
+        "systemd": "systemd",
+        "cron": "cron",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "failed": "失敗"
+      },
+      "sources": {
+        "systemd": "systemd",
+        "cron": "cron",
+        "anacron": "anacron",
+        "at": "at",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "unknown": "未知"
+      },
+      "enabled": {
+        "enabled": "已啟用",
+        "disabled": "已停用",
+        "static": "靜態",
+        "masked": "已遮罩",
+        "unknown": "未知"
+      },
+      "active": {
+        "active": "作用中",
+        "inactive": "非作用中",
+        "failed": "失敗",
+        "unknown": "未知"
+      },
+      "columns": {
+        "task": "任務",
+        "source": "來源",
+        "state": "狀態",
+        "enabled": "啟用",
+        "next": "下次",
+        "last": "上次",
+        "user": "使用者",
+        "schedule": "排程",
+        "command": "命令",
+        "result": "結果",
+        "description": "描述",
+        "unit": "Unit"
+      },
+      "actions": {
+        "refresh": "重新整理排程任務",
+        "diagnostic": "開啟診斷終端",
+        "logs": "檢視日誌",
+        "follow_logs": "跟隨日誌",
+        "enable": "啟用",
+        "disable": "停用",
+        "run_now": "立即執行"
+      },
+      "diagnostic_title": "排程任務診斷",
+      "follow_title": "排程任務日誌：{{name}}",
+      "logs": {
+        "title": "日誌：{{name}}",
+        "loading": "正在載入日誌...",
+        "empty": "沒有最近日誌。",
+        "close": "關閉日誌"
+      },
+      "confirm": {
+        "title": "確認排程任務操作",
+        "cancel": "取消",
+        "enable_desc": "啟用排程任務 {{name}} 嗎？Unit：{{unit}}。",
+        "disable_desc": "停用排程任務 {{name}} 嗎？後續自動執行可能會停止。Unit：{{unit}}。",
+        "run_now_desc": "現在執行排程任務 {{name}} 嗎？Unit：{{unit}}。"
+      },
+      "toast": {
+        "snapshot_already_running": "排程任務掃描正在執行。",
+        "snapshot_loaded": "已載入 {{count}} 個排程任務。",
+        "snapshot_failed": "掃描排程任務失敗：{{reason}}",
+        "unavailable": "此主機不支援排程任務工具。",
+        "connection_missing": "所選連線已不可用。",
+        "exec_terminal_missing": "沒有可用於診斷的即時 SSH 終端路由。",
+        "diagnostic_opened": "已開啟排程任務診斷。",
+        "follow_opened": "已開啟 {{name}} 的排程任務日誌跟隨。",
+        "logs_already_running": "排程任務日誌正在載入。",
+        "logs_failed": "載入排程任務日誌失敗。",
+        "action_already_running": "已有排程任務操作正在執行。",
+        "action_failed": "排程任務操作失敗。",
+        "enable_succeeded": "已啟用 {{name}}。",
+        "disable_succeeded": "已停用 {{name}}。",
+        "run_now_started": "已啟動 {{name}}。",
+        "partial_support": "{{os}} 上的排程任務支援為部分支援。",
+        "unknown_error": "未知排程任務錯誤。"
+      }
+    },
+    "host_ports": {
+      "search_placeholder": "搜尋連接埠...",
+      "count_suffix": "個連接埠",
+      "loading": "正在掃描連接埠...",
+      "empty": "沒有符合的連接埠",
+      "unavailable": "此主機無法使用連接埠工具。",
+      "error": "連接埠命令失敗：{{error}}",
+      "capability": {
+        "full": "完整支援",
+        "partial": "部分支援",
+        "unknown": "支援狀態未知"
+      },
+      "filters": {
+        "all": "全部",
+        "listening": "監聽",
+        "connected": "已連線",
+        "tcp": "TCP",
+        "udp": "UDP",
+        "risky": "高風險"
+      },
+      "columns": {
+        "local": "本機位址",
+        "protocol": "協定",
+        "state": "狀態",
+        "pid": "PID",
+        "process": "行程",
+        "remote": "遠端位址",
+        "user": "使用者",
+        "command": "命令",
+        "source": "來源",
+        "inode": "Inode"
+      },
+      "states": {
+        "listening": "監聽中",
+        "established": "已建立",
+        "open": "開放",
+        "time_wait": "TIME_WAIT",
+        "close_wait": "CLOSE_WAIT",
+        "unknown": "未知"
+      },
+      "actions": {
+        "refresh": "重新整理連接埠",
+        "diagnostic": "開啟診斷終端",
+        "copy_endpoint": "複製位址",
+        "jump_process": "查找行程"
+      },
+      "diagnostic_title": "連接埠診斷",
+      "toast": {
+        "snapshot_already_running": "連接埠掃描正在執行。",
+        "snapshot_loaded": "已載入 {{count}} 個連接埠。",
+        "snapshot_failed": "連接埠掃描失敗：{{reason}}",
+        "unavailable": "此主機無法使用連接埠工具。",
+        "connection_missing": "所選連線已不可用。",
+        "exec_terminal_missing": "沒有可用的 SSH 終端路由可用於診斷。",
+        "diagnostic_opened": "已開啟連接埠診斷。",
+        "copied_endpoint": "已複製 {{endpoint}}。",
+        "partial_support": "{{os}} 上的連接埠檢查為部分支援。",
+        "unknown_error": "未知的連接埠掃描錯誤。"
+      }
+    },
+    "host_filesystems": {
+      "search_placeholder": "搜尋檔案系統...",
+      "count_suffix": "項",
+      "loading": "正在掃描磁碟...",
+      "empty": "沒有相符的檔案系統項目",
+      "unavailable": "此主機沒有可用的檔案系統工具。",
+      "error": "檔案系統命令失敗：{{error}}",
+      "capability": {
+        "full": "完整支援",
+        "partial": "部分支援",
+        "unknown": "支援狀態未知"
+      },
+      "filters": {
+        "all": "全部",
+        "mounts": "掛載點",
+        "read_only": "唯讀",
+        "high_usage": "高使用量",
+        "inode_pressure": "Inode 壓力",
+        "large_items": "大型項目",
+        "blocks": "區塊裝置",
+        "attention": "需要關注",
+        "inode_hotspots": "Inode / 檔案數"
+      },
+      "columns": {
+        "path": "路徑",
+        "kind": "類型",
+        "usage": "使用量",
+        "inode": "Inode",
+        "fs": "檔案系統",
+        "size": "大小",
+        "read_only": "唯讀",
+        "device": "裝置",
+        "used_available": "已用 / 可用",
+        "source": "來源",
+        "detail": "詳細資料",
+        "options": "選項",
+        "attention": "關注原因"
+      },
+      "kinds": {
+        "mount": "掛載點",
+        "large_dir": "大型目錄",
+        "large_file": "大型檔案",
+        "block": "區塊裝置",
+        "unknown": "未知",
+        "inode_dir": "Inode 熱點",
+        "count_dir": "檔案數熱點"
+      },
+      "read_only": {
+        "yes": "是",
+        "no": "否"
+      },
+      "actions": {
+        "refresh": "重新整理磁碟",
+        "diagnostic": "開啟診斷終端",
+        "copy_path": "複製路徑"
+      },
+      "diagnostic_title": "磁碟診斷",
+      "toast": {
+        "snapshot_already_running": "磁碟掃描已在執行。",
+        "snapshot_loaded": "已載入 {{count}} 個檔案系統項目。",
+        "snapshot_failed": "磁碟掃描失敗：{{reason}}",
+        "unavailable": "此主機沒有可用的檔案系統工具。",
+        "connection_missing": "選取的連線已不可用。",
+        "exec_terminal_missing": "沒有可用於診斷的即時 SSH 終端路由。",
+        "diagnostic_opened": "已開啟磁碟診斷。",
+        "copied_path": "已複製 {{path}}。",
+        "partial_support": "{{os}} 上的檔案系統檢查為部分支援。",
+        "unknown_error": "未知檔案系統掃描錯誤。"
+      },
+      "attention": {
+        "critical_usage": "容量危險",
+        "high_usage": "高使用量",
+        "critical_inode": "Inode 危險",
+        "inode_pressure": "Inode 壓力",
+        "low_free_space": "剩餘過低",
+        "read_only": "唯讀掛載",
+        "large_item": "大型項目",
+        "inode_hotspot": "Inode 熱點",
+        "file_count_hotspot": "檔案數熱點"
+      },
+      "values": {
+        "inode_count": "{{count}} 個 inode",
+        "file_count": "{{count}} 個檔案"
+      }
+    },
+    "host_packages": {
+      "search_placeholder": "搜尋套件...",
+      "count_suffix": "個套件",
+      "loading": "正在掃描套件...",
+      "empty": "沒有相符的套件",
+      "unavailable": "此主機上沒有可用的套件管理工具。",
+      "error": "套件命令失敗：{{error}}",
+      "capability": {
+        "full": "完整支援",
+        "partial": "唯讀支援",
+        "unknown": "支援狀態未知"
+      },
+      "filters": {
+        "all": "全部",
+        "upgradable": "可更新",
+        "installed": "已安裝",
+        "services": "服務相關",
+        "apt": "apt",
+        "dnf": "dnf",
+        "yum": "yum",
+        "pacman": "pacman",
+        "brew": "Homebrew"
+      },
+      "columns": {
+        "package": "套件",
+        "status": "狀態",
+        "installed": "已安裝",
+        "candidate": "候選版本",
+        "manager": "管理器",
+        "service": "服務",
+        "arch": "架構",
+        "repository": "儲存庫",
+        "summary": "摘要",
+        "source": "來源",
+        "owner_paths": "歸屬路徑"
+      },
+      "status": {
+        "upgradable": "可更新",
+        "installed": "已安裝",
+        "unknown": "未知"
+      },
+      "actions": {
+        "refresh": "重新整理套件",
+        "inspect": "開啟套件詳細資訊",
+        "copy_name": "複製套件名稱"
+      },
+      "inspect_title": "套件詳細資訊",
+      "toast": {
+        "snapshot_already_running": "套件掃描已在執行。",
+        "snapshot_loaded": "已載入 {{count}} 個套件。",
+        "snapshot_failed": "掃描套件失敗：{{reason}}",
+        "unavailable": "此主機上沒有可用的套件管理工具。",
+        "connection_missing": "選取的連線已不可用。",
+        "exec_terminal_missing": "沒有可用於套件詳細資訊的即時 SSH 終端路由。",
+        "inspect_unsupported": "暫不支援 {{manager}} 的套件詳細資訊命令。",
+        "inspect_opened": "已開啟 {{name}} 的詳細資訊。",
+        "copied_name": "已複製 {{name}}。",
+        "partial_support": "{{os}} 上的套件檢查為唯讀支援。",
+        "unknown_error": "未知的套件掃描錯誤。"
+      }
+    }
+  },
+  "sessions": {
+    "tree": {
+      "no_sessions": "無工作階段",
+      "click_to_add": "按 + 新增連線",
+      "actions": {
+        "new_terminal": "新終端機",
+        "sftp": "SFTP",
+        "disconnect": "斷開",
+        "reconnect": "重新連線",
+        "edit_and_reconnect": "修改並重新連線",
+        "remove_session": "移除工作階段",
+        "cancel_reconnect": "取消重連",
+        "port_forwarding": "連接埠轉發",
+        "drill_in": "深入連線（下一跳）",
+        "saved_next_hop": "使用已儲存連線作為下一跳...",
+        "connect": "連線",
+        "save_as_connection": "儲存為連線..."
+      }
+    },
+    "focused_list": {
+      "all_servers": "所有伺服器",
+      "child": "子節點",
+      "children": "子節點",
+      "no_child_nodes": "此節點沒有子節點",
+      "no_servers": "尚無伺服器",
+      "add_by_drilling": "您可以透過深入連線來新增子節點",
+      "click_to_add": "點擊 + 新增連線",
+      "terminal": "終端機 #{{number}}",
+      "close_terminal": "關閉終端機"
+    },
+    "actions": {
+      "connect": "連線",
+      "new_terminal": "新增終端機",
+      "sftp_explorer": "SFTP 檔案總管",
+      "port_forwarding": "連接埠轉發",
+      "disconnect": "中斷連線",
+      "reconnect": "重新連線",
+      "drill_in": "深入連線（下一跳）",
+      "saved_next_hop": "使用已儲存連線作為下一跳...",
+      "save_as_connection": "儲存為連線..."
+    },
+    "saved_next_hop": {
+      "title": "使用已儲存連線作為下一跳",
+      "description": "選擇一個已儲存連線，接到 {{host}} 下方。",
+      "empty": "沒有可用的已儲存連線。",
+      "cancel": "取消",
+      "proxy_chain_badge": "{{count}} 跳",
+      "parent_not_ready": "請先連線父節點，再新增已儲存的下一跳。",
+      "not_found": "找不到該已儲存連線。",
+      "missing_credentials": "此已儲存連線缺少連線所需的憑證。",
+      "materialize_failed": "無法將該已儲存連線加入工作階段樹。"
+    },
+    "breadcrumb": {
+      "back_to_root": "返回根檢視",
+      "all_servers": "所有伺服器"
+    }
+  }
+}

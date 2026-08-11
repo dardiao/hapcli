@@ -1,0 +1,433 @@
+use anyhow::{Context, Result, anyhow};
+use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use crate::providers::{api_key_required_ref, gemini_api_base_url, url_encode_component};
+use crate::{
+    AiChatMessage, AiChatRole, AiChatStreamConfig, AiReasoningLevel, AiReasoningRequestFormat,
+    AiStreamEvent, AiToolCall, AiToolChoice, AiToolDefinition, ai_provider_parts,
+    model_reasoning_capability,
+};
+
+use super::CHAT_STREAM_TIMEOUT;
+use super::common::{ParsedStreamLine, stream_sse_response};
+
+static GEMINI_TOOL_CALL_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+pub(crate) async fn stream_gemini_completion(
+    config: AiChatStreamConfig,
+    messages: Vec<AiChatMessage>,
+    events: tokio::sync::mpsc::UnboundedSender<AiStreamEvent>,
+) -> Result<()> {
+    let api_key = api_key_required_ref(
+        &config.provider_type,
+        config.api_key.as_ref().map(|api_key| api_key.as_str()),
+    )?;
+    let url = gemini_stream_url(&config.base_url, &config.model)?;
+    let client = hapcli_network_proxy::application_http_client_builder()
+        .context("failed to apply application proxy to AI chat client")?
+        .timeout(CHAT_STREAM_TIMEOUT)
+        .build()
+        .context("failed to create Gemini chat client")?;
+    let body = gemini_chat_body(&config, &messages);
+    let response = client
+        .post(&url)
+        // Gemini requires the API key as a query parameter. Let reqwest attach
+        // it to the request and strip URLs from transport errors below.
+        .query(&[("alt", "sse"), ("key", api_key)])
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|error| {
+            anyhow!(
+                "failed to connect to Gemini provider: {}",
+                error.without_url()
+            )
+        })?;
+    if !response.status().is_success() {
+        let status = response.status().as_u16();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(anyhow!(parse_gemini_error(status, &error_text)));
+    }
+    let _ = stream_sse_response(response, &events, parse_gemini_data_line).await?;
+    let _ = events.send(AiStreamEvent::Done);
+    Ok(())
+}
+
+fn gemini_stream_url(base_url: &str, model: &str) -> Result<String> {
+    Ok(format!(
+        "{}/models/{}:streamGenerateContent",
+        gemini_api_base_url(base_url)?,
+        url_encode_component(model)
+    ))
+}
+
+pub(crate) fn gemini_chat_body(config: &AiChatStreamConfig, messages: &[AiChatMessage]) -> Value {
+    let (system_instruction, contents) = gemini_chat_contents(messages);
+    let mut body = serde_json::json!({ "contents": contents });
+    if let Some(system) = system_instruction.filter(|system| !system.is_empty())
+        && let Some(object) = body.as_object_mut()
+    {
+        object.insert(
+            "system_instruction".to_string(),
+            serde_json::json!({ "parts": [{ "text": system }] }),
+        );
+    }
+    if let Some(tokens) = config.max_response_tokens.filter(|tokens| *tokens > 0)
+        && let Some(object) = body.as_object_mut()
+    {
+        object.insert(
+            "generationConfig".to_string(),
+            serde_json::json!({ "maxOutputTokens": tokens }),
+        );
+    }
+    apply_gemini_reasoning_options(&mut body, config);
+    if !config.tools.is_empty()
+        && let Some(object) = body.as_object_mut()
+    {
+        object.insert(
+            "tools".to_string(),
+            serde_json::json!(gemini_tool_definitions(&config.tools)),
+        );
+        if let Some(tool_config) = gemini_tool_config(&config.tool_choice) {
+            object.insert("toolConfig".to_string(), tool_config);
+        }
+    }
+    body
+}
+
+fn apply_gemini_reasoning_options(body: &mut Value, config: &AiChatStreamConfig) {
+    let effort = AiReasoningLevel::parse(config.reasoning_effort.as_deref().unwrap_or("auto"));
+    if effort == AiReasoningLevel::Auto {
+        return;
+    }
+    let capability = model_reasoning_capability(&config.provider_type, &config.model);
+    let generation_config = body
+        .as_object_mut()
+        .expect("Gemini request body must be an object")
+        .entry("generationConfig")
+        .or_insert_with(|| serde_json::json!({}));
+    let Some(generation_config) = generation_config.as_object_mut() else {
+        return;
+    };
+    match capability.request_format {
+        AiReasoningRequestFormat::GeminiThinkingLevel => {
+            generation_config.insert(
+                "thinkingConfig".to_string(),
+                serde_json::json!({ "thinkingLevel": effort.as_str() }),
+            );
+        }
+        AiReasoningRequestFormat::GeminiThinkingBudget => {
+            // Gemini's official OpenAI compatibility mapping documents these
+            // budgets for the Gemini 2.5 family.
+            let budget = match effort {
+                AiReasoningLevel::None => 0,
+                AiReasoningLevel::Minimal | AiReasoningLevel::Low => 1024,
+                AiReasoningLevel::Medium => 8192,
+                AiReasoningLevel::High | AiReasoningLevel::Xhigh | AiReasoningLevel::Max => 24576,
+                AiReasoningLevel::Auto => return,
+            };
+            generation_config.insert(
+                "thinkingConfig".to_string(),
+                serde_json::json!({ "thinkingBudget": budget }),
+            );
+        }
+        _ => {}
+    }
+}
+
+pub(crate) fn gemini_chat_contents(messages: &[AiChatMessage]) -> (Option<String>, Vec<Value>) {
+    let mut system_instruction: Option<String> = None;
+    let mut contents = Vec::<Value>::new();
+    let mut tool_names_by_id = HashMap::<String, String>::new();
+    for message in messages {
+        if message.role == AiChatRole::Assistant
+            && let Some(parts) =
+                ai_provider_parts(message, "gemini").filter(|parts| !parts.is_empty())
+        {
+            for call in message.tool_calls.iter().filter_map(AiToolCall::from_value) {
+                tool_names_by_id.insert(call.id, call.name);
+            }
+            // Signed Gemini parts are protocol state. Replay them in their
+            // original order instead of rebuilding or merging their payloads.
+            contents.push(serde_json::json!({
+                "role": "model",
+                "parts": parts,
+            }));
+            continue;
+        }
+        match message.role {
+            AiChatRole::System => {
+                system_instruction = Some(match system_instruction {
+                    // Gemini's Tauri adapter uses JavaScript truthiness here:
+                    // an empty previous system prompt is replaced, while a
+                    // non-empty one keeps the "\n\n" separator even for empty
+                    // later system prompts.
+                    Some(current) if !current.is_empty() => {
+                        format!("{current}\n\n{}", message.content)
+                    }
+                    _ => message.content.clone(),
+                });
+            }
+            AiChatRole::Tool => {
+                let name = message
+                    .tool_call_id
+                    .as_ref()
+                    .and_then(|id| tool_names_by_id.get(id))
+                    .cloned()
+                    .unwrap_or_else(|| "unknown".to_string());
+                let response = serde_json::from_str::<Value>(&message.content)
+                    .unwrap_or_else(|_| serde_json::json!({ "output": message.content }));
+                contents.push(serde_json::json!({
+                    "role": "user",
+                    "parts": [{ "functionResponse": { "name": name, "response": response } }],
+                }));
+            }
+            AiChatRole::Assistant if !message.tool_calls.is_empty() => {
+                let mut parts = Vec::new();
+                if !message.content.is_empty() {
+                    parts.push(serde_json::json!({ "text": message.content }));
+                }
+                for call in message.tool_calls.iter().filter_map(AiToolCall::from_value) {
+                    tool_names_by_id.insert(call.id.clone(), call.name.clone());
+                    // Tauri passes any successfully parsed JSON value through
+                    // to Gemini functionCall.args; only parse failures become
+                    // an empty object.
+                    let args = serde_json::from_str::<Value>(&call.arguments)
+                        .unwrap_or_else(|_| serde_json::json!({}));
+                    parts.push(serde_json::json!({
+                        "functionCall": { "name": call.name, "args": args },
+                    }));
+                }
+                contents.push(serde_json::json!({ "role": "model", "parts": parts }));
+            }
+            AiChatRole::User | AiChatRole::Assistant => {
+                let role = if message.role == AiChatRole::Assistant {
+                    "model"
+                } else {
+                    "user"
+                };
+                if let Some(last) = contents.last_mut()
+                    && last.get("role").and_then(Value::as_str) == Some(role)
+                    && let Some(parts) = last.get_mut("parts").and_then(Value::as_array_mut)
+                {
+                    parts.push(serde_json::json!({ "text": message.content }));
+                    continue;
+                }
+                contents.push(serde_json::json!({
+                    "role": role,
+                    "parts": [{ "text": message.content }],
+                }));
+            }
+        }
+    }
+    if contents
+        .first()
+        .is_some_and(|content| content.get("role").and_then(Value::as_str) != Some("user"))
+    {
+        contents.insert(
+            0,
+            serde_json::json!({ "role": "user", "parts": [{ "text": "(Continue)" }] }),
+        );
+    }
+    (system_instruction, contents)
+}
+
+fn gemini_tool_definitions(tools: &[AiToolDefinition]) -> Vec<Value> {
+    vec![serde_json::json!({
+        "functionDeclarations": tools
+            .iter()
+            .map(|tool| serde_json::json!({
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters,
+            }))
+            .collect::<Vec<_>>(),
+    })]
+}
+
+fn gemini_tool_config(tool_choice: &AiToolChoice) -> Option<Value> {
+    match tool_choice {
+        AiToolChoice::Auto => None,
+        AiToolChoice::Required => Some(serde_json::json!({
+            "functionCallingConfig": { "mode": "ANY" },
+        })),
+        AiToolChoice::Named(name) if !name.is_empty() => Some(serde_json::json!({
+            "functionCallingConfig": {
+                "mode": "ANY",
+                "allowedFunctionNames": [name],
+            },
+        })),
+        AiToolChoice::Named(_) => None,
+    }
+}
+
+pub(crate) fn parse_gemini_data_line(line: &str) -> ParsedStreamLine {
+    let Some(data) = line.strip_prefix("data: ") else {
+        return ParsedStreamLine {
+            events: Vec::new(),
+            saw_frame: false,
+        };
+    };
+    let data = data.trim();
+    if data.is_empty() {
+        return ParsedStreamLine {
+            events: Vec::new(),
+            saw_frame: true,
+        };
+    }
+
+    let mut events = Vec::new();
+    if let Ok(json) = serde_json::from_str::<Value>(data)
+        && let Some(parts) = json
+            .get("candidates")
+            .and_then(Value::as_array)
+            .and_then(|candidates| candidates.first())
+            .and_then(|candidate| candidate.get("content"))
+            .and_then(|content| content.get("parts"))
+            .and_then(Value::as_array)
+    {
+        for part in parts {
+            // Gemini attaches thoughtSignature to the part itself. Forward the
+            // complete part before projecting its visible text or tool call.
+            events.push(AiStreamEvent::ProviderResponsePart {
+                provider_type: "gemini".to_string(),
+                part: part.clone(),
+            });
+            if let Some(text) = part
+                .get("text")
+                .and_then(Value::as_str)
+                .filter(|text| !text.is_empty())
+            {
+                events.push(AiStreamEvent::Content(text.to_string()));
+            }
+            if let Some(function_call) = part.get("functionCall") {
+                let id = format!(
+                    "gemini-{}",
+                    GEMINI_TOOL_CALL_COUNTER.fetch_add(1, Ordering::Relaxed)
+                );
+                let name = function_call
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown")
+                    .to_string();
+                let arguments = function_call
+                    .get("args")
+                    .filter(|args| gemini_js_truthy(args))
+                    .cloned()
+                    .unwrap_or_else(|| serde_json::json!({}))
+                    .to_string();
+                events.push(AiStreamEvent::ToolCallComplete {
+                    id,
+                    name,
+                    arguments,
+                });
+            }
+        }
+    }
+    ParsedStreamLine {
+        events,
+        saw_frame: true,
+    }
+}
+
+fn gemini_js_truthy(value: &Value) -> bool {
+    // Tauri uses `part.functionCall.args || {}` before JSON.stringify. Mirror
+    // JavaScript truthiness for JSON values so arrays/objects are preserved
+    // while null, false, zero, and empty string fall back to `{}`.
+    match value {
+        Value::Null => false,
+        Value::Bool(value) => *value,
+        Value::Number(value) => value.as_f64() != Some(0.0),
+        Value::String(value) => !value.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
+    }
+}
+
+fn parse_gemini_error(status: u16, body: &str) -> String {
+    let mut fallback = format!("Gemini API error: {status}");
+    if let Ok(json) = serde_json::from_str::<Value>(body) {
+        if let Some(message) = json
+            .get("error")
+            .and_then(|error| error.get("message"))
+            .and_then(Value::as_str)
+        {
+            return message.to_string();
+        }
+    } else if !body.is_empty() {
+        fallback = body.chars().take(200).collect();
+    }
+    fallback
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{AiExecutionBackend, AiPolicySafetyMode, AiToolUsePolicy};
+
+    fn config(model: &str, effort: &str) -> AiChatStreamConfig {
+        AiChatStreamConfig {
+            execution_backend: AiExecutionBackend::Provider,
+            provider_id: Some("gemini".to_string()),
+            acp_agent_id: None,
+            acp_session_id: None,
+            acp_config_selection: None,
+            provider_type: "gemini".to_string(),
+            base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
+            model: model.to_string(),
+            api_key: None,
+            max_response_tokens: Some(4096),
+            reasoning_effort: Some(effort.to_string()),
+            safety_mode: AiPolicySafetyMode::Default,
+            profile_id: None,
+            memory_context: None,
+            memory_entry_ids: Vec::new(),
+            tool_policy: AiToolUsePolicy::default(),
+            tools: Vec::new(),
+            tool_choice: AiToolChoice::Auto,
+        }
+    }
+
+    #[test]
+    fn stream_url_accepts_service_and_versioned_roots() {
+        let expected = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro:streamGenerateContent";
+
+        assert_eq!(
+            gemini_stream_url("https://generativelanguage.googleapis.com", "gemini-3-pro").unwrap(),
+            expected
+        );
+        assert_eq!(
+            gemini_stream_url(
+                "https://generativelanguage.googleapis.com/v1beta/",
+                "gemini-3-pro"
+            )
+            .unwrap(),
+            expected
+        );
+    }
+
+    #[test]
+    fn gemini_three_uses_official_thinking_level_field() {
+        let body = gemini_chat_body(&config("gemini-3.6-flash", "medium"), &[]);
+        assert_eq!(
+            body["generationConfig"]["thinkingConfig"]["thinkingLevel"].as_str(),
+            Some("medium")
+        );
+    }
+
+    #[test]
+    fn gemini_two_five_maps_levels_to_official_budgets() {
+        let body = gemini_chat_body(&config("gemini-2.5-flash", "none"), &[]);
+        assert_eq!(
+            body["generationConfig"]["thinkingConfig"]["thinkingBudget"].as_i64(),
+            Some(0)
+        );
+        let body = gemini_chat_body(&config("gemini-2.5-pro", "high"), &[]);
+        assert_eq!(
+            body["generationConfig"]["thinkingConfig"]["thinkingBudget"].as_i64(),
+            Some(24576)
+        );
+    }
+}

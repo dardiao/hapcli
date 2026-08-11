@@ -1,0 +1,766 @@
+{
+  "sidebar": {
+    "actions": {
+      "expand": "Mở rộng thanh bên",
+      "collapse": "Thu gọn thanh bên",
+      "new_local_terminal": "Terminal cục bộ mới",
+      "open_pylance_guide": "Mở hướng dẫn Pylance"
+    },
+    "panels": {
+      "sessions": "Phiên hoạt động",
+      "saved": "Kết nối đã lưu",
+      "saved_title": "Kết nối đã lưu",
+      "sftp": "SFTP",
+      "sftp_sessions": "Phiên SFTP",
+      "files": "Trình Quản Lý Tệp",
+      "forwards": "Chuyển tiếp cổng",
+      "forwards_title": "Chuyển tiếp cổng",
+      "runtime": "Bảng điều khiển",
+      "runtime_description": "Giám sát mức sử dụng kết nối và cấu trúc liên kết",
+      "runtime_overview": "Tổng quan",
+      "connection_pool": "Nhóm kết nối",
+      "connection_monitor": "Giám sát kết nối",
+      "connection_matrix": "Ma trận kết nối",
+      "ai": "OxideSens",
+      "ai_assistant": "OxideSens (Sắp ra mắt)",
+      "settings": "Cài đặt",
+      "no_saved_connections": "Không có kết nối đã lưu",
+      "no_active_sessions": "Không có phiên hoạt động",
+      "no_connected_sessions": "Không có phiên đã kết nối",
+      "import_tooltip": "Nhập từ file .oxide",
+      "export_tooltip": "Xuất sang file .oxide",
+      "host_tools": "Công cụ máy chủ",
+      "host_monitor": "Giám sát",
+      "gpu": "GPU / NPU",
+      "processes": "Tiến trình",
+      "services": "Dịch vụ",
+      "logs": "Nhật ký",
+      "tmux": "tmux",
+      "docker": "Docker",
+      "tmux_management": "Quản lý tmux",
+      "docker_management": "Quản lý Docker",
+      "session_manager": "Quản lý phiên",
+      "open_session_manager": "Mở quản lý phiên",
+      "plugins": "Plugin",
+      "activity": "Hoạt động",
+      "event_log": "Nhật ký sự kiện",
+      "notifications": "Thông báo",
+      "saved_connections": "Kết nối đã lưu",
+      "forwarding": "Chuyển tiếp cổng",
+      "ports": "Cổng",
+      "schedules": "Tác vụ đã lên lịch",
+      "filesystems": "Ổ đĩa",
+      "packages": "Gói"
+    },
+    "tooltips": {
+      "settings": "Cài đặt",
+      "ai_hint": "OxideSens",
+      "switch_tree": "Chế độ cây",
+      "switch_focus": "Chế độ tập trung",
+      "new_connection": "Kết nối mới",
+      "lock_app": "Khóa hapcli",
+      "setup_app_lock": "Thiết lập khóa ứng dụng",
+      "collapse": "Thu gọn"
+    },
+    "active_sessions": "Phiên hoạt động",
+    "no_sessions": "Không có phiên",
+    "add_new_connection": "Nhấn + để thêm kết nối",
+    "host_gpu": {
+      "count_suffix": "bộ tăng tốc",
+      "refresh_interval": "Cập nhật mỗi 2 giây",
+      "sampling": "Đang đọc trạng thái thiết bị GPU / NPU...",
+      "unavailable": "Không tìm thấy công cụ giám sát GPU / NPU được hỗ trợ trên máy chủ này.",
+      "unsupported": "Hệ điều hành này chưa hỗ trợ giám sát GPU / NPU.",
+      "no_devices": "Không tìm thấy thiết bị GPU / NPU được hỗ trợ.",
+      "error": "Truy vấn GPU / NPU thất bại: {{error}}",
+      "actions": { "refresh": "Làm mới dữ liệu GPU / NPU" },
+      "summary": { "utilization": "Mức sử dụng trung bình", "memory": "Bộ nhớ thiết bị", "temperature": "Nhiệt độ cao nhất", "power": "Tổng công suất" },
+      "columns": { "device": "Thiết bị", "utilization": "Mức dùng", "memory": "Bộ nhớ" },
+      "details": { "uuid": "UUID", "driver": "Trình điều khiển", "performance_state": "Hiệu năng", "health": "Tình trạng", "temperature": "Nhiệt độ", "power": "Công suất", "fan": "Quạt" },
+      "processes": { "title": "Tiến trình tính toán", "empty": "Không có tiến trình tính toán nào đang dùng thiết bị này." }
+    },
+    "host_processes": {
+      "search_placeholder": "Tìm tiến trình...",
+      "count_suffix": "tiến trình",
+      "sampling": "Đang lấy mẫu tiến trình...",
+      "empty": "Không có tiến trình phù hợp",
+      "unknown": "Không rõ",
+      "elapsed": "Thời gian chạy",
+      "filters": {
+        "all": "Tất cả",
+        "running": "Đang chạy",
+        "high_cpu": "CPU cao",
+        "high_memory": "Bộ nhớ cao"
+      },
+      "sort": {
+        "cpu": "CPU",
+        "memory": "Bộ nhớ",
+        "pid": "PID",
+        "command": "Lệnh",
+        "user": "Người dùng"
+      },
+      "states": {
+        "running": "Đang chạy",
+        "sleeping": "Ngủ",
+        "waiting": "Đang chờ",
+        "stopped": "Đã dừng",
+        "zombie": "Zombie",
+        "idle": "Rảnh",
+        "unknown": "Không rõ"
+      },
+      "actions": {
+        "column": "Thao tác",
+        "term": "Kết thúc",
+        "kill": "Cưỡng bức",
+        "stop": "Tạm dừng",
+        "cont": "Tiếp tục",
+        "renice": "Ưu tiên",
+        "apply": "Điều chỉnh",
+        "renice_placeholder": "nice"
+      },
+      "confirm": {
+        "title": "Xác nhận thao tác tiến trình",
+        "cancel": "Hủy",
+        "term_desc": "Gửi TERM tới PID {{pid}} ({{command}})?",
+        "kill_desc": "Buộc dừng PID {{pid}} ({{command}}) bằng KILL. Không thể hoàn tác.",
+        "stop_desc": "Tạm dừng PID {{pid}} ({{command}}) bằng STOP?",
+        "cont_desc": "Tiếp tục PID {{pid}} ({{command}}) bằng CONT?",
+        "renice_desc": "Thay đổi độ ưu tiên của PID {{pid}} ({{command}})?"
+      },
+      "toast": {
+        "action_already_running": "Đang có một thao tác tiến trình chạy.",
+        "invalid_nice": "Nhập giá trị nice từ -20 đến 19.",
+        "connection_missing": "Kết nối đã chọn không còn khả dụng.",
+        "action_failed": "Thao tác tiến trình thất bại.",
+        "action_succeeded": "Đã hoàn tất thao tác tiến trình cho PID {{pid}}.",
+        "partial_support": "Quản lý tiến trình chỉ được hỗ trợ một phần trên {{os}}."
+      }
+    },
+    "host_docker": {
+      "search_placeholder": "Tìm container...",
+      "count_suffix": "container",
+      "sampling": "Đang lấy mẫu container Docker...",
+      "empty": "Không có container phù hợp",
+      "unavailable": "Docker không khả dụng trên máy chủ này.",
+      "error": "Lệnh Docker thất bại: {{error}}",
+      "columns": {
+        "container": "Container / Image",
+        "image": "Image",
+        "state": "Trạng thái",
+        "ports": "Cổng"
+      },
+      "states": {
+        "running": "Đang chạy",
+        "exited": "Đã thoát",
+        "created": "Đã tạo",
+        "paused": "Đã tạm dừng",
+        "restarting": "Đang khởi động lại",
+        "removing": "Đang xóa",
+        "dead": "Không hoạt động",
+        "unknown": "Không rõ"
+      },
+      "actions": {
+        "refresh": "Làm mới container",
+        "logs": "Xem log",
+        "follow_logs": "Theo dõi log",
+        "exec": "Mở shell",
+        "start": "Khởi động",
+        "stop": "Dừng",
+        "restart": "Khởi động lại"
+      },
+      "exec_title": "Docker: {{name}}",
+      "follow_title": "Log Docker: {{name}}",
+      "logs": {
+        "title": "Log: {{name}}",
+        "loading": "Đang tải log...",
+        "empty": "Không có log gần đây.",
+        "close": "Đóng log"
+      },
+      "confirm": {
+        "title": "Xác nhận thao tác Docker",
+        "cancel": "Hủy",
+        "start_desc": "Khởi động container {{name}} ({{id}})?",
+        "stop_desc": "Dừng container {{name}} ({{id}})? Công việc đang chạy trong container có thể bị gián đoạn.",
+        "restart_desc": "Khởi động lại container {{name}} ({{id}})? Công việc đang chạy trong container sẽ bị gián đoạn."
+      },
+      "toast": {
+        "action_already_running": "Đang có một thao tác Docker chạy.",
+        "logs_already_running": "Log Docker đang được tải.",
+        "logs_failed": "Không thể tải log Docker.",
+        "exec_terminal_missing": "Không có tuyến terminal SSH trực tiếp cho container này.",
+        "exec_opened": "Đã mở shell cho {{name}}.",
+        "follow_opened": "Đang theo dõi log của {{name}}.",
+        "connection_missing": "Kết nối đã chọn không còn khả dụng.",
+        "action_failed": "Thao tác Docker thất bại.",
+        "action_succeeded": "Đã hoàn tất thao tác Docker cho {{name}}."
+      }
+    },
+    "host_services": {
+      "search_placeholder": "Tìm dịch vụ...",
+      "count_suffix": "dịch vụ",
+      "sampling": "Đang lấy mẫu dịch vụ...",
+      "empty": "Không có dịch vụ phù hợp",
+      "unavailable": "Trình quản lý dịch vụ không khả dụng trên máy chủ này.",
+      "error": "Lệnh dịch vụ thất bại: {{error}}",
+      "capability": {
+        "full": "Hỗ trợ đầy đủ",
+        "partial": "Hỗ trợ một phần",
+        "unknown": "Chưa rõ hỗ trợ"
+      },
+      "columns": {
+        "service": "Dịch vụ",
+        "state": "Trạng thái",
+        "enabled": "Bật",
+        "pid": "PID",
+        "description": "Mô tả",
+        "load": "Tải",
+        "sub_state": "Trạng thái con"
+      },
+      "states": {
+        "running": "Đang chạy",
+        "stopped": "Đã dừng",
+        "failed": "Thất bại",
+        "activating": "Đang kích hoạt",
+        "deactivating": "Đang vô hiệu hóa",
+        "reloading": "Đang tải lại",
+        "unknown": "Không rõ"
+      },
+      "enabled": {
+        "enabled": "Đã bật",
+        "disabled": "Đã tắt",
+        "masked": "Đã che",
+        "static": "Tĩnh",
+        "unknown": "Không rõ"
+      },
+      "actions": {
+        "refresh": "Làm mới dịch vụ",
+        "logs": "Xem nhật ký",
+        "follow_logs": "Theo dõi nhật ký",
+        "start": "Khởi động",
+        "stop": "Dừng",
+        "restart": "Khởi động lại",
+        "reload": "Tải lại",
+        "enable": "Bật",
+        "disable": "Tắt"
+      },
+      "follow_title": "Nhật ký dịch vụ: {{name}}",
+      "logs": {
+        "title": "Nhật ký: {{name}}",
+        "loading": "Đang tải nhật ký...",
+        "empty": "Không có nhật ký gần đây.",
+        "close": "Đóng nhật ký"
+      },
+      "confirm": {
+        "title": "Xác nhận thao tác dịch vụ",
+        "cancel": "Hủy",
+        "start_desc": "Khởi động dịch vụ {{id}} ({{name}})?",
+        "stop_desc": "Dừng dịch vụ {{id}} ({{name}})? Công việc đang chạy có thể bị gián đoạn.",
+        "restart_desc": "Khởi động lại dịch vụ {{id}} ({{name}})? Công việc đang chạy sẽ bị gián đoạn.",
+        "reload_desc": "Tải lại dịch vụ {{id}} ({{name}})?",
+        "enable_desc": "Bật dịch vụ {{id}} ({{name}}) khi khởi động?",
+        "disable_desc": "Tắt dịch vụ {{id}} ({{name}}) khi khởi động?"
+      },
+      "toast": {
+        "action_already_running": "Một thao tác dịch vụ đang chạy.",
+        "logs_already_running": "Nhật ký dịch vụ đang được tải.",
+        "logs_failed": "Không tải được nhật ký dịch vụ.",
+        "exec_terminal_missing": "Không có tuyến terminal SSH trực tiếp cho dịch vụ này.",
+        "follow_opened": "Đang theo dõi nhật ký của {{name}}.",
+        "connection_missing": "Kết nối đã chọn không còn khả dụng.",
+        "action_failed": "Thao tác dịch vụ thất bại.",
+        "action_succeeded": "Đã hoàn tất thao tác dịch vụ cho {{name}}.",
+        "partial_support": "Quản lý dịch vụ chỉ được hỗ trợ một phần trên {{os}}."
+      }
+    },
+    "host_logs": {
+      "search_placeholder": "Tìm nhật ký...",
+      "count_suffix": "nhật ký",
+      "loading": "Đang tải nhật ký...",
+      "empty": "Không có nhật ký phù hợp",
+      "unavailable": "Nhật ký máy chủ không khả dụng trên máy chủ này.",
+      "error": "Lệnh nhật ký thất bại: {{error}}",
+      "capability": {
+        "full": "Hỗ trợ đầy đủ",
+        "partial": "Hỗ trợ một phần",
+        "unknown": "Chưa rõ hỗ trợ"
+      },
+      "presets": {
+        "all": "Tất cả",
+        "errors": "Lỗi",
+        "auth": "SSH/Xác thực",
+        "kernel": "Kernel",
+        "system": "Hệ thống"
+      },
+      "columns": {
+        "time": "Thời gian",
+        "level": "Mức",
+        "source": "Nguồn",
+        "unit": "Unit",
+        "message": "Thông điệp"
+      },
+      "levels": {
+        "error": "Lỗi",
+        "warning": "Cảnh báo",
+        "info": "Thông tin",
+        "debug": "Debug",
+        "unknown": "Không rõ"
+      },
+      "actions": {
+        "refresh": "Làm mới nhật ký",
+        "follow": "Theo dõi nhật ký"
+      },
+      "follow_title": "Nhật ký máy chủ: {{preset}}",
+      "toast": {
+        "snapshot_already_running": "Một snapshot nhật ký đang chạy.",
+        "snapshot_loaded": "Đã tải {{count}} mục nhật ký.",
+        "snapshot_failed": "Không thể tải nhật ký: {{reason}}",
+        "unavailable": "Nhật ký máy chủ không khả dụng trên máy chủ này.",
+        "connection_missing": "Kết nối đã chọn không còn khả dụng.",
+        "exec_terminal_missing": "Không có tuyến terminal SSH đang hoạt động cho nhật ký máy chủ.",
+        "follow_opened": "Đang theo dõi nhật ký {{preset}}.",
+        "partial_support": "Nhật ký máy chủ chỉ được hỗ trợ một phần trên {{os}}.",
+        "unknown_error": "Lỗi không rõ"
+      }
+    },
+    "host_tmux": {
+      "search_placeholder": "Tìm tmux...",
+      "count_suffix": "phiên",
+      "loading": "Đang tải phiên tmux...",
+      "empty": "Không có phiên tmux phù hợp",
+      "unavailable": "tmux không khả dụng trên máy chủ này.",
+      "error": "Lệnh tmux thất bại: {{error}}",
+      "capability": {
+        "full": "Hỗ trợ đầy đủ",
+        "partial": "Hỗ trợ một phần",
+        "unknown": "Chưa rõ hỗ trợ"
+      },
+      "columns": {
+        "session": "Phiên",
+        "attached": "Đã gắn",
+        "windows": "Cửa sổ",
+        "panes": "Pane",
+        "activity": "Hoạt động",
+        "created": "Đã tạo"
+      },
+      "attached": {
+        "yes": "Đã gắn",
+        "no": "Đã tách"
+      },
+      "actions": {
+        "new_session": "Phiên mới",
+        "refresh": "Làm mới tmux",
+        "attach": "Gắn",
+        "kill_session": "Kết thúc phiên",
+        "rename_session": "Đổi tên phiên",
+        "rename_window": "Đổi tên cửa sổ",
+        "kill_window": "Kết thúc cửa sổ",
+        "kill_pane": "Kết thúc pane",
+        "send_command": "Gửi lệnh"
+      },
+      "active_window": "Đang hoạt động #{{index}} {{name}}",
+      "no_active_window": "Không có cửa sổ hoạt động",
+      "attach_title": "tmux: {{name}}",
+      "new_session_title": "Phiên tmux mới",
+      "new_session_name": "phiên mới",
+      "confirm": {
+        "title": "Xác nhận thao tác tmux",
+        "cancel": "Hủy",
+        "kill_session_desc": "Kết thúc phiên tmux {{id}} ({{name}})? Tất cả cửa sổ và pane trong phiên này sẽ bị kết thúc.",
+        "kill_window_desc": "Kết thúc cửa sổ tmux {{target}} trong phiên {{name}}? Tất cả pane trong cửa sổ này sẽ bị kết thúc.",
+        "kill_pane_desc": "Kết thúc pane tmux {{target}} trong phiên {{name}}? Lệnh đang chạy sẽ bị kết thúc.",
+        "action_desc": "Chạy thao tác tmux trên {{target}} trong phiên {{name}}?"
+      },
+      "toast": {
+        "snapshot_already_running": "Một snapshot tmux đang chạy.",
+        "snapshot_loaded": "Đã tải {{count}} phiên tmux.",
+        "snapshot_failed": "Không thể tải phiên tmux: {{reason}}",
+        "unavailable": "tmux không khả dụng trên máy chủ này.",
+        "connection_missing": "Kết nối đã chọn không còn khả dụng.",
+        "exec_terminal_missing": "Không có tuyến terminal SSH đang hoạt động cho tmux.",
+        "attach_opened": "Đang gắn vào {{name}}.",
+        "new_session_opened": "Đang mở {{name}}.",
+        "action_already_running": "Một thao tác tmux đang chạy.",
+        "action_failed": "Thao tác tmux thất bại.",
+        "action_succeeded": "Đã hoàn tất thao tác tmux cho {{target}}.",
+        "unknown_error": "Lỗi không rõ",
+        "input_required": "Nhập một giá trị trước khi tiếp tục."
+      },
+      "input": {
+        "rename_session_title": "Đổi tên phiên",
+        "rename_window_title": "Đổi tên cửa sổ",
+        "send_command_title": "Gửi lệnh tới pane",
+        "rename_session_desc": "Đặt tên mới cho phiên {{target}}.",
+        "rename_window_desc": "Đặt tên mới cho cửa sổ {{target}} trong phiên {{name}}.",
+        "send_command_desc": "Gửi một lệnh rồi Enter tới pane {{target}} trong phiên {{name}}.",
+        "rename_session_placeholder": "Tên phiên",
+        "rename_window_placeholder": "Tên cửa sổ",
+        "send_command_placeholder": "Lệnh cần gửi"
+      }
+    },
+    "host_schedules": {
+      "search_placeholder": "Search tác vụ đã lên lịchs...",
+      "count_suffix": "tasks",
+      "loading": "Scanning tác vụ đã lên lịchs...",
+      "empty": "No tác vụ đã lên lịchs match",
+      "unavailable": "Tác vụ đã lên lịch tools are not available on this host.",
+      "error": "Tác vụ đã lên lịch command failed: {{error}}",
+      "capability": {
+        "full": "Hỗ trợ đầy đủ",
+        "partial": "Hỗ trợ một phần",
+        "unknown": "Chưa rõ hỗ trợ"
+      },
+      "filters": {
+        "all": "Tất cả",
+        "enabled": "Đã bật",
+        "disabled": "Đã tắt",
+        "systemd": "systemd",
+        "cron": "cron",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "failed": "Lỗi"
+      },
+      "sources": {
+        "systemd": "systemd",
+        "cron": "cron",
+        "anacron": "anacron",
+        "at": "at",
+        "launchd": "launchd",
+        "windows": "Windows",
+        "unknown": "Unknown"
+      },
+      "enabled": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "static": "Static",
+        "masked": "Masked",
+        "unknown": "Unknown"
+      },
+      "active": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "failed": "Failed",
+        "unknown": "Unknown"
+      },
+      "columns": {
+        "task": "Tác vụ",
+        "source": "Nguồn",
+        "state": "Trạng thái",
+        "enabled": "Bật",
+        "next": "Lần tới",
+        "last": "Lần cuối",
+        "user": "Người dùng",
+        "schedule": "Lịch",
+        "command": "Lệnh",
+        "result": "Kết quả",
+        "description": "Mô tả",
+        "unit": "Unit"
+      },
+      "actions": {
+        "refresh": "Làm mới tác vụ",
+        "diagnostic": "Mở terminal chẩn đoán",
+        "logs": "Xem log",
+        "follow_logs": "Theo dõi log",
+        "enable": "Bật",
+        "disable": "Tắt",
+        "run_now": "Chạy ngay"
+      },
+      "diagnostic_title": "Tác vụ đã lên lịch diagnostics",
+      "follow_title": "Tác vụ đã lên lịch logs: {{name}}",
+      "logs": {
+        "title": "Logs: {{name}}",
+        "loading": "Loading logs...",
+        "empty": "No recent logs.",
+        "close": "Close logs"
+      },
+      "confirm": {
+        "title": "Confirm tác vụ đã lên lịch action",
+        "cancel": "Hủy",
+        "enable_desc": "Bật tác vụ đã lên lịch {{name}}? Unit: {{unit}}.",
+        "disable_desc": "Tắt tác vụ đã lên lịch {{name}}? Các lần chạy sau có thể dừng. Unit: {{unit}}.",
+        "run_now_desc": "Run tác vụ đã lên lịch {{name}} now? Unit: {{unit}}."
+      },
+      "toast": {
+        "snapshot_already_running": "Schedule scan is already running.",
+        "snapshot_loaded": "Loaded {{count}} scheduled tasks.",
+        "snapshot_failed": "Failed to scan scheduled tasks: {{reason}}",
+        "unavailable": "Scheduled task tools are not available on this host.",
+        "connection_missing": "The selected connection is no longer available.",
+        "exec_terminal_missing": "No live SSH terminal route is available for diagnostics.",
+        "diagnostic_opened": "Opened schedule diagnostics.",
+        "follow_opened": "Opened schedule log follow for {{name}}.",
+        "logs_already_running": "Schedule logs are already loading.",
+        "logs_failed": "Failed to load schedule logs.",
+        "action_already_running": "A scheduled task action is already running.",
+        "action_failed": "Scheduled task action failed.",
+        "enable_succeeded": "Đã bật {{name}}.",
+        "disable_succeeded": "Đã tắt {{name}}.",
+        "run_now_started": "Started {{name}}.",
+        "partial_support": "Scheduled task support is partial on {{os}}.",
+        "unknown_error": "Unknown scheduled task error."
+      }
+    },
+    "host_ports": {
+      "search_placeholder": "Tìm cổng...",
+      "count_suffix": "cổng",
+      "loading": "Đang quét cổng...",
+      "empty": "Không có cổng khớp",
+      "unavailable": "Công cụ cổng không khả dụng trên máy này.",
+      "error": "Lệnh cổng thất bại: {{error}}",
+      "capability": {
+        "full": "Hỗ trợ đầy đủ",
+        "partial": "Hỗ trợ một phần",
+        "unknown": "Chưa rõ hỗ trợ"
+      },
+      "filters": {
+        "all": "Tất cả",
+        "listening": "Đang lắng nghe",
+        "connected": "Đã kết nối",
+        "tcp": "TCP",
+        "udp": "UDP",
+        "risky": "Rủi ro cao"
+      },
+      "columns": {
+        "local": "Địa chỉ cục bộ",
+        "protocol": "Giao thức",
+        "state": "Trạng thái",
+        "pid": "PID",
+        "process": "Tiến trình",
+        "remote": "Địa chỉ từ xa",
+        "user": "Người dùng",
+        "command": "Lệnh",
+        "source": "Nguồn",
+        "inode": "Inode"
+      },
+      "states": {
+        "listening": "Đang lắng nghe",
+        "established": "Đã thiết lập",
+        "open": "Mở",
+        "time_wait": "TIME_WAIT",
+        "close_wait": "CLOSE_WAIT",
+        "unknown": "Không rõ"
+      },
+      "actions": {
+        "refresh": "Làm mới cổng",
+        "diagnostic": "Mở terminal chẩn đoán",
+        "copy_endpoint": "Sao chép địa chỉ",
+        "jump_process": "Tìm tiến trình"
+      },
+      "diagnostic_title": "Chẩn đoán cổng",
+      "toast": {
+        "snapshot_already_running": "Đang quét cổng rồi.",
+        "snapshot_loaded": "Đã tải {{count}} cổng.",
+        "snapshot_failed": "Quét cổng thất bại: {{reason}}",
+        "unavailable": "Công cụ cổng không khả dụng trên máy này.",
+        "connection_missing": "Kết nối đã chọn không còn khả dụng.",
+        "exec_terminal_missing": "Không có tuyến terminal SSH đang hoạt động để chẩn đoán.",
+        "diagnostic_opened": "Đã mở chẩn đoán cổng.",
+        "copied_endpoint": "Đã sao chép {{endpoint}}.",
+        "partial_support": "Kiểm tra cổng chỉ được hỗ trợ một phần trên {{os}}.",
+        "unknown_error": "Lỗi quét cổng không xác định."
+      }
+    },
+    "host_filesystems": {
+      "search_placeholder": "Tìm hệ thống tệp...",
+      "count_suffix": "mục",
+      "loading": "Đang quét ổ đĩa...",
+      "empty": "Không có mục hệ thống tệp phù hợp",
+      "unavailable": "Công cụ hệ thống tệp không khả dụng trên máy chủ này.",
+      "error": "Lệnh hệ thống tệp thất bại: {{error}}",
+      "capability": {
+        "full": "Hỗ trợ đầy đủ",
+        "partial": "Hỗ trợ một phần",
+        "unknown": "Chưa rõ hỗ trợ"
+      },
+      "filters": {
+        "all": "Tất cả",
+        "mounts": "Điểm gắn",
+        "read_only": "Chỉ đọc",
+        "high_usage": "Mức dùng cao",
+        "inode_pressure": "Áp lực inode",
+        "large_items": "Mục lớn",
+        "blocks": "Thiết bị khối",
+        "attention": "Cần chú ý",
+        "inode_hotspots": "Inode / số tệp"
+      },
+      "columns": {
+        "path": "Đường dẫn",
+        "kind": "Loại",
+        "usage": "Mức dùng",
+        "inode": "Inode",
+        "fs": "FS",
+        "size": "Kích thước",
+        "read_only": "RO",
+        "device": "Thiết bị",
+        "used_available": "Đã dùng / còn trống",
+        "source": "Nguồn",
+        "detail": "Chi tiết",
+        "options": "Tùy chọn",
+        "attention": "Cần chú ý"
+      },
+      "kinds": {
+        "mount": "Điểm gắn",
+        "large_dir": "Thư mục lớn",
+        "large_file": "Tệp lớn",
+        "block": "Thiết bị khối",
+        "unknown": "Không rõ",
+        "inode_dir": "Điểm nóng inode",
+        "count_dir": "Điểm nóng số lượng tệp"
+      },
+      "read_only": {
+        "yes": "Có",
+        "no": "Không"
+      },
+      "actions": {
+        "refresh": "Làm mới ổ đĩa",
+        "diagnostic": "Mở terminal chẩn đoán",
+        "copy_path": "Sao chép đường dẫn"
+      },
+      "diagnostic_title": "Chẩn đoán ổ đĩa",
+      "toast": {
+        "snapshot_already_running": "Quá trình quét ổ đĩa đang chạy.",
+        "snapshot_loaded": "Đã tải {{count}} mục hệ thống tệp.",
+        "snapshot_failed": "Quét ổ đĩa thất bại: {{reason}}",
+        "unavailable": "Công cụ hệ thống tệp không khả dụng trên máy chủ này.",
+        "connection_missing": "Kết nối đã chọn không còn khả dụng.",
+        "exec_terminal_missing": "Không có tuyến terminal SSH đang hoạt động cho chẩn đoán.",
+        "diagnostic_opened": "Đã mở chẩn đoán ổ đĩa.",
+        "copied_path": "Đã sao chép {{path}}.",
+        "partial_support": "Kiểm tra hệ thống tệp chỉ được hỗ trợ một phần trên {{os}}.",
+        "unknown_error": "Lỗi quét hệ thống tệp không xác định."
+      },
+      "attention": {
+        "critical_usage": "Mức dùng nguy hiểm",
+        "high_usage": "Mức dùng cao",
+        "critical_inode": "Inode nguy hiểm",
+        "inode_pressure": "Áp lực inode",
+        "low_free_space": "Còn ít dung lượng",
+        "read_only": "Chỉ đọc",
+        "large_item": "Mục lớn",
+        "inode_hotspot": "Điểm nóng inode",
+        "file_count_hotspot": "Điểm nóng số lượng tệp"
+      },
+      "values": {
+        "inode_count": "{{count}} inode",
+        "file_count": "{{count}} tệp"
+      }
+    },
+    "host_packages": {
+      "search_placeholder": "Tìm gói...",
+      "count_suffix": "gói",
+      "loading": "Đang quét gói...",
+      "empty": "Không có gói khớp",
+      "unavailable": "Không có công cụ quản lý gói trên máy chủ này.",
+      "error": "Lệnh gói thất bại: {{error}}",
+      "capability": {
+        "full": "Hỗ trợ đầy đủ",
+        "partial": "Hỗ trợ chỉ đọc",
+        "unknown": "Chưa rõ hỗ trợ"
+      },
+      "filters": {
+        "all": "Tất cả",
+        "upgradable": "Có thể cập nhật",
+        "installed": "Đã cài",
+        "services": "Dịch vụ",
+        "apt": "apt",
+        "dnf": "dnf",
+        "yum": "yum",
+        "pacman": "pacman",
+        "brew": "Homebrew"
+      },
+      "columns": {
+        "package": "Gói",
+        "status": "Trạng thái",
+        "installed": "Đã cài",
+        "candidate": "Bản ứng viên",
+        "manager": "Trình quản lý",
+        "service": "Dịch vụ",
+        "arch": "Kiến trúc",
+        "repository": "Kho",
+        "summary": "Tóm tắt",
+        "source": "Nguồn",
+        "owner_paths": "Đường dẫn sở hữu"
+      },
+      "status": {
+        "upgradable": "Có thể cập nhật",
+        "installed": "Đã cài",
+        "unknown": "Không rõ"
+      },
+      "actions": {
+        "refresh": "Làm mới gói",
+        "inspect": "Mở chi tiết gói",
+        "copy_name": "Sao chép tên gói"
+      },
+      "inspect_title": "Chi tiết gói",
+      "toast": {
+        "snapshot_already_running": "Quét gói đang chạy.",
+        "snapshot_loaded": "Đã tải {{count}} gói.",
+        "snapshot_failed": "Không thể quét gói: {{reason}}",
+        "unavailable": "Không có công cụ quản lý gói trên máy chủ này.",
+        "connection_missing": "Kết nối đã chọn không còn khả dụng.",
+        "exec_terminal_missing": "Không có tuyến terminal SSH trực tiếp cho chi tiết gói.",
+        "inspect_unsupported": "Chưa hỗ trợ chi tiết gói cho {{manager}}.",
+        "inspect_opened": "Đã mở chi tiết cho {{name}}.",
+        "copied_name": "Đã sao chép {{name}}.",
+        "partial_support": "Kiểm tra gói trên {{os}} chỉ hỗ trợ đọc.",
+        "unknown_error": "Lỗi quét gói không xác định."
+      }
+    }
+  },
+  "sessions": {
+    "tree": {
+      "no_sessions": "Không có phiên",
+      "click_to_add": "Nhấn + để thêm kết nối",
+      "actions": {
+        "new_terminal": "Terminal mới",
+        "sftp": "SFTP",
+        "disconnect": "Ngắt kết nối",
+        "reconnect": "Kết nối lại",
+        "edit_and_reconnect": "Sửa và kết nối lại",
+        "remove_session": "Xóa phiên",
+        "cancel_reconnect": "Hủy kết nối lại",
+        "port_forwarding": "Chuyển tiếp cổng",
+        "drill_in": "Drill In (Bước tiếp)",
+        "saved_next_hop": "Dùng kết nối đã lưu làm bước tiếp...",
+        "connect": "Kết nối",
+        "save_as_connection": "Lưu thành kết nối..."
+      }
+    },
+    "focused_list": {
+      "all_servers": "Tất cả máy chủ",
+      "child": "con",
+      "children": "con",
+      "no_child_nodes": "Nút này không có nút con",
+      "no_servers": "Chưa có máy chủ",
+      "add_by_drilling": "Bạn có thể thêm nút con bằng cách drill down",
+      "click_to_add": "Nhấn + để thêm kết nối mới",
+      "terminal": "Terminal #{{number}}",
+      "close_terminal": "Đóng terminal"
+    },
+    "actions": {
+      "connect": "Kết nối",
+      "new_terminal": "Terminal mới",
+      "sftp_explorer": "Trình duyệt SFTP",
+      "port_forwarding": "Chuyển tiếp cổng",
+      "disconnect": "Ngắt kết nối",
+      "reconnect": "Kết nối lại",
+      "drill_in": "Drill In (Bước tiếp)",
+      "saved_next_hop": "Dùng kết nối đã lưu làm bước tiếp...",
+      "save_as_connection": "Lưu thành kết nối..."
+    },
+    "saved_next_hop": {
+      "title": "Dùng kết nối đã lưu làm bước tiếp",
+      "description": "Chọn một kết nối đã lưu để gắn dưới {{host}}.",
+      "empty": "Không có kết nối đã lưu nào khả dụng.",
+      "cancel": "Hủy",
+      "proxy_chain_badge": "{{count}} bước",
+      "parent_not_ready": "Hãy kết nối nút cha trước khi thêm bước tiếp đã lưu.",
+      "not_found": "Không tìm thấy kết nối đã lưu.",
+      "missing_credentials": "Kết nối đã lưu này thiếu thông tin xác thực cần thiết để kết nối.",
+      "materialize_failed": "Không thể thêm kết nối đã lưu vào cây phiên."
+    },
+    "breadcrumb": {
+      "back_to_root": "Quay lại chế độ xem gốc",
+      "all_servers": "Tất cả máy chủ"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+[package]
+name = "hapcli-plugin-wasm-runtime"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+hapcli-plugin-protocol = { path = "../hapcli-plugin-protocol" }
+serde.workspace = true
+serde_json.workspace = true
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true
+
+[dev-dependencies]
+hapcli-plugin-manifest = { path = "../hapcli-plugin-manifest" }
+tokio.workspace = true
+wat = "1.250.0"
