@@ -39,6 +39,7 @@ pub struct HapcliApp {
     connect_form: ConnectForm,
     trzsz_state: std::sync::Arc<TrzszState>,
     ssh_registry: hapcli_ssh::SshConnectionRegistry,
+    last_window_title: String,
 }
 
 impl HapcliApp {
@@ -61,6 +62,7 @@ impl HapcliApp {
             ssh_registry: hapcli_ssh::SshConnectionRegistry::new(
                 hapcli_ssh::ConnectionPoolConfig::default(),
             ),
+            last_window_title: String::new(),
         })
     }
 
@@ -986,7 +988,10 @@ impl eframe::App for HapcliApp {
             "hapcli — {}",
             self.tabs[self.active_tab].display_label()
         );
-        ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
+        if title != self.last_window_title {
+            self.last_window_title = title.clone();
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
+        }
     }
 }
 
