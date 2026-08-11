@@ -55,8 +55,12 @@ if command -v python3 >/dev/null 2>&1; then
 fi
 
 echo "==> 签名"
-SIGN_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
-  | grep 'Developer ID Application' | sed -E 's/.*"([^"]+)".*/\1/' | head -1)"
+SIGN_IDENTITY="$({
+  security find-identity -v -p codesigning 2>/dev/null \
+    | grep 'Developer ID Application' \
+    | sed -E 's/.*"([^"]+)".*/\1/' \
+    | head -1
+} || true)"
 if [ -n "$SIGN_IDENTITY" ]; then
   echo "使用 Developer ID 签名: ${SIGN_IDENTITY}"
   codesign --force --deep --sign "$SIGN_IDENTITY" "$APP_DIR"
