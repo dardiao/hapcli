@@ -38,8 +38,6 @@ pub struct LocalPtyConfig {
     pub shell: Option<ShellInfo>,
     pub cwd: Option<PathBuf>,
     pub env: HashMap<String, String>,
-    /// 是否注入 CLICOLOR / LSCOLORS / LS_COLORS 启用 shell 彩色输出。
-    pub shell_colors: bool,
     pub load_profile: bool,
     pub current_directory_shell_integration: bool,
     pub oh_my_posh_enabled: bool,
@@ -52,7 +50,6 @@ impl Default for LocalPtyConfig {
             shell: None,
             cwd: None,
             env: HashMap::new(),
-            shell_colors: true,
             load_profile: true,
             current_directory_shell_integration: false,
             oh_my_posh_enabled: false,

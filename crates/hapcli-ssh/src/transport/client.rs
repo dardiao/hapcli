@@ -6,6 +6,9 @@ const CLICOLOR_ENV_VALUE: &str = "1";
 const LSCOLORS_ENV_VALUE: &str = "exfxcxdxgxegedabagacad";
 const LS_COLORS_ENV_VALUE: &str =
     "di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37";
+// 以 exec 方式启动交互式登录 shell，并注入 ls 彩色环境变量，立即生效、无需重连。
+// 仅对 Unix 远程使用（Windows 保持 request_shell）；`-l` 只对已知支持的 shell 添加。
+const SHELL_COLOR_WRAPPER_COMMAND: &str = r#"sh -c 'case "${SHELL##*/}" in zsh|bash|ksh|tcsh|csh|fish) exec env CLICOLOR=1 LSCOLORS=exfxcxdxgxegedabagacad LS_COLORS="di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37" "${SHELL:-/bin/sh}" -l;; *) exec env CLICOLOR=1 LSCOLORS=exfxcxdxgxegedabagacad LS_COLORS="di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37" "${SHELL:-/bin/sh}";; esac'"#;
 const CHILD_CONNECTION_RETIRED_DURING_CONNECT: &str =
     "child connection was retired while its SSH transport was connecting";
 
@@ -228,6 +231,55 @@ async fn open_pty_channel(
     Ok(channel)
 }
 
+/// 打开 shell 前先探测远程是否为 Unix（uname 可用即视为 Unix）。
+/// 失败或超时按非 Unix 处理，安全回退到 request_shell。
+async fn probe_remote_is_unix(pooled: &Arc<PooledSshConnection>) -> bool {
+    if pooled.is_closed().await {
+        return false;
+    }
+    let result = tokio::time::timeout(Duration::from_secs(3), async {
+        let mut channel = pooled
+            .target
+            .channel_open_session()
+            .await
+            .map_err(|error| SshTransportError::Channel(error.to_string()))?;
+        channel
+            .exec(true, "uname -s 2>/dev/null")
+            .await
+            .map_err(|error| SshTransportError::Channel(error.to_string()))?;
+        let mut output = Vec::new();
+        while let Some(message) = channel.wait().await {
+            match message {
+                ChannelMsg::Data { data } => output.extend_from_slice(&data),
+                ChannelMsg::ExtendedData { data, ext } if ext == 1 => {
+                    output.extend_from_slice(&data);
+                }
+                _ => {}
+            }
+        }
+        Ok::<Vec<u8>, SshTransportError>(output)
+    })
+    .await;
+    let Ok(Ok(output)) = result else {
+        return false;
+    };
+    let text = String::from_utf8_lossy(&output);
+    let name = text.lines().next().unwrap_or("").trim();
+    matches!(
+        name,
+        "Darwin"
+            | "Linux"
+            | "FreeBSD"
+            | "OpenBSD"
+            | "NetBSD"
+            | "SunOS"
+            | "AIX"
+            | "HP-UX"
+            | "DragonFly"
+            | "GNU/kFreeBSD"
+    )
+}
+
 async fn open_interactive_shell_channel(
     pooled: &Arc<PooledSshConnection>,
     cols: u32,
@@ -309,6 +361,7 @@ async fn open_plain_shell(
     x11_route_id: &str,
     x11_connection_owner: Option<X11ConnectionOwner>,
     shell_colors: bool,
+    unix_remote: bool,
 ) -> Result<
     (russh::Channel<client::Msg>, Option<X11ForwardRouteGuard>),
     SshTransportError,
@@ -355,10 +408,17 @@ async fn open_plain_shell(
             }
         }
     }
-    channel
-        .request_shell(false)
-        .await
-        .map_err(|error| SshTransportError::Channel(error.to_string()))?;
+    if shell_colors && unix_remote {
+        channel
+            .exec(false, SHELL_COLOR_WRAPPER_COMMAND)
+            .await
+            .map_err(|error| SshTransportError::Channel(error.to_string()))?;
+    } else {
+        channel
+            .request_shell(false)
+            .await
+            .map_err(|error| SshTransportError::Channel(error.to_string()))?;
+    }
     Ok((channel, x11_route_guard))
 }
 
@@ -1301,6 +1361,12 @@ impl SshTransportClient {
                     .map(|owner| X11ConnectionOwner::Standalone(Arc::downgrade(owner)))
             });
 
+        // 打开可视 shell 前先探测远程 OS，决定是否用 exec 方式注入彩色环境。
+        let unix_remote = if shell_config.shell_colors {
+            probe_remote_is_unix(&pooled).await
+        } else {
+            false
+        };
         let opened_shell = if deferred_pty {
             None
         } else {
@@ -1314,6 +1380,7 @@ impl SshTransportClient {
                     &session_id,
                     x11_connection_owner.clone(),
                     shell_config.shell_colors,
+                    unix_remote,
                 )
                 .await?,
             )
@@ -1388,6 +1455,7 @@ impl SshTransportClient {
                         &task_session_id,
                         x11_connection_owner,
                         shell_config.shell_colors,
+                        unix_remote,
                     )
                     .await
                 };

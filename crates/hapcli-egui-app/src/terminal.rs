@@ -6,9 +6,8 @@ use std::time::{Duration, Instant};
 
 use eframe::egui::{self, FontId, PointerButton, Pos2, Rect, Response, Vec2};
 use hapcli_terminal::{
-    GraphicsOptions, LocalPtyConfig, SerialSessionConfig, TerminalEncoding, TerminalSession,
-    TerminalSessionKind, TerminalSearchMatch, TerminalSnapshot, TelnetSessionConfig,
-    TrzszTransferPolicy,
+    GraphicsOptions, SerialSessionConfig, TerminalEncoding, TerminalSession, TerminalSessionKind,
+    TerminalSearchMatch, TerminalSnapshot, TelnetSessionConfig, TrzszTransferPolicy,
 };
 
 use crate::keys;
@@ -85,20 +84,8 @@ impl TerminalTab {
         ctx: &egui::Context,
         cols: usize,
         rows: usize,
-        shell_colors: bool,
     ) -> anyhow::Result<Self> {
-        let config = LocalPtyConfig {
-            shell_colors,
-            ..LocalPtyConfig::default()
-        };
-        let session = enable_trzsz(TerminalSession::local_with_config_graphics_and_encoding(
-            cols,
-            rows,
-            config,
-            GraphicsOptions::default(),
-            TerminalEncoding::Utf8,
-            1000,
-        )?);
+        let session = enable_trzsz(TerminalSession::local_default(cols, rows)?);
         let snapshot = session.snapshot();
         Self::spawn_activity_thread(&session, ctx);
         Ok(Self {
@@ -360,6 +347,10 @@ impl TerminalTab {
         self.selection = None;
         self.selection_active = false;
         self.reconnect_dismissed = false;
+        // 新连接需要重新执行远程颜色环境注入。
+        self.color_env_attempted = false;
+        self.color_env_rx = None;
+        self.color_env_status = None;
     }
 
     /// 内核有输出时唤醒 egui 重绘；会话销毁后线程自动退出。
@@ -854,6 +845,12 @@ impl TerminalTab {
             let _ = self.session.set_focused(true);
         }
         if response.clicked() {
+            response.request_focus();
+        }
+        // 无任何 egui 控件持有焦点时，把焦点固定在终端上。
+        // 否则按 Tab 完成路径补全时，egui 会把焦点挪到标签栏按钮上，
+        // 连续 Tab 就会在多个标签之间跳动而不是继续补全。
+        if ui.ctx().memory(|memory| memory.focused().is_none()) {
             response.request_focus();
         }
         if response.hovered() {

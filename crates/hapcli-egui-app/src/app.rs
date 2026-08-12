@@ -50,12 +50,7 @@ impl HapcliApp {
         let settings = load_settings();
         let custom_font_loaded = install_fonts(&cc.egui_ctx, &settings);
 
-        let local = TerminalTab::new_local(
-            &cc.egui_ctx,
-            100,
-            30,
-            settings.local_shell_colors,
-        )?;
+        let local = TerminalTab::new_local(&cc.egui_ctx, 100, 30)?;
         Ok(Self {
             tabs: vec![local],
             active_tab: 0,
@@ -103,7 +98,7 @@ impl HapcliApp {
     }
 
     fn add_local_tab(&mut self, ctx: &egui::Context, cols: usize, rows: usize) {
-        if let Ok(tab) = TerminalTab::new_local(ctx, cols, rows, self.settings.local_shell_colors) {
+        if let Ok(tab) = TerminalTab::new_local(ctx, cols, rows) {
             self.tabs.push(tab);
             self.active_tab = self.tabs.len() - 1;
         }
@@ -371,7 +366,9 @@ impl HapcliApp {
             if !self.settings.ssh_shell_colors || tab.color_env_attempted {
                 continue;
             }
-            if tab.session.status().kind != TerminalSessionKind::SshPty {
+            if tab.session.status().kind != TerminalSessionKind::SshPty
+                || !tab.session.lifecycle().is_running()
+            {
                 continue;
             }
             if let Some(handle) = tab.session.ssh_connection_handle() {
@@ -511,11 +508,12 @@ impl HapcliApp {
 
                         ui.label("终端字体");
                         ui.horizontal(|ui| {
-                            ui.label(if self.custom_font_loaded {
-                                "自定义字体已加载"
+                            let font_label = if self.custom_font_loaded {
+                                "自定义字体已加载".to_string()
                             } else {
-                                "默认 (Hack)"
-                            });
+                                format!("默认 ({})", platform_default_font_label())
+                            };
+                            ui.label(font_label);
                             if ui.small_button("选择字体文件…").clicked() {
                                 pick_font = true;
                             }
@@ -544,10 +542,6 @@ impl HapcliApp {
                 ui.checkbox(
                     &mut self.settings.notify_on_long_command,
                     "长命令完成时发系统通知（前台运行超 5 秒的命令结束，且未在查看该标签页）",
-                );
-                ui.checkbox(
-                    &mut self.settings.local_shell_colors,
-                    "本地终端彩色输出（CLICOLOR / LSCOLORS，生效于新建的本地标签）",
                 );
                 ui.checkbox(
                     &mut self.settings.ssh_shell_colors,
@@ -833,6 +827,7 @@ impl eframe::App for HapcliApp {
         let mut want_connect = false;
         let mut want_local = false;
         let mut want_settings = false;
+        let mut want_reconnect = false;
         let mut toggle_sftp = false;
         let mut toggle_quick = false;
         let mut toggle_forward = false;
@@ -879,6 +874,15 @@ impl eframe::App for HapcliApp {
                         want_settings = true;
                     }
                     if active_is_ssh
+                        && !self.tabs[self.active_tab].session.lifecycle().is_running()
+                        && ui
+                            .button("↻ 重连")
+                            .on_hover_text("重新连接当前 SSH 会话")
+                            .clicked()
+                    {
+                        want_reconnect = true;
+                    }
+                    if active_is_ssh
                         && ui
                             .add_enabled(
                                 sftp_connected,
@@ -921,6 +925,15 @@ impl eframe::App for HapcliApp {
         if want_settings {
             self.show_settings = true;
             self.show_connect_dialog = false;
+        }
+        if want_reconnect {
+            let index = self.active_tab;
+            let (cols, rows) = self.tabs[index].last_terminal_size;
+            self.tabs[index].reconnect_with(ctx, cols, rows);
+            self.tabs[index].reconnect_attempts = 0;
+            self.tabs[index].reconnect_at = None;
+            self.tabs[index].reconnect_dismissed = false;
+            self.tabs[index].reconnect_status = Some("正在重连…".to_string());
         }
         if toggle_sftp {
             let index = self.active_tab;
@@ -1425,4 +1438,20 @@ fn install_fonts(ctx: &egui::Context, settings: &AppSettings) -> bool {
 
     ctx.set_fonts(fonts);
     custom_loaded
+}
+
+/// 平台默认等宽字体的显示名（与 install_fonts 的候选顺序一致）。
+fn platform_default_font_label() -> &'static str {
+    #[cfg(target_os = "macos")]
+    {
+        "Monaco"
+    }
+    #[cfg(target_os = "windows")]
+    {
+        "Consolas"
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        "DejaVu Sans Mono"
+    }
 }
