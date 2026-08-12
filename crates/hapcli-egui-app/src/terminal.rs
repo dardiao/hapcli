@@ -6,8 +6,9 @@ use std::time::Instant;
 
 use eframe::egui::{self, FontId, PointerButton, Pos2, Rect, Response, Vec2};
 use hapcli_terminal::{
-    GraphicsOptions, SerialSessionConfig, TerminalEncoding, TerminalSession, TerminalSessionKind,
-    TerminalSearchMatch, TerminalSnapshot, TelnetSessionConfig, TrzszTransferPolicy,
+    GraphicsOptions, LocalPtyConfig, SerialSessionConfig, TerminalEncoding, TerminalSession,
+    TerminalSessionKind, TerminalSearchMatch, TerminalSnapshot, TelnetSessionConfig,
+    TrzszTransferPolicy,
 };
 
 use crate::keys;
@@ -76,8 +77,24 @@ pub struct TerminalTab {
 }
 
 impl TerminalTab {
-    pub fn new_local(ctx: &egui::Context, cols: usize, rows: usize) -> anyhow::Result<Self> {
-        let session = enable_trzsz(TerminalSession::local_default(cols, rows)?);
+    pub fn new_local(
+        ctx: &egui::Context,
+        cols: usize,
+        rows: usize,
+        shell_colors: bool,
+    ) -> anyhow::Result<Self> {
+        let config = LocalPtyConfig {
+            shell_colors,
+            ..LocalPtyConfig::default()
+        };
+        let session = enable_trzsz(TerminalSession::local_with_config_graphics_and_encoding(
+            cols,
+            rows,
+            config,
+            GraphicsOptions::default(),
+            TerminalEncoding::Utf8,
+            1000,
+        )?);
         let snapshot = session.snapshot();
         Self::spawn_activity_thread(&session, ctx);
         Ok(Self {

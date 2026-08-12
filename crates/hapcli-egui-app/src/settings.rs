@@ -27,6 +27,13 @@ pub struct AppSettings {
     pub ssh_auto_reconnect: bool,
     /// 长命令（前台进程运行超过阈值后结束）完成时发系统通知。
     pub notify_on_long_command: bool,
+    /// 本地会话注入 CLICOLOR / LSCOLORS 启用彩色输出。
+    #[serde(default = "default_true")]
+    pub local_shell_colors: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for AppSettings {
@@ -41,6 +48,7 @@ impl Default for AppSettings {
             middle_click_paste: true,
             ssh_auto_reconnect: true,
             notify_on_long_command: true,
+            local_shell_colors: true,
         }
     }
 }
@@ -95,6 +103,7 @@ mod tests {
             middle_click_paste: true,
             ssh_auto_reconnect: true,
             notify_on_long_command: true,
+            local_shell_colors: false,
         };
         save_settings_to(&path, &settings).unwrap();
         let loaded: AppSettings =
@@ -110,6 +119,7 @@ mod tests {
         assert!(loaded.middle_click_paste);
         assert!(loaded.ssh_auto_reconnect);
         assert!(loaded.notify_on_long_command);
+        assert!(!loaded.local_shell_colors);
     }
 
     #[test]

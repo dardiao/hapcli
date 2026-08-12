@@ -23,6 +23,24 @@ mod tests {
     };
 
     #[test]
+    fn shell_colors_env_obey_config_toggle() {
+        let shell = ShellInfo::new("zsh", "Zsh", "/bin/zsh");
+        let on = LocalPtyConfig {
+            shell_colors: true,
+            ..LocalPtyConfig::default()
+        };
+        let env = hapcli_terminal_env(&on, &shell);
+        assert_eq!(env.get("CLICOLOR").map(String::as_str), Some("1"));
+
+        let off = LocalPtyConfig {
+            shell_colors: false,
+            ..LocalPtyConfig::default()
+        };
+        let env = hapcli_terminal_env(&off, &shell);
+        assert!(env.get("CLICOLOR").is_none());
+    }
+
+    #[test]
     fn focus_reports_are_gated_by_terminal_mode() {
         assert_eq!(focus_report_sequence(false, true), None);
         assert_eq!(focus_report_sequence(false, false), None);

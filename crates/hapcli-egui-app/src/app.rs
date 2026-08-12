@@ -50,7 +50,12 @@ impl HapcliApp {
         let settings = load_settings();
         let custom_font_loaded = install_fonts(&cc.egui_ctx, &settings);
 
-        let local = TerminalTab::new_local(&cc.egui_ctx, 100, 30)?;
+        let local = TerminalTab::new_local(
+            &cc.egui_ctx,
+            100,
+            30,
+            settings.local_shell_colors,
+        )?;
         Ok(Self {
             tabs: vec![local],
             active_tab: 0,
@@ -98,7 +103,7 @@ impl HapcliApp {
     }
 
     fn add_local_tab(&mut self, ctx: &egui::Context, cols: usize, rows: usize) {
-        if let Ok(tab) = TerminalTab::new_local(ctx, cols, rows) {
+        if let Ok(tab) = TerminalTab::new_local(ctx, cols, rows, self.settings.local_shell_colors) {
             self.tabs.push(tab);
             self.active_tab = self.tabs.len() - 1;
         }
@@ -511,6 +516,10 @@ impl HapcliApp {
                 ui.checkbox(
                     &mut self.settings.notify_on_long_command,
                     "长命令完成时发系统通知（前台运行超 5 秒的命令结束，且未在查看该标签页）",
+                );
+                ui.checkbox(
+                    &mut self.settings.local_shell_colors,
+                    "本地终端彩色输出（CLICOLOR / LSCOLORS，生效于新建的本地标签）",
                 );
 
                 if let Some(path) = &self.settings.terminal_font_path {
