@@ -370,7 +370,10 @@ impl TerminalTab {
     /// 写入远程启动文件（幂等）。结果通过 `tx` 回传，由 app 轮询显示。
     pub fn spawn_color_env_worker(handle: hapcli_ssh::SshConnectionHandle, tx: Sender<String>) {
         std::thread::spawn(move || {
-            let runtime = match tokio::runtime::Runtime::new() {
+            let runtime = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
                 Ok(runtime) => runtime,
                 Err(error) => {
                     let _ = tx.send(format!("颜色环境注入失败（运行时）: {error}"));

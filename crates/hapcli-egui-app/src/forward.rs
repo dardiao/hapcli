@@ -8,7 +8,6 @@ use hapcli_forwarding::{
     ForwardRule, ForwardStatus, ForwardType, ForwardingManager,
 };
 use hapcli_ssh::SshConnectionHandle;
-use tokio::runtime::Runtime;
 
 pub enum ForwardCommand {
     Create(ForwardRule),
@@ -55,7 +54,10 @@ pub fn spawn_forward_worker(handle: SshConnectionHandle) -> ForwardPanel {
     let (evt_tx, evt_rx) = channel::<ForwardEvent>();
 
     std::thread::spawn(move || {
-        let runtime = match Runtime::new() {
+        let runtime = match tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        {
             Ok(runtime) => runtime,
             Err(error) => {
                 let _ = evt_tx.send(ForwardEvent::Error(format!(

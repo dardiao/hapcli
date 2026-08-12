@@ -121,7 +121,10 @@ pub fn spawn_sftp_worker(handle: SshConnectionHandle) -> SftpPanelState {
     let (evt_tx, evt_rx) = channel::<SftpEvent>();
 
     std::thread::spawn(move || {
-        let runtime = match Runtime::new() {
+        let runtime = match tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        {
             Ok(runtime) => runtime,
             Err(error) => {
                 let _ = evt_tx.send(SftpEvent::Listing {
