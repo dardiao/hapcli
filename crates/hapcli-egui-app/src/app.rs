@@ -832,12 +832,17 @@ impl eframe::App for HapcliApp {
                         }
                     }
                     ui.separator();
-                    if ui.button("＋ SSH").clicked() {
-                        want_connect = true;
-                    }
-                    if ui.button("＋ 本地").clicked() {
-                        want_local = true;
-                    }
+                    let add_menu = ui.menu_button("＋", |ui| {
+                        if ui.button("SSH 连接…").clicked() {
+                            want_connect = true;
+                            ui.close_menu();
+                        }
+                        if ui.button("本地终端").clicked() {
+                            want_local = true;
+                            ui.close_menu();
+                        }
+                    });
+                    add_menu.response.on_hover_text("添加 SSH 或本地会话");
                     if ui.button("⚙").on_hover_text("设置").clicked() {
                         want_settings = true;
                     }
