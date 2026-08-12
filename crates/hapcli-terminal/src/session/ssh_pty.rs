@@ -55,15 +55,13 @@ impl SshPtySession {
 
         // GPUI owns a backend runtime for SSH-adjacent work; standalone
         // terminal sessions keep this fallback runtime alive for compatibility.
-        // 单线程 current_thread runtime：每个 SSH 会话只占 1 个线程，
-        // 避免多线程 runtime 按 CPU 核数（M4 为 10）各开 10 个 worker 线程。
+        // 必须用多线程 runtime：会话 runtime 只通过 spawn 提交任务，没有任何
+        // block_on 驱动；current_thread 下任务永远不会被轮询，SSH 会一直
+        // 无法连接（闪光标、无输出）。
         let runtime = if config.runtime_handle.is_some() {
             None
         } else {
-            tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .ok()
+            Runtime::new().ok()
         };
         let runtime_handle = config
             .runtime_handle
