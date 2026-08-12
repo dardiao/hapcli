@@ -859,16 +859,26 @@ impl eframe::App for HapcliApp {
                         }
                     }
                     ui.separator();
-                    let add_menu = ui.menu_button("＋", |ui| {
-                        if ui.button("SSH 连接…").clicked() {
-                            want_connect = true;
-                            ui.close_menu();
-                        }
-                        if ui.button("本地终端").clicked() {
-                            want_local = true;
-                            ui.close_menu();
-                        }
-                    });
+                    let add_menu = egui::menu::menu_custom_button(
+                        ui,
+                        egui::Button::new(
+                            egui::RichText::new("＋")
+                                .color(egui::Color32::from_rgb(0x28, 0x2a, 0x36))
+                                .strong(),
+                        )
+                        .fill(egui::Color32::from_rgb(0xbd, 0x93, 0xf9))
+                        .rounding(6.0),
+                        |ui| {
+                            if ui.button("SSH 连接…").clicked() {
+                                want_connect = true;
+                                ui.close_menu();
+                            }
+                            if ui.button("本地终端").clicked() {
+                                want_local = true;
+                                ui.close_menu();
+                            }
+                        },
+                    );
                     add_menu.response.on_hover_text("添加 SSH 或本地会话");
                     if ui.button("⚙").on_hover_text("设置").clicked() {
                         want_settings = true;
