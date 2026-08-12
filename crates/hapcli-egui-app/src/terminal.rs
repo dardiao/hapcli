@@ -1,8 +1,8 @@
 //! 单个终端会话标签页：持有内核会话、快照与交互状态。
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::Receiver;
-use std::time::Instant;
+use std::sync::mpsc::{Receiver, Sender};
+use std::time::{Duration, Instant};
 
 use eframe::egui::{self, FontId, PointerButton, Pos2, Rect, Response, Vec2};
 use hapcli_terminal::{
@@ -46,6 +46,10 @@ pub struct TerminalTab {
     /// SSH 连接成功后写入钥匙串的 (key, 密码)。
     pub pending_keychain_save: Option<(String, Zeroizing<String>)>,
     pub keychain_status: Option<String>,
+    /// SSH 远程颜色环境注入：是否已尝试、结果接收器、显示用状态。
+    pub color_env_attempted: bool,
+    pub color_env_rx: Option<Receiver<String>>,
+    pub color_env_status: Option<String>,
     pub selection: Option<TextSelection>,
     selection_active: bool,
     selection_dragged: bool,
@@ -110,6 +114,9 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
+            color_env_attempted: false,
+            color_env_rx: None,
+            color_env_status: None,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -163,6 +170,9 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
+            color_env_attempted: false,
+            color_env_rx: None,
+            color_env_status: None,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -221,6 +231,9 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
+            color_env_attempted: false,
+            color_env_rx: None,
+            color_env_status: None,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -279,6 +292,9 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
+            color_env_attempted: false,
+            color_env_rx: None,
+            color_env_status: None,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -356,6 +372,70 @@ impl TerminalTab {
             if !alive {
                 break;
             }
+        });
+    }
+
+    /// 后台线程：等待远程环境探测完成后，通过 SFTP 把 hapcli 的颜色环境块
+    /// 写入远程启动文件（幂等）。结果通过 `tx` 回传，由 app 轮询显示。
+    pub fn spawn_color_env_worker(handle: hapcli_ssh::SshConnectionHandle, tx: Sender<String>) {
+        std::thread::spawn(move || {
+            let runtime = match tokio::runtime::Runtime::new() {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    let _ = tx.send(format!("颜色环境注入失败（运行时）: {error}"));
+                    return;
+                }
+            };
+            let deadline = Instant::now() + Duration::from_secs(12);
+            let remote_env = loop {
+                if let Some(env) = handle.remote_env() {
+                    break Some(env);
+                }
+                if Instant::now() >= deadline {
+                    break None;
+                }
+                std::thread::sleep(Duration::from_millis(400));
+            };
+            let Some(remote_env) = remote_env else {
+                let _ = tx.send("远程环境探测超时，未自动启用彩色".to_string());
+                return;
+            };
+            let session = match runtime.block_on(handle.acquire_sftp()) {
+                Ok(session) => session,
+                Err(error) => {
+                    let _ = tx.send(format!("SFTP 不可用，未自动启用彩色: {error}"));
+                    return;
+                }
+            };
+            let result = runtime.block_on(async {
+                let sftp = session.lock().await;
+                match hapcli_terminal::inspect_remote_color_environment(
+                    &sftp,
+                    Some(&remote_env),
+                )
+                .await
+                {
+                    Ok(status)
+                        if status.state == hapcli_terminal::RemoteColorEnvState::Installed =>
+                    {
+                        Ok("远程彩色已启用".to_string())
+                    }
+                    _ => {
+                        hapcli_terminal::install_remote_color_environment(
+                            &sftp,
+                            Some(&remote_env),
+                        )
+                        .await
+                        .map(|status| {
+                            format!("已写入 {}，重连后生效", status.startup_file)
+                        })
+                    }
+                }
+            });
+            let _ = tx.send(match result {
+                Ok(message) => message,
+                Err(error) => format!("远程彩色启用失败: {error}"),
+            });
         });
     }
 

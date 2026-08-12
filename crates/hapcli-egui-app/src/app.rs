@@ -182,13 +182,18 @@ impl HapcliApp {
             .as_ref()
             .map(|status| format!(" · {status}"))
             .unwrap_or_default();
+        let color_env = tab
+            .color_env_status
+            .as_ref()
+            .map(|status| format!(" · {status}"))
+            .unwrap_or_default();
         let reconnect = tab
             .reconnect_status
             .as_ref()
             .map(|status| format!(" · {status}"))
             .unwrap_or_default();
         format!(
-            "{kind} · {title} · {lifecycle} · {}x{} · 滚动 {} · {:.0}pt{trzsz}{keychain}{reconnect}",
+            "{kind} · {title} · {lifecycle} · {}x{} · 滚动 {} · {:.0}pt{trzsz}{keychain}{color_env}{reconnect}",
             tab.snapshot.cols,
             tab.snapshot.rows,
             tab.snapshot.display_offset,
@@ -351,6 +356,29 @@ impl HapcliApp {
                     Err(std::sync::mpsc::TryRecvError::Empty) => break,
                     Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
                 }
+            }
+        }
+    }
+
+    /// SSH 远程颜色环境：连接后自动在远程启动文件里启用彩色输出。
+    fn handle_color_envs(&mut self) {
+        for tab in &mut self.tabs {
+            if let Some(rx) = &tab.color_env_rx {
+                while let Ok(status) = rx.try_recv() {
+                    tab.color_env_status = Some(status);
+                }
+            }
+            if !self.settings.ssh_shell_colors || tab.color_env_attempted {
+                continue;
+            }
+            if tab.session.status().kind != TerminalSessionKind::SshPty {
+                continue;
+            }
+            if let Some(handle) = tab.session.ssh_connection_handle() {
+                tab.color_env_attempted = true;
+                let (tx, rx) = std::sync::mpsc::channel();
+                tab.color_env_rx = Some(rx);
+                TerminalTab::spawn_color_env_worker(handle, tx);
             }
         }
     }
@@ -520,6 +548,10 @@ impl HapcliApp {
                 ui.checkbox(
                     &mut self.settings.local_shell_colors,
                     "本地终端彩色输出（CLICOLOR / LSCOLORS，生效于新建的本地标签）",
+                );
+                ui.checkbox(
+                    &mut self.settings.ssh_shell_colors,
+                    "SSH 远程终端彩色输出（连接后自动写入远程启动文件，重连后生效）",
                 );
 
                 if let Some(path) = &self.settings.terminal_font_path {
@@ -882,6 +914,7 @@ impl eframe::App for HapcliApp {
             self.close_tab(index);
         }
         if want_connect {
+            self.connect_form.shell_colors = self.settings.ssh_shell_colors;
             self.show_connect_dialog = true;
             self.show_settings = false;
         }
@@ -1052,6 +1085,9 @@ impl eframe::App for HapcliApp {
 
         // 4.6 SSH 断线自动重连。
         self.handle_reconnects(ctx);
+
+        // 4.6.5 SSH 远程颜色环境自动注入（后台线程，结果轮询显示）。
+        self.handle_color_envs();
 
         // 4.7 长命令完成通知。
         self.poll_notifications();

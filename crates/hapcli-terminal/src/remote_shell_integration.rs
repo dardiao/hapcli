@@ -4,9 +4,12 @@ use crate::{EMACS_FREE_TYPE_INTEGRATION_SOURCE, VIM_FREE_TYPE_INTEGRATION_SOURCE
 
 pub const REMOTE_SHELL_INTEGRATION_VERSION: u32 = 4;
 pub const REMOTE_SHELL_INTEGRATION_RELATIVE_DIR: &str = ".hapcli/shell-integration";
+pub const REMOTE_COLOR_ENV_VERSION: u32 = 1;
 
 const MANAGED_BLOCK_START: &str = ">>> hapcli remote shell integration >>>";
 const MANAGED_BLOCK_END: &str = "<<< hapcli remote shell integration <<<";
+const REMOTE_COLOR_BLOCK_START: &str = ">>> hapcli terminal colors >>>";
+const REMOTE_COLOR_BLOCK_END: &str = "<<< hapcli terminal colors <<<";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RemoteShellKind {
@@ -188,6 +191,147 @@ pub async fn remove_remote_shell_integration(
     Ok(status_from_layout(layout, state))
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RemoteColorEnvState {
+    NotInstalled,
+    Installed,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RemoteColorEnvStatus {
+    pub shell: RemoteShellKind,
+    pub state: RemoteColorEnvState,
+    pub startup_file: String,
+}
+
+/// 检查远程启动文件里是否已有 hapcli 的颜色环境块。
+pub async fn inspect_remote_color_environment(
+    sftp: &SftpSession,
+    remote_env: Option<&RemoteEnvInfo>,
+) -> Result<RemoteColorEnvStatus, String> {
+    let layout = integration_layout(sftp, remote_env)?;
+    let expected = color_env_block(layout.shell);
+    let installed = read_optional_text(sftp, &layout.startup_file)
+        .await?
+        .as_deref()
+        .is_some_and(|content| {
+            managed_block_spans(
+                content,
+                &format!("# {REMOTE_COLOR_BLOCK_START}"),
+                &format!("# {REMOTE_COLOR_BLOCK_END}"),
+            )
+            .iter()
+            .any(|span| content[span.start..span.end].trim_end() == expected.trim_end())
+        });
+    Ok(RemoteColorEnvStatus {
+        shell: layout.shell,
+        state: if installed {
+            RemoteColorEnvState::Installed
+        } else {
+            RemoteColorEnvState::NotInstalled
+        },
+        startup_file: layout.startup_file,
+    })
+}
+
+/// 往远程启动文件写入（或原地更新）标记清楚的颜色环境块，启用 ls 彩色输出。
+/// 幂等：重复调用只做一次更新，且只影响 hapcli 自己的块。
+pub async fn install_remote_color_environment(
+    sftp: &SftpSession,
+    remote_env: Option<&RemoteEnvInfo>,
+) -> Result<RemoteColorEnvStatus, String> {
+    let layout = integration_layout(sftp, remote_env)?;
+    if let Some(parent) = remote_parent(&layout.startup_file) {
+        ensure_remote_directory(sftp, &parent).await?;
+    }
+    let current = read_optional_text(sftp, &layout.startup_file)
+        .await?
+        .unwrap_or_default();
+    let block = color_env_block(layout.shell);
+    let updated = install_managed_block_with(
+        &current,
+        &format!("# {REMOTE_COLOR_BLOCK_START}"),
+        &format!("# {REMOTE_COLOR_BLOCK_END}"),
+        &block,
+    );
+    if updated != current {
+        sftp.replace_config_content(&layout.startup_file, updated.as_bytes())
+            .await
+            .map_err(|error| {
+                format!(
+                    "failed to update startup file {}: {error}",
+                    layout.startup_file
+                )
+            })?;
+    }
+    Ok(RemoteColorEnvStatus {
+        shell: layout.shell,
+        state: RemoteColorEnvState::Installed,
+        startup_file: layout.startup_file,
+    })
+}
+
+/// 移除远程启动文件里的 hapcli 颜色环境块。
+pub async fn remove_remote_color_environment(
+    sftp: &SftpSession,
+    remote_env: Option<&RemoteEnvInfo>,
+) -> Result<RemoteColorEnvStatus, String> {
+    let layout = integration_layout(sftp, remote_env)?;
+    if let Some(current) = read_optional_text(sftp, &layout.startup_file).await? {
+        let updated = remove_managed_block_with(
+            &current,
+            &format!("# {REMOTE_COLOR_BLOCK_START}"),
+            &format!("# {REMOTE_COLOR_BLOCK_END}"),
+        );
+        if updated != current {
+            sftp.replace_config_content(&layout.startup_file, updated.as_bytes())
+                .await
+                .map_err(|error| {
+                    format!(
+                        "failed to update startup file {}: {error}",
+                        layout.startup_file
+                    )
+                })?;
+        }
+    }
+    Ok(RemoteColorEnvStatus {
+        shell: layout.shell,
+        state: RemoteColorEnvState::NotInstalled,
+        startup_file: layout.startup_file,
+    })
+}
+
+fn color_env_block(shell: RemoteShellKind) -> String {
+    let ls_colors = "di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37";
+    let body = match shell {
+        RemoteShellKind::Bash | RemoteShellKind::Zsh => format!(
+            "export CLICOLOR=1\n\
+             export LSCOLORS=\"exfxcxdxgxegedabagacad\"\n\
+             export LS_COLORS=\"{ls_colors}\"\n\
+             if ls --color=auto >/dev/null 2>&1; then alias ls='ls --color=auto'; fi\n"
+        ),
+        RemoteShellKind::Fish => format!(
+            "set -gx CLICOLOR 1\n\
+             set -gx LSCOLORS \"exfxcxdxgxegedabagacad\"\n\
+             set -gx LS_COLORS \"{ls_colors}\"\n\
+             if ls --color=auto >/dev/null 2>&1\n    alias ls 'ls --color=auto'\nend\n"
+        ),
+        RemoteShellKind::Nushell => format!(
+            "$env.CLICOLOR = \"1\"\n\
+             $env.LSCOLORS = \"exfxcxdxgxegedabagacad\"\n\
+             $env.LS_COLORS = \"{ls_colors}\"\n"
+        ),
+        RemoteShellKind::PowerShell => format!(
+            "$env:CLICOLOR = \"1\"\n\
+             $env:LSCOLORS = \"exfxcxdxgxegedabagacad\"\n\
+             $env:LS_COLORS = \"{ls_colors}\"\n"
+        ),
+    };
+    format!(
+        "# {REMOTE_COLOR_BLOCK_START}\n# hapcli-terminal-colors-version: {REMOTE_COLOR_ENV_VERSION}\n{body}# {REMOTE_COLOR_BLOCK_END}"
+    )
+}
+
 fn integration_layout(
     sftp: &SftpSession,
     remote_env: Option<&RemoteEnvInfo>,
@@ -339,7 +483,21 @@ struct ManagedBlockSpan {
 }
 
 fn install_managed_block(content: &str, block: &str) -> String {
-    let spans = complete_managed_blocks(content);
+    install_managed_block_with(
+        content,
+        &format!("# {MANAGED_BLOCK_START}"),
+        &format!("# {MANAGED_BLOCK_END}"),
+        block,
+    )
+}
+
+fn install_managed_block_with(
+    content: &str,
+    start_marker: &str,
+    end_marker: &str,
+    block: &str,
+) -> String {
+    let spans = managed_block_spans(content, start_marker, end_marker);
     if spans.is_empty() {
         return append_complete_block(content, block);
     };
@@ -367,7 +525,15 @@ fn append_complete_block(content: &str, block: &str) -> String {
 }
 
 fn remove_managed_block(content: &str) -> String {
-    let spans = complete_managed_blocks(content);
+    remove_managed_block_with(
+        content,
+        &format!("# {MANAGED_BLOCK_START}"),
+        &format!("# {MANAGED_BLOCK_END}"),
+    )
+}
+
+fn remove_managed_block_with(content: &str, start_marker: &str, end_marker: &str) -> String {
+    let spans = managed_block_spans(content, start_marker, end_marker);
     if spans.is_empty() {
         return content.to_string();
     }
@@ -387,8 +553,18 @@ fn remove_managed_block(content: &str) -> String {
 }
 
 fn complete_managed_blocks(content: &str) -> Vec<ManagedBlockSpan> {
-    let start_marker = format!("# {MANAGED_BLOCK_START}");
-    let end_marker = format!("# {MANAGED_BLOCK_END}");
+    managed_block_spans(
+        content,
+        &format!("# {MANAGED_BLOCK_START}"),
+        &format!("# {MANAGED_BLOCK_END}"),
+    )
+}
+
+fn managed_block_spans(
+    content: &str,
+    start_marker: &str,
+    end_marker: &str,
+) -> Vec<ManagedBlockSpan> {
     let mut spans = Vec::new();
     let mut pending_start = None;
     let mut offset = 0;
@@ -694,6 +870,36 @@ mod tests {
         assert!(installed.contains("head\n"));
         assert!(installed.contains("middle\n"));
         assert!(installed.contains("tail\n"));
+    }
+
+    #[test]
+    fn color_env_block_is_idempotent_and_independent_from_shell_integration() {
+        for shell in [
+            RemoteShellKind::Bash,
+            RemoteShellKind::Zsh,
+            RemoteShellKind::Fish,
+            RemoteShellKind::Nushell,
+            RemoteShellKind::PowerShell,
+        ] {
+            let block = color_env_block(shell);
+            assert!(block.contains("CLICOLOR"));
+            assert!(block.contains("LSCOLORS"));
+            assert!(block.contains("LS_COLORS"));
+            assert!(block.contains("hapcli-terminal-colors-version"));
+
+            let start = format!("# {REMOTE_COLOR_BLOCK_START}");
+            let end = format!("# {REMOTE_COLOR_BLOCK_END}");
+            let original = "export EDITOR=vim\n";
+            let installed = install_managed_block_with(&original, &start, &end, &block);
+            let reinstalled = install_managed_block_with(&installed, &start, &end, &block);
+            assert_eq!(installed, reinstalled);
+            assert_eq!(remove_managed_block_with(&installed, &start, &end), original);
+
+            // 颜色块与 shell 集成块使用不同标记，互不干扰。
+            let combined = install_managed_block(&installed, &startup_reference(shell));
+            assert_eq!(managed_block_spans(&combined, &start, &end).len(), 1);
+            assert_eq!(complete_managed_blocks(&combined).len(), 1);
+        }
     }
 
     #[test]

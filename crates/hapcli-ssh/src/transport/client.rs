@@ -2,6 +2,10 @@ const AGENT_FORWARDING_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
 const X11_FORWARDING_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
 const HAPCLI_PRIVATE_OSC_SESSION_ENV: &str = "LC_hapcli_SESSION";
 const HAPCLI_PRIVATE_OSC_SESSION_VALUE: &str = "1";
+const CLICOLOR_ENV_VALUE: &str = "1";
+const LSCOLORS_ENV_VALUE: &str = "exfxcxdxgxegedabagacad";
+const LS_COLORS_ENV_VALUE: &str =
+    "di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37";
 const CHILD_CONNECTION_RETIRED_DURING_CONNECT: &str =
     "child connection was retired while its SSH transport was connecting";
 
@@ -304,6 +308,7 @@ async fn open_plain_shell(
     x11_forwarding: Option<X11ForwardPolicy>,
     x11_route_id: &str,
     x11_connection_owner: Option<X11ConnectionOwner>,
+    shell_colors: bool,
 ) -> Result<
     (russh::Channel<client::Msg>, Option<X11ForwardRouteGuard>),
     SshTransportError,
@@ -333,6 +338,22 @@ async fn open_plain_shell(
         .is_err()
     {
         tracing::debug!("optional SSH shell integration marker could not be requested");
+    }
+    // Best-effort shell colors: only servers configured with
+    // `AcceptEnv CLICOLOR LSCOLORS LS_COLORS` honor these env requests.
+    // Remote startup-file injection covers the default servers that reject them.
+    if shell_colors {
+        for (name, value) in [
+            ("CLICOLOR", CLICOLOR_ENV_VALUE),
+            ("LSCOLORS", LSCOLORS_ENV_VALUE),
+            ("LS_COLORS", LS_COLORS_ENV_VALUE),
+        ] {
+            if channel.set_env(false, name, value).await.is_err() {
+                tracing::debug!(
+                    "optional SSH shell color env request {name} could not be requested"
+                );
+            }
+        }
     }
     channel
         .request_shell(false)
@@ -1292,6 +1313,7 @@ impl SshTransportClient {
                     x11_forwarding,
                     &session_id,
                     x11_connection_owner.clone(),
+                    shell_config.shell_colors,
                 )
                 .await?,
             )
@@ -1365,6 +1387,7 @@ impl SshTransportClient {
                         x11_forwarding,
                         &task_session_id,
                         x11_connection_owner,
+                        shell_config.shell_colors,
                     )
                     .await
                 };

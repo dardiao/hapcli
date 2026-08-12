@@ -30,6 +30,9 @@ pub struct AppSettings {
     /// 本地会话注入 CLICOLOR / LSCOLORS 启用彩色输出。
     #[serde(default = "default_true")]
     pub local_shell_colors: bool,
+    /// SSH 远程会话自动启用彩色输出（env 请求 + 远程启动文件注入）。
+    #[serde(default = "default_true")]
+    pub ssh_shell_colors: bool,
 }
 
 fn default_true() -> bool {
@@ -49,6 +52,7 @@ impl Default for AppSettings {
             ssh_auto_reconnect: true,
             notify_on_long_command: true,
             local_shell_colors: true,
+            ssh_shell_colors: true,
         }
     }
 }
@@ -104,6 +108,7 @@ mod tests {
             ssh_auto_reconnect: true,
             notify_on_long_command: true,
             local_shell_colors: false,
+            ssh_shell_colors: false,
         };
         save_settings_to(&path, &settings).unwrap();
         let loaded: AppSettings =
@@ -120,6 +125,7 @@ mod tests {
         assert!(loaded.ssh_auto_reconnect);
         assert!(loaded.notify_on_long_command);
         assert!(!loaded.local_shell_colors);
+        assert!(!loaded.ssh_shell_colors);
     }
 
     #[test]

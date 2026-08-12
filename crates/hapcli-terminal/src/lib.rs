@@ -75,8 +75,10 @@ pub use privilege_prompt::{
 pub use process::{TerminalLifecycle, TerminalProcessInfo, TerminalProcessProbe};
 pub use remote_shell_integration::{
     REMOTE_SHELL_INTEGRATION_RELATIVE_DIR, REMOTE_SHELL_INTEGRATION_VERSION,
-    RemoteShellIntegrationState, RemoteShellIntegrationStatus, RemoteShellKind,
-    inspect_remote_shell_integration, install_remote_shell_integration,
+    REMOTE_COLOR_ENV_VERSION, RemoteColorEnvState, RemoteColorEnvStatus, RemoteShellIntegrationState,
+    RemoteShellIntegrationStatus, RemoteShellKind, inspect_remote_color_environment,
+    inspect_remote_shell_integration, install_remote_color_environment,
+    install_remote_shell_integration, remove_remote_color_environment,
     remove_remote_shell_integration,
 };
 pub use search::TerminalSearchSource;
