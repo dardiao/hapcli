@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 //! Git repository provider request construction, authentication, parsing, and errors.
 

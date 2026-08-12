@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 pub const WSL_GRAPHICS_UNAVAILABLE: &str =
     "WSL Graphics is only available on Windows with the wsl-graphics feature enabled";

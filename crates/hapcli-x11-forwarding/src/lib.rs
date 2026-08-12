@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 //! Protocol-level building blocks for SSH X11 forwarding.
 //!

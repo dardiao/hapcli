@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 //! Plugin-facing host API projections that do not own GPUI workspace state.
 

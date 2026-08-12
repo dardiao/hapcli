@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 pub fn is_likely_text_content(bytes: &[u8]) -> bool {
     if bytes.is_empty() {

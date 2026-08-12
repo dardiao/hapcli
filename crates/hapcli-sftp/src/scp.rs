@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 //! Legacy SCP protocol transfers over a node-owned SSH exec channel.
 

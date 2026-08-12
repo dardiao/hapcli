@@ -1,5 +1,4 @@
 // Copyright (C) 2026 hapcli contributors.
-// SPDX-License-Identifier: GPL-3.0-only
 //
 // This module adapts the PTY event-loop structure used by alacritty_terminal
 // (Apache-2.0 OR MIT) so hapcli can intercept graphics protocols between

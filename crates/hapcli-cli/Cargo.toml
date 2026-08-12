@@ -1,7 +1,6 @@
 [package]
 name = "hapcli-cli"
 edition.workspace = true
-license.workspace = true
 version.workspace = true
 
 [[bin]]

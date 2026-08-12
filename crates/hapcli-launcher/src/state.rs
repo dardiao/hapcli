@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 use crate::{LauncherAppEntry, LauncherLoadResponse, WslDistro, filter_apps, filter_wsl_distros};
 

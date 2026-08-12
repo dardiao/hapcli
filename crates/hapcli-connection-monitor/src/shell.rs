@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 /// Quote one value for use as a single POSIX shell argument.
 pub(crate) fn shell_quote(value: &str) -> String {

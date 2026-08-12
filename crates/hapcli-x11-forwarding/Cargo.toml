@@ -1,7 +1,6 @@
 [package]
 name = "hapcli-x11-forwarding"
 edition.workspace = true
-license.workspace = true
 version.workspace = true
 
 [dependencies]

@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 //! ACP stdio adapter entrypoint for local agent CLIs that do not expose ACP directly.
 

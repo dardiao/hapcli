@@ -1,5 +1,4 @@
 // Copyright (C) 2026 hapcli contributors.
-// SPDX-License-Identifier: GPL-3.0-only
 
 //! Trusted Git CWD selection and local Git control-directory inspection.
 

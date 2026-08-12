@@ -1,7 +1,6 @@
 [package]
 name = "hapcli-ai-tasks"
 edition.workspace = true
-license.workspace = true
 version.workspace = true
 
 [dependencies]

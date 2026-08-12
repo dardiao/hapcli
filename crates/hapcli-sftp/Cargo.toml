@@ -1,7 +1,6 @@
 [package]
 name = "hapcli-sftp"
 edition.workspace = true
-license.workspace = true
 version.workspace = true
 
 [dependencies]

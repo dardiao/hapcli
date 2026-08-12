@@ -1,5 +1,4 @@
 // Copyright (C) 2026 hapcli contributors.
-// SPDX-License-Identifier: GPL-3.0-only
 
 use crate::crc::{crc16_xmodem, crc16_xmodem_update, crc32_ieee, crc32_ieee_update};
 use crate::error::ModemError;

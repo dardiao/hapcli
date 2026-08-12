@@ -1,5 +1,4 @@
 // Copyright (C) 2026 hapcli contributors.
-// SPDX-License-Identifier: GPL-3.0-only
 
 mod model;
 mod parse;

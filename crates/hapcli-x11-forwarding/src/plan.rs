@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 use crate::{
     X11AuthMaterial, X11AuthorityMatchContext, X11BinaryAuthorityEntry, X11ForwardConfig,

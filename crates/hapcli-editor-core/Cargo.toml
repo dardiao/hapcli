@@ -1,7 +1,6 @@
 [package]
 name = "hapcli-editor-core"
 edition.workspace = true
-license.workspace = true
 version.workspace = true
 
 [dependencies]

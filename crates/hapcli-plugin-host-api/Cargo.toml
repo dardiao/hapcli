@@ -1,7 +1,6 @@
 [package]
 name = "hapcli-plugin-host-api"
 edition.workspace = true
-license.workspace = true
 version.workspace = true
 
 [features]

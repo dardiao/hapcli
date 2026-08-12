@@ -1,7 +1,6 @@
 [package]
 name = "hapcli-skills"
 edition.workspace = true
-license.workspace = true
 version.workspace = true
 
 [dependencies]

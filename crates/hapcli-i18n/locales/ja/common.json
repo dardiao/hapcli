@@ -1069,7 +1069,6 @@
     "disclaimer_ai": "AI 機能 (OxideSens)",
     "disclaimer_ai_text": "AI が生成した出力は情報提供のみを目的としており、専門的な助言を構成するものではありません。AI が生成したコマンドは実行前に必ず確認してください。この機能を有効にすると、ターミナルの内容がサードパーティの AI プロバイダーに送信される場合があります。",
     "disclaimer_accept": "上記の条項を読み、同意しました",
-    "disclaimer_gpl_note": "完全なライセンスおよび法的条件：GPL-3.0 §15–16 と LEGAL.md。",
     "ai_tools_title": "AI とツール",
     "ai_tools_desc": "AI 搭載機能を有効にして、ターミナルワークフローを強化しましょう。",
     "ai_setup_title": "AI セットアップ",

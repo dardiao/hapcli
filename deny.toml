@@ -64,7 +64,6 @@ allow = [
     "Apache-2.0 WITH LLVM-exception",  # target-lexicon
     "CC0-1.0",               # ← 新增
     "CDLA-Permissive-2.0",   # webpki-roots — permissive data license
-    "GPL-3.0-only", # 自家 crate
 ]
 
 

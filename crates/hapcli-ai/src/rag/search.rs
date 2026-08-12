@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 use crate::rag::bm25::{Bm25Hit, search_bm25};
 use crate::rag::embedding::{VectorHit, search_vector};

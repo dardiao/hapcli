@@ -1,5 +1,4 @@
 // Copyright (C) 2026 AnalyseDeCircuit
-// SPDX-License-Identifier: GPL-3.0-only
 
 use base64::Engine as _;
 use minisign_verify::{PublicKey, Signature};

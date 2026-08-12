@@ -1,5 +1,4 @@
 // Copyright (C) 2026 hapcli contributors.
-// SPDX-License-Identifier: GPL-3.0-only
 
 /// Computes the CRC-16/XMODEM value used by X/YMODEM and ZMODEM hex frames.
 pub fn crc16_xmodem(bytes: &[u8]) -> u16 {

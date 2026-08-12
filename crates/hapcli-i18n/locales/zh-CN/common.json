@@ -1069,7 +1069,6 @@
     "disclaimer_ai": "AI 功能 (OxideSens)",
     "disclaimer_ai_text": "AI 生成的内容仅供参考，不构成专业建议。请务必在执行前审查 AI 生成的命令。启用该功能后，终端内容可能会被发送至第三方 AI 提供商。",
     "disclaimer_accept": "我已阅读并同意以上条款",
-    "disclaimer_gpl_note": "完整许可与法律说明：GPL-3.0 §15–16 以及 LEGAL.md。",
     "ai_tools_title": "AI 与工具",
     "ai_tools_desc": "启用 AI 驱动的功能，提升您的终端工作效率。",
     "ai_setup_title": "AI 设置",

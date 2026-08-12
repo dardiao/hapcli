@@ -6,9 +6,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Code contributions (Pull Requests) are not accepted** — see [CONTRIBUTING.md](https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/CONTRIBUTING.md) for details. If you want to extend functionality yourself, consider building a [plugin](https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md).
+        **Code contributions (Pull Requests) are not accepted.** If you want to extend functionality yourself, consider building a [plugin](https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md).
 
-        **PR：** 本项目目前不接受 PR——详见 [CONTRIBUTING.md](https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/CONTRIBUTING.md)。如需自行扩展功能，可考虑构建[插件](https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md)。
+        **PR：** 本项目目前不接受 PR。如需自行扩展功能，可考虑构建[插件](https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md)。
 
         ---
 

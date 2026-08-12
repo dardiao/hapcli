@@ -14,7 +14,3 @@ contact_links:
     about: >
       Check your version before reporting — update to the latest release first.
       报告问题前请先检查版本，并更新到最新正式版。
-  - name: Contributing & PR policy
-    url: https://github.com/AnalyseDeCircuit/hapcli/blob/main/docs/CONTRIBUTING.md
-    about: >
-      PRs are currently not accepted — read CONTRIBUTING.md for the policy and plugin alternatives.

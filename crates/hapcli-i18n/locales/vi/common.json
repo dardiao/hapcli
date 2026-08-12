@@ -975,7 +975,6 @@
     "disclaimer_ai": "Tính năng AI (OxideSens)",
     "disclaimer_ai_text": "Kết quả do AI tạo ra chỉ mang tính tham khảo và không cấu thành tư vấn chuyên nghiệp. Luôn kiểm tra các lệnh do AI tạo trước khi thực thi. Nội dung terminal có thể được gửi tới các nhà cung cấp AI bên thứ ba khi tính năng này được bật.",
     "disclaimer_accept": "Tôi đã đọc và đồng ý với các điều khoản trên",
-    "disclaimer_gpl_note": "Điều khoản pháp lý và giấy phép đầy đủ: GPL-3.0 §15–16 và LEGAL.md.",
     "ai_tools_title": "AI & Công cụ",
     "ai_tools_desc": "Kích hoạt các tính năng hỗ trợ AI để nâng cao quy trình làm việc trên terminal.",
     "ai_setup_title": "Thiết lập AI",

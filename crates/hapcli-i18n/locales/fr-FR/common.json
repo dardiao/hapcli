@@ -1069,7 +1069,6 @@
     "disclaimer_ai": "Fonctionnalités AI (OxideSens)",
     "disclaimer_ai_text": "Les résultats générés par l'AI sont fournis à titre informatif uniquement et ne constituent pas un avis professionnel. Vérifiez toujours les commandes générées par l'AI avant de les exécuter. Le contenu du terminal peut être envoyé à des fournisseurs AI tiers lorsque cette fonctionnalité est activée.",
     "disclaimer_accept": "J'ai lu et j'accepte les conditions ci-dessus",
-    "disclaimer_gpl_note": "Conditions complètes de licence et mentions légales : GPL-3.0 §15–16 et LEGAL.md.",
     "ai_tools_title": "AI et outils",
     "ai_tools_desc": "Activez les fonctionnalités propulsées par l'AI pour améliorer votre flux de travail dans le terminal.",
     "ai_setup_title": "Configuration AI",
