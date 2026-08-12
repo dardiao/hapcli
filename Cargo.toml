@@ -51,7 +51,7 @@ members = [
   "crates/russh-sftp",
   "crates/hapcli-egui-app",
 ]
-default-members = ["crates/hapcli-cli", "crates/hapcli-egui-app"]
+default-members = ["crates/hapcli-egui-app"]
 resolver = "2"
 
 [patch.crates-io]

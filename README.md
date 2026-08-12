@@ -12,8 +12,10 @@
 ### 编译并运行
 
 ```sh
-cargo run -p hapcli-egui-app
+cargo run
 ```
+
+`cargo run` 默认启动桌面应用；命令行工具用 `cargo run -p hapcli-cli`。
 
 ### 构建 Release 二进制
 
