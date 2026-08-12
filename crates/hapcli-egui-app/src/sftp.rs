@@ -132,8 +132,25 @@ pub fn spawn_sftp_worker(handle: SshConnectionHandle) -> SftpPanelState {
                 return;
             }
         };
-        let session = match runtime.block_on(handle.acquire_sftp()) {
+        let mut session = match runtime.block_on(handle.acquire_sftp()) {
             Ok(session) => session,
+            Err(error) if error.is_channel_recoverable() => {
+                // 旧会话已失效（如远端关闭了 SFTP 通道）：重建一次再重试。
+                match runtime.block_on(async {
+                    handle.invalidate_sftp().await;
+                    handle.acquire_sftp().await
+                }) {
+                    Ok(session) => session,
+                    Err(error) => {
+                        let _ = evt_tx.send(SftpEvent::Listing {
+                            cwd: String::new(),
+                            entries: Vec::new(),
+                            error: Some(format!("SFTP 连接失败: {error}")),
+                        });
+                        return;
+                    }
+                }
+            }
             Err(error) => {
                 let _ = evt_tx.send(SftpEvent::Listing {
                     cwd: String::new(),
@@ -157,6 +174,32 @@ pub fn spawn_sftp_worker(handle: SshConnectionHandle) -> SftpPanelState {
                             entries,
                             error: None,
                         },
+                        Err(error) if error.is_channel_recoverable() => {
+                            // 会话失效：重建并重试一次，避免一次性的 “session closed” 卡死面板。
+                            let retried = runtime.block_on(async {
+                                handle.invalidate_sftp().await;
+                                match handle.acquire_sftp().await {
+                                    Ok(new_session) => {
+                                        session = new_session;
+                                        let sftp = session.lock().await;
+                                        sftp.list_dir_with_cwd(&path, None).await
+                                    }
+                                    Err(error) => Err(error),
+                                }
+                            });
+                            match retried {
+                                Ok((cwd, entries)) => SftpEvent::Listing {
+                                    cwd,
+                                    entries,
+                                    error: None,
+                                },
+                                Err(error) => SftpEvent::Listing {
+                                    cwd: String::new(),
+                                    entries: Vec::new(),
+                                    error: Some(error.to_string()),
+                                },
+                            }
+                        }
                         Err(error) => SftpEvent::Listing {
                             cwd: String::new(),
                             entries: Vec::new(),
