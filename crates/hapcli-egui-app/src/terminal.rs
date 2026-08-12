@@ -11,6 +11,7 @@ use hapcli_terminal::{
 };
 
 use crate::keys;
+use crate::recording::{PlaybackState, Recording};
 use crate::render::{
     self, ScrollCommand, TextSelection, cell_at, scrollbar_track_rect, select_line,
     select_word_at, selected_text, viewport_highlights,
@@ -66,6 +67,8 @@ pub struct TerminalTab {
     pub search_focus_requested: bool,
     pub sftp: Option<crate::sftp::SftpPanelState>,
     pub forward: Option<crate::forward::ForwardPanel>,
+    pub recording: Option<Recording>,
+    pub playback: Option<PlaybackState>,
     /// 静态标签：本地会话或 `user@host` 基础标签。
     base_label: String,
 }
@@ -108,6 +111,8 @@ impl TerminalTab {
             search_focus_requested: false,
             sftp: None,
             forward: None,
+            recording: None,
+            playback: None,
             base_label: "本地".to_string(),
         })
     }
@@ -157,6 +162,8 @@ impl TerminalTab {
             search_focus_requested: false,
             sftp: None,
             forward: None,
+            recording: None,
+            playback: None,
             base_label,
         }
     }
@@ -211,6 +218,8 @@ impl TerminalTab {
             search_focus_requested: false,
             sftp: None,
             forward: None,
+            recording: None,
+            playback: None,
             base_label,
         }
     }
@@ -265,8 +274,72 @@ impl TerminalTab {
             search_focus_requested: false,
             sftp: None,
             forward: None,
+            recording: None,
+            playback: None,
             base_label,
         })
+    }
+
+    /// 从 .hrec 录制文件创建回放会话标签页。
+    pub fn new_playback(
+        ctx: &egui::Context,
+        chunks: Vec<(u64, Vec<u8>)>,
+        file_name: String,
+        cols: usize,
+        rows: usize,
+    ) -> Self {
+        let session =
+            TerminalSession::recording_playback(cols, rows, GraphicsOptions::default(), 1000);
+        let snapshot = session.snapshot();
+        Self::spawn_activity_thread(&session, ctx);
+        Self {
+            session,
+            snapshot,
+            last_terminal_size: (cols, rows),
+            scroll_accum: 0.0,
+            focused: false,
+            trzsz_prompt: None,
+            trzsz_active: false,
+            trzsz_rx: None,
+            trzsz_status: None,
+            trzsz_owner_id: new_trzsz_owner_id(),
+            ssh_reconnect_config: None,
+            ssh_registry: None,
+            pending_keychain_save: None,
+            keychain_status: None,
+            selection: None,
+            selection_active: false,
+            selection_dragged: false,
+            last_rect: None,
+            last_layer_id: None,
+            last_response_id: None,
+            ever_connected: false,
+            reconnect_attempts: 0,
+            reconnect_at: None,
+            reconnect_status: None,
+            reconnect_dismissed: false,
+            search_open: false,
+            search_query: String::new(),
+            search_matches: Vec::new(),
+            search_current: None,
+            search_focus_requested: false,
+            sftp: None,
+            forward: None,
+            recording: None,
+            playback: Some(PlaybackState::new(chunks, file_name)),
+            base_label: "回放".to_string(),
+        }
+    }
+
+    /// 推进回放：按时间戳把到期的录制内容喂给回放会话。
+    pub fn advance_playback(&mut self) {
+        let Some(state) = &mut self.playback else {
+            return;
+        };
+        let bytes = state.advance();
+        if !bytes.is_empty() {
+            self.session.feed_recording_output(&bytes);
+        }
     }
 
     /// 结束一次 Trzsz 传输并复位状态。
@@ -323,6 +396,9 @@ impl TerminalTab {
 
     /// 标签页显示名：本地跟随 shell 标题，SSH 显示连接状态。
     pub fn display_label(&self) -> String {
+        if let Some(playback) = &self.playback {
+            return format!("回放 · {}", playback.file_name);
+        }
         let status = self.session.status();
         match status.kind {
             TerminalSessionKind::LocalPty => {

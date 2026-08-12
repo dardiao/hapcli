@@ -7,6 +7,7 @@ mod keys;
 mod render;
 mod profiles;
 mod quick;
+mod recording;
 mod settings;
 mod sftp;
 mod terminal;
