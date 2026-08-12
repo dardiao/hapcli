@@ -25,6 +25,8 @@ pub struct AppSettings {
     pub middle_click_paste: bool,
     /// SSH 断线后自动重连（最多 3 次）。
     pub ssh_auto_reconnect: bool,
+    /// 长命令（前台进程运行超过阈值后结束）完成时发系统通知。
+    pub notify_on_long_command: bool,
 }
 
 impl Default for AppSettings {
@@ -38,6 +40,7 @@ impl Default for AppSettings {
             copy_on_select: false,
             middle_click_paste: true,
             ssh_auto_reconnect: true,
+            notify_on_long_command: true,
         }
     }
 }
@@ -91,6 +94,7 @@ mod tests {
             copy_on_select: true,
             middle_click_paste: true,
             ssh_auto_reconnect: true,
+            notify_on_long_command: true,
         };
         save_settings_to(&path, &settings).unwrap();
         let loaded: AppSettings =
@@ -105,6 +109,7 @@ mod tests {
         assert!(loaded.copy_on_select);
         assert!(loaded.middle_click_paste);
         assert!(loaded.ssh_auto_reconnect);
+        assert!(loaded.notify_on_long_command);
     }
 
     #[test]

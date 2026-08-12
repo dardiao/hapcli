@@ -79,6 +79,7 @@ impl HapcliApp {
             return;
         }
         self.active_tab = index;
+        self.tabs[index].notify_pending = false;
         self.tabs[index].focused = self.window_focused;
         let _ = self.tabs[index].session.set_focused(self.window_focused);
     }
@@ -349,6 +350,57 @@ impl HapcliApp {
         }
     }
 
+    /// 长命令完成通知：探测本地会话前台进程，结束且运行超阈值时发系统通知。
+    fn poll_notifications(&mut self) {
+        const PROBE_INTERVAL: Duration = Duration::from_millis(500);
+        const THRESHOLD: Duration = Duration::from_secs(5);
+
+        let enabled = self.settings.notify_on_long_command;
+        let active = self.active_tab;
+        let window_focused = self.window_focused;
+        let now = Instant::now();
+
+        for index in 0..self.tabs.len() {
+            let tab = &mut self.tabs[index];
+            if tab.session.status().kind != TerminalSessionKind::LocalPty {
+                continue;
+            }
+            if tab
+                .last_probe
+                .is_some_and(|last| now.duration_since(last) < PROBE_INTERVAL)
+            {
+                continue;
+            }
+            tab.last_probe = Some(now);
+            tab.session.refresh_process_info();
+            let info = tab.session.process_info();
+            let foreground = info.foreground_pid;
+            let shell = info.shell_pid;
+
+            if foreground.is_some() && foreground != shell {
+                if tab.foreground_track.is_none() {
+                    tab.foreground_track =
+                        Some((foreground.expect("checked above"), now, info.command.clone()));
+                }
+                continue;
+            }
+
+            // 前台回到 shell：命令结束。
+            if let Some((pid, started, command)) = tab.foreground_track.take() {
+                let duration = now.duration_since(started);
+                if duration >= THRESHOLD && enabled && (index != active || !window_focused) {
+                    let name = command.unwrap_or_else(|| format!("pid {pid}"));
+                    let name: String = name.chars().take(60).collect();
+                    system_notify(
+                        "hapcli 命令完成",
+                        &format!("{name}（{} 秒）", duration.as_secs()),
+                    );
+                    tab.notify_pending = true;
+                }
+            }
+        }
+    }
+
     fn terminal_font_id(&self) -> FontId {
         if self.custom_font_loaded {
             FontId::new(
@@ -455,6 +507,10 @@ impl HapcliApp {
                 ui.checkbox(
                     &mut self.settings.ssh_auto_reconnect,
                     "SSH 断线自动重连（最多 3 次，间隔 2.5 秒）",
+                );
+                ui.checkbox(
+                    &mut self.settings.notify_on_long_command,
+                    "长命令完成时发系统通知（前台运行超 5 秒的命令结束，且未在查看该标签页）",
                 );
 
                 if let Some(path) = &self.settings.terminal_font_path {
@@ -984,6 +1040,9 @@ impl eframe::App for HapcliApp {
         // 4.6 SSH 断线自动重连。
         self.handle_reconnects(ctx);
 
+        // 4.7 长命令完成通知。
+        self.poll_notifications();
+
         // 5. 活动会话输入事件。
         let prefs = TerminalPrefs {
             copy_on_select: self.settings.copy_on_select,
@@ -1118,6 +1177,31 @@ impl Drop for HapcliApp {
             tab.session.shutdown();
         }
     }
+}
+
+/// 发送 macOS 系统通知；其他平台暂为 no-op。
+fn system_notify(title: &str, message: &str) {
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!(
+            "display notification {} with title {}",
+            apple_quote(message),
+            apple_quote(title)
+        );
+        let _ = std::process::Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .spawn();
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (title, message);
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn apple_quote(text: &str) -> String {
+    format!("'{}'", text.replace('\\', "\\\\").replace('\'', "'\\''"))
 }
 
 /// 安装 CJK 兜底字体与（可选的）自定义终端字体。

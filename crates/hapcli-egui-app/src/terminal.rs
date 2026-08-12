@@ -67,6 +67,10 @@ pub struct TerminalTab {
     pub sftp: Option<crate::sftp::SftpPanelState>,
     pub forward: Option<crate::forward::ForwardPanel>,
     pub image_textures: ImageTextureCache,
+    /// 长命令完成提醒：标签页显示 🔔，激活后清除。
+    pub notify_pending: bool,
+    pub foreground_track: Option<(u32, Instant, Option<String>)>,
+    pub last_probe: Option<Instant>,
     /// 静态标签：本地会话或 `user@host` 基础标签。
     base_label: String,
 }
@@ -109,6 +113,9 @@ impl TerminalTab {
             search_focus_requested: false,
             sftp: None,
             forward: None,
+            notify_pending: false,
+            foreground_track: None,
+            last_probe: None,
             image_textures: ImageTextureCache::default(),
             base_label: "本地".to_string(),
         })
@@ -159,6 +166,9 @@ impl TerminalTab {
             search_focus_requested: false,
             sftp: None,
             forward: None,
+            notify_pending: false,
+            foreground_track: None,
+            last_probe: None,
             image_textures: ImageTextureCache::default(),
             base_label,
         }
@@ -214,6 +224,9 @@ impl TerminalTab {
             search_focus_requested: false,
             sftp: None,
             forward: None,
+            notify_pending: false,
+            foreground_track: None,
+            last_probe: None,
             image_textures: ImageTextureCache::default(),
             base_label,
         }
@@ -269,6 +282,9 @@ impl TerminalTab {
             search_focus_requested: false,
             sftp: None,
             forward: None,
+            notify_pending: false,
+            foreground_track: None,
+            last_probe: None,
             image_textures: ImageTextureCache::default(),
             base_label,
         })
@@ -328,6 +344,15 @@ impl TerminalTab {
 
     /// 标签页显示名：本地跟随 shell 标题，SSH 显示连接状态。
     pub fn display_label(&self) -> String {
+        let label = self.display_label_inner();
+        if self.notify_pending {
+            format!("🔔 {label}")
+        } else {
+            label
+        }
+    }
+
+    fn display_label_inner(&self) -> String {
         let status = self.session.status();
         match status.kind {
             TerminalSessionKind::LocalPty => {
