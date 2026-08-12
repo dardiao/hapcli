@@ -3,10 +3,14 @@
 //! 渲染数据完全来自自研内核的 `TerminalSnapshot`（已剥离 ANSI 控制码），
 //! 每个 cell 携带前景色、背景色、样式属性与光标标记。
 
+use std::collections::HashMap;
+
 use eframe::egui::{
     self, Align2, Color32, FontId, Pos2, Rect, Response, Sense, Stroke, Vec2, pos2,
 };
-use hapcli_terminal::{TerminalCell, TerminalCursorShape, TerminalSnapshot};
+use hapcli_terminal::{
+    TerminalCell, TerminalCursorShape, TerminalImageId, TerminalImageSnapshot, TerminalSnapshot,
+};
 
 use crate::settings::ThemeChoice;
 
@@ -134,6 +138,53 @@ pub struct TextSelection {
     pub active: (usize, usize),
 }
 
+/// 终端图像纹理缓存：按图像 id + 版本缓存 egui 纹理，避免每帧重复上传。
+pub struct ImageTextureCache {
+    entries: HashMap<TerminalImageId, (u64, egui::TextureHandle)>,
+}
+
+impl Default for ImageTextureCache {
+    fn default() -> Self {
+        Self {
+            entries: HashMap::new(),
+        }
+    }
+}
+
+impl ImageTextureCache {
+    /// 取回（或上传）图像纹理；`data` 为空（占位符）时返回 None。
+    pub fn handle(
+        &mut self,
+        ctx: &egui::Context,
+        image: &TerminalImageSnapshot,
+    ) -> Option<egui::TextureHandle> {
+        let data = image.data.as_ref()?;
+        if let Some((version, handle)) = self.entries.get(&image.id) {
+            if *version == image.version {
+                return Some(handle.clone());
+            }
+        }
+
+        // 动画：取当前帧；静态图取基础 rgba。
+        let frame_index = data
+            .animation
+            .current_frame
+            .min(data.frames.len().saturating_sub(1));
+        let rgba: &[u8] = if !data.frames.is_empty() {
+            &data.frames[frame_index].rgba
+        } else {
+            &data.rgba
+        };
+        let color = egui::ColorImage::from_rgba_unmultiplied(
+            [data.width as usize, data.height as usize],
+            rgba,
+        );
+        let handle = ctx.load_texture("hapcli-terminal-image", color, egui::TextureOptions::LINEAR);
+        self.entries.insert(image.id, (image.version, handle.clone()));
+        Some(handle)
+    }
+}
+
 impl TextSelection {
     /// 返回按 (行, 列) 排序后的 (起点, 终点)。
     pub fn ordered(&self) -> ((usize, usize), (usize, usize)) {
@@ -257,6 +308,8 @@ pub fn terminal_ui(
     theme: &TerminalTheme,
     selection: Option<&TextSelection>,
     search: Option<&[ViewportHighlight]>,
+    images: &[TerminalImageSnapshot],
+    textures: &mut ImageTextureCache,
 ) -> Response {
     let desired = Vec2::new(
         snapshot.cols as f32 * cell_size.x,
@@ -375,6 +428,43 @@ pub fn terminal_ui(
                 wide_spacer_bg = Some(bg);
             }
         }
+    }
+
+    // 终端图像（sixel / kitty / iTerm2）：叠加在单元格之上。
+    for image in images {
+        let Some(handle) = textures.handle(ui.ctx(), image) else {
+            continue;
+        };
+        let rect = Rect::from_min_size(
+            pos2(
+                origin.x + image.col as f32 * cell_size.x,
+                origin.y + image.row as f32 * cell_size.y,
+            ),
+            Vec2::new(
+                image.cols as f32 * cell_size.x,
+                image.rows as f32 * cell_size.y,
+            ),
+        );
+        if rect.width() <= 0.0 || rect.height() <= 0.0 {
+            continue;
+        }
+        let uv = if image.source_width > 0 && image.source_height > 0 {
+            if let Some(data) = &image.data {
+                let (dw, dh) = (data.width.max(1) as f32, data.height.max(1) as f32);
+                Rect::from_min_max(
+                    pos2(image.source_x as f32 / dw, image.source_y as f32 / dh),
+                    pos2(
+                        (image.source_x + image.source_width) as f32 / dw,
+                        (image.source_y + image.source_height) as f32 / dh,
+                    ),
+                )
+            } else {
+                Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0))
+            }
+        } else {
+            Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0))
+        };
+        painter.image(handle.id(), rect, uv, Color32::WHITE);
     }
 
     response
@@ -711,7 +801,7 @@ mod tests {
                         fonts.row_height(&font_id).ceil().max(1.0),
                     )
                 });
-                let _ = terminal_ui(ui, &snapshot, &font_id, cell_size, true, &theme, None, None);
+                let _ = terminal_ui(ui, &snapshot, &font_id, cell_size, true, &theme, None, None, &[], &mut ImageTextureCache::default());
             });
         });
 
@@ -927,6 +1017,70 @@ mod tests {
     }
 
     #[test]
+    fn image_cache_uploads_and_terminal_ui_draws_image() {
+        use std::sync::Arc;
+
+        let ctx = egui::Context::default();
+        let mut snapshot = text_snapshot(2, 8);
+        let data = hapcli_terminal::TerminalImageData {
+            id: hapcli_terminal::TerminalImageId(1),
+            protocol: hapcli_terminal::TerminalImageProtocol::Sixel,
+            version: 1,
+            width: 2,
+            height: 1,
+            rgba: Arc::from(vec![255u8, 0, 0, 255, 0, 255, 0, 255]),
+            frames: Vec::new(),
+            animation: hapcli_terminal::TerminalImageAnimationState::default(),
+            name: None,
+        };
+        snapshot.images = vec![hapcli_terminal::TerminalImageSnapshot {
+            id: hapcli_terminal::TerminalImageId(1),
+            protocol: hapcli_terminal::TerminalImageProtocol::Sixel,
+            row: 0,
+            col: 0,
+            cols: 4,
+            rows: 1,
+            pixel_width: 2,
+            pixel_height: 1,
+            source_x: 0,
+            source_y: 0,
+            source_width: 0,
+            source_height: 0,
+            z_index: 0,
+            placeholder: false,
+            version: 1,
+            data: Some(Arc::new(data)),
+        }];
+
+        let mut textures = ImageTextureCache::default();
+        let font_id = FontId::monospace(13.0);
+        let theme = TerminalTheme::default();
+        let output = ctx.run(RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let cell_size = ui.fonts(|fonts| {
+                    Vec2::new(fonts.glyph_width(&font_id, 'W'), fonts.row_height(&font_id))
+                });
+                let _ = terminal_ui(
+                    ui,
+                    &snapshot,
+                    &font_id,
+                    cell_size,
+                    true,
+                    &theme,
+                    None,
+                    None,
+                    snapshot.images.as_slice(),
+                    &mut textures,
+                );
+            });
+        });
+        assert!(
+            output.shapes.len() > 1,
+            "绘制图像后应产生新的图形（纹理形状）"
+        );
+    }
+
+    #[test]
     fn scrollbar_hidden_without_history() {
         let ctx = egui::Context::default();
         let snapshot = scrollback_snapshot(0, 0);
@@ -938,7 +1092,7 @@ mod tests {
                 let cell_size = ui.fonts(|fonts| {
                     Vec2::new(fonts.glyph_width(&font_id, 'W'), fonts.row_height(&font_id))
                 });
-                let response = terminal_ui(ui, &snapshot, &font_id, cell_size, true, &theme, None, None);
+                let response = terminal_ui(ui, &snapshot, &font_id, cell_size, true, &theme, None, None, &[], &mut ImageTextureCache::default());
                 assert!(scrollbar(ui, &snapshot, &response).is_none());
             });
         });
@@ -960,7 +1114,7 @@ mod tests {
         let mut rect = egui::Rect::NOTHING;
         ctx.run(RawInput::default(), |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
-                let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None);
+                let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None, &[], &mut ImageTextureCache::default());
                 rect = response.rect;
             });
         });
@@ -980,7 +1134,7 @@ mod tests {
         };
         ctx.run(press_raw, |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
-                let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None);
+                let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None, &[], &mut ImageTextureCache::default());
                 // 真实应用每帧都会渲染滚动条；按下帧必须存在该 widget 才能承接点击。
                 let _ = scrollbar(ui, &snapshot, &response);
             });
@@ -999,7 +1153,7 @@ mod tests {
         let command = RefCell::new(None);
         ctx.run(release_raw, |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
-                let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None);
+                let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None, &[], &mut ImageTextureCache::default());
                 *command.borrow_mut() = scrollbar(ui, &snapshot, &response);
             });
         });

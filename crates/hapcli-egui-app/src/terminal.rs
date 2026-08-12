@@ -13,8 +13,8 @@ use hapcli_terminal::{
 use crate::keys;
 use crate::recording::{PlaybackState, Recording};
 use crate::render::{
-    self, ScrollCommand, TextSelection, cell_at, scrollbar_track_rect, select_line,
-    select_word_at, selected_text, viewport_highlights,
+    self, ImageTextureCache, ScrollCommand, TextSelection, cell_at, scrollbar_track_rect,
+    select_line, select_word_at, selected_text, viewport_highlights,
 };
 use crate::trzsz::{TrzszPromptRequest, TrzszWorkerEvent};
 use zeroize::Zeroizing;
@@ -69,6 +69,7 @@ pub struct TerminalTab {
     pub forward: Option<crate::forward::ForwardPanel>,
     pub recording: Option<Recording>,
     pub playback: Option<PlaybackState>,
+    pub image_textures: ImageTextureCache,
     /// 静态标签：本地会话或 `user@host` 基础标签。
     base_label: String,
 }
@@ -113,6 +114,7 @@ impl TerminalTab {
             forward: None,
             recording: None,
             playback: None,
+            image_textures: ImageTextureCache::default(),
             base_label: "本地".to_string(),
         })
     }
@@ -164,6 +166,7 @@ impl TerminalTab {
             forward: None,
             recording: None,
             playback: None,
+            image_textures: ImageTextureCache::default(),
             base_label,
         }
     }
@@ -220,6 +223,7 @@ impl TerminalTab {
             forward: None,
             recording: None,
             playback: None,
+            image_textures: ImageTextureCache::default(),
             base_label,
         }
     }
@@ -276,6 +280,7 @@ impl TerminalTab {
             forward: None,
             recording: None,
             playback: None,
+            image_textures: ImageTextureCache::default(),
             base_label,
         })
     }
@@ -327,6 +332,7 @@ impl TerminalTab {
             forward: None,
             recording: None,
             playback: Some(PlaybackState::new(chunks, file_name)),
+            image_textures: ImageTextureCache::default(),
             base_label: "回放".to_string(),
         }
     }
@@ -783,6 +789,8 @@ impl TerminalTab {
             } else {
                 None
             },
+            self.snapshot.images.as_slice(),
+            &mut self.image_textures,
         );
         self.last_rect = Some(response.rect);
         self.last_layer_id = Some(ui.layer_id());
