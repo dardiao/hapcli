@@ -810,16 +810,15 @@ impl eframe::App for HapcliApp {
         egui::TopBottomPanel::top("tab_bar").show(ctx, |ui| {
             egui::ScrollArea::horizontal().show(ui, |ui| {
                 ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 4.0;
                     for index in 0..self.tabs.len() {
-                        let tab = &self.tabs[index];
                         let selected = index == self.active_tab;
-                        if ui
-                            .selectable_label(selected, tab.display_label())
-                            .clicked()
-                        {
+                        let label = self.tabs[index].display_label();
+                        let (clicked, close_clicked) = draw_tab(ui, index, &label, selected);
+                        if clicked {
                             clicked_tab = Some(index);
                         }
-                        if ui.small_button("×").on_hover_text("关闭会话").clicked() {
+                        if close_clicked {
                             close_tab = Some(index);
                         }
                     }
@@ -1177,6 +1176,97 @@ impl Drop for HapcliApp {
             tab.session.shutdown();
         }
     }
+}
+
+/// 自绘标签页：圆角胶囊 + 当前标签绿色指示灯 + 内嵌关闭按钮（×）。
+/// 返回 (是否点击标签, 是否点击关闭)。
+fn draw_tab(
+    ui: &mut egui::Ui,
+    index: usize,
+    label: &str,
+    selected: bool,
+) -> (bool, bool) {
+    const TAB_HEIGHT: f32 = 26.0;
+    const PADDING_X: f32 = 12.0;
+    const CLOSE_SIZE: f32 = 16.0;
+    const GAP: f32 = 6.0;
+
+    let font_id = egui::FontId::proportional(13.5);
+    let text_color = if selected {
+        egui::Color32::from_rgb(0xec, 0xf0, 0xf4)
+    } else {
+        egui::Color32::from_rgb(0x9a, 0xa2, 0xab)
+    };
+    let text_width = ui
+        .fonts(|fonts| fonts.layout_no_wrap(label.to_owned(), font_id.clone(), egui::Color32::WHITE))
+        .size()
+        .x;
+    let dot_space = if selected { 18.0 } else { 0.0 };
+    let width = PADDING_X + dot_space + text_width + GAP + CLOSE_SIZE + PADDING_X;
+    let (rect, response) =
+        ui.allocate_exact_size(egui::vec2(width, TAB_HEIGHT), egui::Sense::click());
+
+    let painter = ui.painter();
+    let background = if selected {
+        egui::Color32::from_rgb(0x2a, 0x3b, 0x4f)
+    } else {
+        egui::Color32::from_rgb(0x16, 0x1b, 0x22)
+    };
+    painter.rect_filled(rect, 7.0, background);
+    if selected {
+        painter.rect_stroke(
+            rect,
+            7.0,
+            egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(0x3f, 0x5f, 0x7f)),
+        );
+    }
+
+    let mut text_x = rect.left() + PADDING_X;
+    if selected {
+        painter.circle_filled(
+            egui::pos2(text_x + 5.0, rect.center().y),
+            4.0,
+            egui::Color32::from_rgb(0x3f, 0xca, 0x6b),
+        );
+        text_x += 14.0;
+    }
+    painter.text(
+        egui::pos2(text_x, rect.center().y),
+        egui::Align2::LEFT_CENTER,
+        label,
+        font_id.clone(),
+        text_color,
+    );
+
+    let close_center =
+        egui::pos2(rect.right() - PADDING_X - CLOSE_SIZE / 2.0, rect.center().y);
+    let close_rect =
+        egui::Rect::from_center_size(close_center, egui::vec2(CLOSE_SIZE, CLOSE_SIZE));
+    let close_response = ui.interact(
+        close_rect,
+        ui.make_persistent_id(("tab_close", index)),
+        egui::Sense::click(),
+    );
+    if close_response.hovered() {
+        painter.rect_filled(
+            close_rect,
+            4.0,
+            egui::Color32::from_rgba_unmultiplied(255, 255, 255, 30),
+        );
+    }
+    painter.text(
+        close_center,
+        egui::Align2::CENTER_CENTER,
+        "×",
+        font_id,
+        if close_response.hovered() {
+            egui::Color32::WHITE
+        } else {
+            egui::Color32::from_rgb(0x8a, 0x92, 0x9a)
+        },
+    );
+
+    (response.clicked(), close_response.clicked())
 }
 
 /// 发送 macOS 系统通知；其他平台暂为 no-op。
