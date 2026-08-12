@@ -26,7 +26,6 @@ homepage = "https://github.com/warp-tech/russh"
 documentation = "https://docs.rs/russh"
 readme = "README.md"
 keywords = ["ssh"]
-license = "Apache-2.0"
 repository = "https://github.com/warp-tech/russh"
 resolver = "2"
 
