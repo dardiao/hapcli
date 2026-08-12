@@ -10,7 +10,6 @@ use crate::connect::{ConnectForm, ConnectTarget, DialogOutcome};
 use crate::forward;
 use crate::render::build_theme;
 use crate::quick::QuickCommandsPanel;
-use crate::recording::Recording;
 use crate::settings::{AppSettings, ThemeChoice, load_settings, save_settings};
 use crate::sftp;
 use crate::terminal::{TerminalPrefs, TerminalTab};
@@ -347,22 +346,6 @@ impl HapcliApp {
                     Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
                 }
             }
-        }
-    }
-
-    /// 采集录制会话的输出事件，并推进所有回放会话。
-    fn poll_recordings(&mut self) {
-        for tab in &mut self.tabs {
-            if tab.recording.is_some() {
-                for event in tab.session.take_events() {
-                    if let TerminalEvent::Output(bytes) = event {
-                        if let Some(recording) = &mut tab.recording {
-                            recording.append(&bytes);
-                        }
-                    }
-                }
-            }
-            tab.advance_playback();
         }
     }
 
@@ -756,8 +739,6 @@ impl eframe::App for HapcliApp {
         let mut toggle_sftp = false;
         let mut toggle_quick = false;
         let mut toggle_forward = false;
-        let mut toggle_record = false;
-        let mut open_playback = false;
         let active_is_ssh = self.tabs[self.active_tab].session.status().kind
             == TerminalSessionKind::SshPty;
         let sftp_connected = active_is_ssh
@@ -770,8 +751,6 @@ impl eframe::App for HapcliApp {
             .forward
             .as_ref()
             .is_some_and(|panel| panel.show);
-        let active_is_playback = self.tabs[self.active_tab].playback.is_some();
-        let recording_on = self.tabs[self.active_tab].recording.is_some();
         egui::TopBottomPanel::top("tab_bar").show(ctx, |ui| {
             egui::ScrollArea::horizontal().show(ui, |ui| {
                 ui.horizontal(|ui| {
@@ -823,23 +802,6 @@ impl eframe::App for HapcliApp {
                     if ui.button("⚡").on_hover_text("快捷命令").clicked() {
                         toggle_quick = true;
                     }
-                    if ui
-                        .add_enabled(
-                            !active_is_playback,
-                            egui::Button::new(if recording_on {
-                                "● 停止录制"
-                            } else {
-                                "● 录制"
-                            }),
-                        )
-                        .on_hover_text("录制当前会话输出（回放需要）")
-                        .clicked()
-                    {
-                        toggle_record = true;
-                    }
-                    if ui.button("▶ 打开回放…").clicked() {
-                        open_playback = true;
-                    }
                 });
             });
         });
@@ -882,73 +844,6 @@ impl eframe::App for HapcliApp {
         if toggle_quick {
             self.quick_panel.show = !self.quick_panel.show;
             surrender_focus(ctx);
-        }
-        if toggle_record {
-            let index = self.active_tab;
-            let tab = &mut self.tabs[index];
-            if let Some(recording) = tab.recording.take() {
-                let _ = tab.session.set_output_events_enabled(false);
-                let timestamp = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|duration| duration.as_secs())
-                    .unwrap_or(0);
-                let default_name = format!("hapcli-rec-{timestamp}.hrec");
-                if let Some(path) = rfd::FileDialog::new()
-                    .set_file_name(&default_name)
-                    .add_filter("hapcli 录制", &["hrec"])
-                    .save_file()
-                {
-                    if let Err(error) = recording.save(&path) {
-                        tab.keychain_status = Some(format!("录制保存失败: {error}"));
-                    } else {
-                        tab.keychain_status = Some(format!(
-                            "录制已保存：{} ({} 个事件, {} 字节, {} 秒)",
-                            path.display(),
-                            recording.event_count(),
-                            recording.total_bytes(),
-                            recording.elapsed_secs(),
-                        ));
-                    }
-                } else {
-                    // 取消保存：丢弃本次录制。
-                }
-            } else {
-                let _ = tab.session.set_output_events_enabled(true);
-                tab.recording = Some(Recording::new());
-            }
-        }
-        if open_playback {
-            if let Some(path) = rfd::FileDialog::new()
-                .add_filter("hapcli 录制", &["hrec"])
-                .pick_file()
-            {
-                let file_name = path
-                    .file_name()
-                    .map(|name| name.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "回放".to_string());
-                match Recording::load(&path) {
-                    Ok(chunks) if !chunks.is_empty() => {
-                        let (cols, rows) = self.tabs[self.active_tab].last_terminal_size;
-                        let tab = TerminalTab::new_playback(
-                            ctx,
-                            chunks,
-                            file_name,
-                            cols,
-                            rows,
-                        );
-                        self.tabs.push(tab);
-                        self.active_tab = self.tabs.len() - 1;
-                    }
-                    Ok(_) => {
-                        self.tabs[self.active_tab].keychain_status =
-                            Some("回放文件为空".to_string());
-                    }
-                    Err(error) => {
-                        self.tabs[self.active_tab].keychain_status =
-                            Some(format!("回放加载失败: {error}"));
-                    }
-                }
-            }
         }
 
         // 2.5 搜索栏（仅活动会话开启搜索时显示）。
@@ -1075,56 +970,6 @@ impl eframe::App for HapcliApp {
                 });
         }
 
-        // 3.9 回放控制窗口。
-        if self.tabs[self.active_tab].playback.is_some() {
-            let mut close_playback = false;
-            egui::Window::new("回放控制")
-                .collapsible(false)
-                .resizable(false)
-                .default_pos(ctx.screen_rect().center() - egui::vec2(150.0, 60.0))
-                .show(ctx, |ui| {
-                    let tab = &mut self.tabs[self.active_tab];
-                    let state = tab.playback.as_mut().expect("playback state");
-                    ui.label(format!(
-                        "{} · {}/{}",
-                        state.file_name,
-                        state.cursor,
-                        state.chunks.len()
-                    ));
-                    ui.add(egui::ProgressBar::new(state.progress()));
-                    ui.horizontal(|ui| {
-                        if ui
-                            .button(if state.playing { "暂停" } else { "播放" })
-                            .clicked()
-                        {
-                            state.playing = !state.playing;
-                        }
-                        ui.label("速度");
-                        let mut speed = state.speed;
-                        if ui
-                            .add(
-                                egui::Slider::new(&mut speed, 0.25..=4.0)
-                                    .logarithmic(true)
-                                    .show_value(false),
-                            )
-                            .changed()
-                        {
-                            state.speed = speed;
-                        }
-                        ui.label(format!("{:.2}x", state.speed));
-                        if ui.button("关闭回放").clicked() {
-                            close_playback = true;
-                        }
-                    });
-                    if state.finished() {
-                        ui.weak("回放完成");
-                    }
-                });
-            if close_playback {
-                self.close_tab(self.active_tab);
-            }
-        }
-
         // 3.6 断开提示窗口。
         self.reconnect_banner(ctx);
 
@@ -1172,7 +1017,6 @@ impl eframe::App for HapcliApp {
 
         // 6.5 SFTP：轮询事件 + 右侧面板。
         self.poll_sftp();
-        self.poll_recordings();
         if self.tabs[self.active_tab].sftp.is_some() {
             egui::SidePanel::right("sftp_panel")
                 .resizable(true)

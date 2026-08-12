@@ -10,6 +10,21 @@ fn hapcli_terminal_env(config: &LocalPtyConfig, _shell: &ShellInfo) -> HashMap<S
         ("COLORTERM".to_string(), "truecolor".to_string()),
     ]);
 
+    // 启用 shell 颜色输出：macOS 的 ls 默认不带色，需要 CLICOLOR；
+    // LSCOLORS 自定义为目录蓝、可执行文件（含 .sh）绿。
+    terminal_env.insert("CLICOLOR".to_string(), "1".to_string());
+    #[cfg(target_os = "macos")]
+    terminal_env.insert(
+        "LSCOLORS".to_string(),
+        "exfxcxdxgxegedabagacad".to_string(),
+    );
+    #[cfg(not(target_os = "macos"))]
+    terminal_env.insert(
+        "LS_COLORS".to_string(),
+        "di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37"
+            .to_string(),
+    );
+
     #[cfg(target_os = "macos")]
     {
         let lang = env::var("LANG").unwrap_or_default();
