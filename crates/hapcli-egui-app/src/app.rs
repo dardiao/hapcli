@@ -1193,7 +1193,7 @@ impl eframe::App for HapcliApp {
 
                 let now = ctx.input(|i| i.time);
                 if self.window_focused && self.tabs[self.active_tab].focused {
-                    ctx.request_repaint_after(Duration::from_millis(280));
+                    ctx.request_repaint_after(Duration::from_millis(400));
                 }
                 let cursor_blink_on = if self.window_focused && self.tabs[self.active_tab].focused {
                     (now * 1.8).fract() < 0.5

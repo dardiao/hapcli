@@ -3,7 +3,7 @@
 //! 渲染数据完全来自自研内核的 `TerminalSnapshot`（已剥离 ANSI 控制码），
 //! 每个 cell 携带前景色、背景色、样式属性与光标标记。
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use eframe::egui::{
     self, Align2, Color32, FontId, Pos2, Rect, Response, Sense, Stroke, Vec2, pos2,
@@ -139,14 +139,19 @@ pub struct TextSelection {
 }
 
 /// 终端图像纹理缓存：按图像 id + 版本缓存 egui 纹理，避免每帧重复上传。
+const MAX_CACHED_IMAGE_TEXTURES: usize = 8;
+
 pub struct ImageTextureCache {
     entries: HashMap<TerminalImageId, (u64, egui::TextureHandle)>,
+    /// 插入顺序（LRU），用于超过上限时淘汰最旧的纹理。
+    order: VecDeque<TerminalImageId>,
 }
 
 impl Default for ImageTextureCache {
     fn default() -> Self {
         Self {
             entries: HashMap::new(),
+            order: VecDeque::new(),
         }
     }
 }
@@ -180,7 +185,15 @@ impl ImageTextureCache {
             rgba,
         );
         let handle = ctx.load_texture("hapcli-terminal-image", color, egui::TextureOptions::LINEAR);
-        self.entries.insert(image.id, (image.version, handle.clone()));
+        self.entries
+            .insert(image.id.clone(), (image.version, handle.clone()));
+        self.order.retain(|id| id != &image.id);
+        self.order.push_back(image.id.clone());
+        while self.order.len() > MAX_CACHED_IMAGE_TEXTURES {
+            if let Some(oldest) = self.order.pop_front() {
+                self.entries.remove(&oldest);
+            }
+        }
         Some(handle)
     }
 }
