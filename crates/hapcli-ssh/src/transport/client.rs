@@ -3,12 +3,12 @@ const X11_FORWARDING_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
 const HAPCLI_PRIVATE_OSC_SESSION_ENV: &str = "LC_hapcli_SESSION";
 const HAPCLI_PRIVATE_OSC_SESSION_VALUE: &str = "1";
 const CLICOLOR_ENV_VALUE: &str = "1";
-const LSCOLORS_ENV_VALUE: &str = "exfxcxdxgxegedabagacad";
+const LSCOLORS_ENV_VALUE: &str = "exfxcxdxcxegedabagacad";
 const LS_COLORS_ENV_VALUE: &str =
     "di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37";
 // 以 exec 方式启动交互式登录 shell，并注入 ls 彩色环境变量，立即生效、无需重连。
 // 仅对 Unix 远程使用（Windows 保持 request_shell）；`-l` 只对已知支持的 shell 添加。
-const SHELL_COLOR_WRAPPER_COMMAND: &str = r#"sh -c 'case "${SHELL##*/}" in zsh|bash|ksh|tcsh|csh|fish) exec env CLICOLOR=1 LSCOLORS=exfxcxdxgxegedabagacad LS_COLORS="di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37" "${SHELL:-/bin/sh}" -l;; *) exec env CLICOLOR=1 LSCOLORS=exfxcxdxgxegedabagacad LS_COLORS="di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37" "${SHELL:-/bin/sh}";; esac'"#;
+const SHELL_COLOR_WRAPPER_COMMAND: &str = r#"sh -c 'case "${SHELL##*/}" in zsh|bash|ksh|tcsh|csh|fish) exec env CLICOLOR=1 LSCOLORS=exfxcxdxcxegedabagacad LS_COLORS="di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37" "${SHELL:-/bin/sh}" -l;; *) exec env CLICOLOR=1 LSCOLORS=exfxcxdxcxegedabagacad LS_COLORS="di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37" "${SHELL:-/bin/sh}";; esac'"#;
 const CHILD_CONNECTION_RETIRED_DURING_CONNECT: &str =
     "child connection was retired while its SSH transport was connecting";
 

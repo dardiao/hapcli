@@ -16,7 +16,7 @@ fn hapcli_terminal_env(config: &LocalPtyConfig, _shell: &ShellInfo) -> HashMap<S
     #[cfg(target_os = "macos")]
     terminal_env.insert(
         "LSCOLORS".to_string(),
-        "exfxcxdxgxegedabagacad".to_string(),
+        "exfxcxdxcxegedabagacad".to_string(),
     );
     #[cfg(not(target_os = "macos"))]
     terminal_env.insert(

@@ -306,24 +306,24 @@ fn color_env_block(shell: RemoteShellKind) -> String {
     let body = match shell {
         RemoteShellKind::Bash | RemoteShellKind::Zsh => format!(
             "export CLICOLOR=1\n\
-             export LSCOLORS=\"exfxcxdxgxegedabagacad\"\n\
+             export LSCOLORS=\"exfxcxdxcxegedabagacad\"\n\
              export LS_COLORS=\"{ls_colors}\"\n\
              if ls --color=auto >/dev/null 2>&1; then alias ls='ls --color=auto'; fi\n"
         ),
         RemoteShellKind::Fish => format!(
             "set -gx CLICOLOR 1\n\
-             set -gx LSCOLORS \"exfxcxdxgxegedabagacad\"\n\
+             set -gx LSCOLORS \"exfxcxdxcxegedabagacad\"\n\
              set -gx LS_COLORS \"{ls_colors}\"\n\
              if ls --color=auto >/dev/null 2>&1\n    alias ls 'ls --color=auto'\nend\n"
         ),
         RemoteShellKind::Nushell => format!(
             "$env.CLICOLOR = \"1\"\n\
-             $env.LSCOLORS = \"exfxcxdxgxegedabagacad\"\n\
+             $env.LSCOLORS = \"exfxcxdxcxegedabagacad\"\n\
              $env.LS_COLORS = \"{ls_colors}\"\n"
         ),
         RemoteShellKind::PowerShell => format!(
             "$env:CLICOLOR = \"1\"\n\
-             $env:LSCOLORS = \"exfxcxdxgxegedabagacad\"\n\
+             $env:LSCOLORS = \"exfxcxdxcxegedabagacad\"\n\
              $env:LS_COLORS = \"{ls_colors}\"\n"
         ),
     };
