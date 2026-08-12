@@ -15,8 +15,8 @@ use hapcli_terminal::{
 use crate::settings::ThemeChoice;
 
 /// 内核暗色主题的默认前景/背景（快照中空 cell 与默认文本的颜色）。
-const KERNEL_DARK_BG: hapcli_terminal::TerminalColor = hapcli_terminal::TerminalColor::rgb(0x0d, 0x0f, 0x12);
-const KERNEL_DARK_FG: hapcli_terminal::TerminalColor = hapcli_terminal::TerminalColor::rgb(0xe6, 0xe8, 0xeb);
+const KERNEL_DARK_BG: hapcli_terminal::TerminalColor = hapcli_terminal::TerminalColor::rgb(0x28, 0x2a, 0x36);
+const KERNEL_DARK_FG: hapcli_terminal::TerminalColor = hapcli_terminal::TerminalColor::rgb(0xf8, 0xf8, 0xf2);
 
 /// 终端配色（后续可扩展为主题配置）。
 #[derive(Clone, Copy, Debug)]
@@ -34,11 +34,11 @@ pub struct TerminalTheme {
 impl Default for TerminalTheme {
     fn default() -> Self {
         Self {
-            background: Color32::from_rgb(0x0d, 0x0f, 0x12),
-            foreground: Color32::from_rgb(0xe6, 0xe8, 0xeb),
-            cursor: Color32::from_rgb(0xcc, 0xcc, 0xcc),
-            cursor_text: Color32::from_rgb(0x0d, 0x0f, 0x12),
-            selection: Color32::from_rgba_unmultiplied(0x26, 0x49, 0x6d, 0x99),
+            background: Color32::from_rgb(0x28, 0x2a, 0x36),
+            foreground: Color32::from_rgb(0xf8, 0xf8, 0xf2),
+            cursor: Color32::from_rgb(0xbd, 0x93, 0xf9),
+            cursor_text: Color32::from_rgb(0x28, 0x2a, 0x36),
+            selection: Color32::from_rgba_unmultiplied(0x44, 0x47, 0x5a, 0x99),
             search: Color32::from_rgba_unmultiplied(0xe5, 0xc0, 0x7b, 0xaa),
             search_current: Color32::from_rgba_unmultiplied(0xe5, 0xa5, 0x4a, 0xee),
         }
@@ -50,11 +50,11 @@ pub fn build_theme(choice: ThemeChoice, background_alpha: f32) -> TerminalTheme 
     let alpha = (background_alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
     match choice {
         ThemeChoice::Dark => TerminalTheme {
-            background: Color32::from_rgba_unmultiplied(0x0d, 0x0f, 0x12, alpha),
-            foreground: Color32::from_rgb(0xe6, 0xe8, 0xeb),
-            cursor: Color32::from_rgb(0xcc, 0xcc, 0xcc),
-            cursor_text: Color32::from_rgb(0x0d, 0x0f, 0x12),
-            selection: Color32::from_rgba_unmultiplied(0x26, 0x49, 0x6d, 0x99),
+            background: Color32::from_rgba_unmultiplied(0x28, 0x2a, 0x36, alpha),
+            foreground: Color32::from_rgb(0xf8, 0xf8, 0xf2),
+            cursor: Color32::from_rgb(0xbd, 0x93, 0xf9),
+            cursor_text: Color32::from_rgb(0x28, 0x2a, 0x36),
+            selection: Color32::from_rgba_unmultiplied(0x44, 0x47, 0x5a, 0x99),
             search: Color32::from_rgba_unmultiplied(0xe5, 0xc0, 0x7b, 0xaa),
             search_current: Color32::from_rgba_unmultiplied(0xe5, 0xa5, 0x4a, 0xee),
         },
@@ -687,8 +687,8 @@ mod tests {
         let red = TerminalColor::rgb(0xff, 0x00, 0x00);
         let green = TerminalColor::rgb(0x00, 0xff, 0x00);
         let blue_bg = TerminalColor::rgb(0x00, 0x00, 0x99);
-        let default_bg = TerminalColor::rgb(0x0d, 0x0f, 0x12);
-        let default_fg = TerminalColor::rgb(0xe6, 0xe8, 0xeb);
+        let default_bg = TerminalColor::rgb(0x28, 0x2a, 0x36);
+        let default_fg = TerminalColor::rgb(0xf8, 0xf8, 0xf2);
 
         let mut cells = Vec::with_capacity(8);
         cells.push(cell('h', red, default_bg, TerminalAttrs { bold: true, ..Default::default() }));
@@ -729,8 +729,8 @@ mod tests {
     }
 
     fn scrollback_snapshot(display_offset: usize, scrollback_lines: usize) -> TerminalSnapshot {
-        let default_bg = TerminalColor::rgb(0x0d, 0x0f, 0x12);
-        let default_fg = TerminalColor::rgb(0xe6, 0xe8, 0xeb);
+        let default_bg = TerminalColor::rgb(0x28, 0x2a, 0x36);
+        let default_fg = TerminalColor::rgb(0xf8, 0xf8, 0xf2);
         let row = TerminalRow {
             absolute_line: 0,
             cells: Arc::new(vec![
@@ -756,8 +756,8 @@ mod tests {
     }
 
     fn text_snapshot(rows: usize, cols: usize) -> TerminalSnapshot {
-        let default_bg = TerminalColor::rgb(0x0d, 0x0f, 0x12);
-        let default_fg = TerminalColor::rgb(0xe6, 0xe8, 0xeb);
+        let default_bg = TerminalColor::rgb(0x28, 0x2a, 0x36);
+        let default_fg = TerminalColor::rgb(0xf8, 0xf8, 0xf2);
         let mut lines = Vec::with_capacity(rows);
         for _ in 0..rows {
             let row = TerminalRow {
@@ -816,20 +816,20 @@ mod tests {
     #[test]
     fn resolve_colors_applies_inverse_and_bold() {
         let theme = TerminalTheme::default();
-        let plain = cell('a', TerminalColor::rgb(0xe6, 0xe8, 0xeb), TerminalColor::rgb(0x0d, 0x0f, 0x12), TerminalAttrs::default());
+        let plain = cell('a', TerminalColor::rgb(0xf8, 0xf8, 0xf2), TerminalColor::rgb(0x28, 0x2a, 0x36), TerminalAttrs::default());
         let (fg, bg) = resolve_colors(&plain, &theme);
         assert_eq!(bg, theme.background);
-        assert_eq!(fg, Color32::from_rgb(0xe6, 0xe8, 0xeb));
+        assert_eq!(fg, Color32::from_rgb(0xf8, 0xf8, 0xf2));
 
         let inverse = cell(
             'a',
-            TerminalColor::rgb(0xe6, 0xe8, 0xeb),
+            TerminalColor::rgb(0xf8, 0xf8, 0xf2),
             TerminalColor::rgb(0xff, 0x00, 0x00),
             TerminalAttrs { inverse: true, ..Default::default() },
         );
         let (fg, bg) = resolve_colors(&inverse, &theme);
         assert_eq!(fg, Color32::from_rgb(0xff, 0x00, 0x00));
-        assert_eq!(bg, Color32::from_rgb(0xe6, 0xe8, 0xeb));
+        assert_eq!(bg, Color32::from_rgb(0xf8, 0xf8, 0xf2));
     }
 
     #[test]
@@ -837,8 +837,8 @@ mod tests {
         let theme = build_theme(ThemeChoice::Light, 1.0);
         let plain = cell(
             'a',
-            TerminalColor::rgb(0xe6, 0xe8, 0xeb),
-            TerminalColor::rgb(0x0d, 0x0f, 0x12),
+            TerminalColor::rgb(0xf8, 0xf8, 0xf2),
+            TerminalColor::rgb(0x28, 0x2a, 0x36),
             TerminalAttrs::default(),
         );
         let (fg, bg) = resolve_colors(&plain, &theme);
@@ -878,8 +878,8 @@ mod tests {
 
     #[test]
     fn selected_text_skips_wide_char_spacer() {
-        let default_bg = TerminalColor::rgb(0x0d, 0x0f, 0x12);
-        let default_fg = TerminalColor::rgb(0xe6, 0xe8, 0xeb);
+        let default_bg = TerminalColor::rgb(0x28, 0x2a, 0x36);
+        let default_fg = TerminalColor::rgb(0xf8, 0xf8, 0xf2);
         let mut cells = vec![
             cell('你', default_fg, default_bg, TerminalAttrs::default()),
             cell(' ', default_fg, default_bg, TerminalAttrs::default()),
