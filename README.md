@@ -2,7 +2,7 @@
 
 基于 Rust + eframe (egui) 的跨平台终端客户端，自研终端内核 `hapcli-terminal`，支持本地 PTY、SSH、Telnet、串口与 SFTP 文件传输。
 
-<video src="https://github.com/dardiao/hapcli/raw/main/assets/hapcli-demo.mp4" controls="controls" style="max-width: 100%;"></video>
+<video src="https://github.com/dardiao/hapcli/raw/main/assets/hapcli-demo.mp4" poster="https://github.com/dardiao/hapcli/raw/main/assets/hapcli-demo-poster.jpg" controls="controls" style="max-width: 100%;"></video>
 
 ## 编译说明
 
