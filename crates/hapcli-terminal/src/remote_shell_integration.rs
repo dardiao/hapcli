@@ -601,17 +601,22 @@ async fn ensure_remote_directory(sftp: &SftpSession, path: &str) -> Result<(), S
     match sftp.stat(path).await {
         Ok(info) if info.file_type == hapcli_ssh::FileType::Directory => return Ok(()),
         Ok(_) => return Err(format!("remote path is not a directory: {path}")),
-        Err(SftpError::FileNotFound(_) | SftpError::DirectoryNotFound(_)) => {}
-        Err(error) => return Err(format!("failed to inspect {path}: {error}")),
+        Err(SftpError::PermissionDenied(_)) => {
+            return Err(format!("failed to inspect {path}: permission denied"))
+        }
+        // 文件不存在、目录不存在，以及部分服务器对“不存在”路径返回的
+        // 非标准错误码（如 Failure / Protocol error）：统一按“目录还不存在”
+        // 处理，继续尝试创建；只有创建失败才报错。
+        Err(_) => {}
     }
     if let Some(parent) = remote_parent(path) {
         Box::pin(ensure_remote_directory(sftp, &parent)).await?;
     }
     match sftp.mkdir(path).await {
         Ok(()) => Ok(()),
-        Err(error) => match sftp.stat(path).await {
+        Err(mkdir_error) => match sftp.stat(path).await {
             Ok(info) if info.file_type == hapcli_ssh::FileType::Directory => Ok(()),
-            _ => Err(format!("failed to create {path}: {error}")),
+            _ => Err(format!("failed to create {path}: {mkdir_error}")),
         },
     }
 }
