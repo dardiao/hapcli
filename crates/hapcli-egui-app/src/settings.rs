@@ -30,6 +30,9 @@ pub struct AppSettings {
     /// SSH 远程会话自动启用彩色输出（env 请求 + 远程启动文件注入）。
     #[serde(default = "default_true")]
     pub ssh_shell_colors: bool,
+    /// SSH 终端输入 cd 时，自动让 SFTP 面板跟随切换目录。
+    #[serde(default = "default_true")]
+    pub sftp_sync_cwd: bool,
 }
 
 fn default_true() -> bool {
@@ -49,6 +52,7 @@ impl Default for AppSettings {
             ssh_auto_reconnect: true,
             notify_on_long_command: true,
             ssh_shell_colors: true,
+            sftp_sync_cwd: true,
         }
     }
 }
@@ -104,6 +108,7 @@ mod tests {
             ssh_auto_reconnect: true,
             notify_on_long_command: true,
             ssh_shell_colors: false,
+            sftp_sync_cwd: true,
         };
         save_settings_to(&path, &settings).unwrap();
         let loaded: AppSettings =

@@ -182,13 +182,18 @@ impl HapcliApp {
             .as_ref()
             .map(|status| format!(" · {status}"))
             .unwrap_or_default();
+        let shell_integration = tab
+            .shell_integration_status
+            .as_ref()
+            .map(|status| format!(" · {status}"))
+            .unwrap_or_default();
         let reconnect = tab
             .reconnect_status
             .as_ref()
             .map(|status| format!(" · {status}"))
             .unwrap_or_default();
         format!(
-            "{kind} · {title} · {lifecycle} · {}x{} · 滚动 {} · {:.0}pt{trzsz}{keychain}{color_env}{reconnect}",
+            "{kind} · {title} · {lifecycle} · {}x{} · 滚动 {} · {:.0}pt{trzsz}{keychain}{color_env}{shell_integration}{reconnect}",
             tab.snapshot.cols,
             tab.snapshot.rows,
             tab.snapshot.display_offset,
@@ -380,6 +385,32 @@ impl HapcliApp {
         }
     }
 
+    /// SSH 远程 shell 集成（OSC 7 目录上报）：连接后自动安装到远程启动文件。
+    /// 安装后重连，终端每次提示符都会上报真实目录，SFTP 面板可精确跟随。
+    fn handle_shell_integrations(&mut self) {
+        for tab in &mut self.tabs {
+            if let Some(rx) = &tab.shell_integration_rx {
+                while let Ok(status) = rx.try_recv() {
+                    tab.shell_integration_status = Some(status);
+                }
+            }
+            if !self.settings.sftp_sync_cwd || tab.shell_integration_attempted {
+                continue;
+            }
+            if tab.session.status().kind != TerminalSessionKind::SshPty
+                || !tab.session.lifecycle().is_running()
+            {
+                continue;
+            }
+            if let Some(handle) = tab.session.ssh_connection_handle() {
+                tab.shell_integration_attempted = true;
+                let (tx, rx) = std::sync::mpsc::channel();
+                tab.shell_integration_rx = Some(rx);
+                TerminalTab::spawn_shell_integration_worker(handle, tx);
+            }
+        }
+    }
+
     /// 长命令完成通知：探测本地会话前台进程，结束且运行超阈值时发系统通知。
     fn poll_notifications(&mut self) {
         const PROBE_INTERVAL: Duration = Duration::from_millis(500);
@@ -547,6 +578,10 @@ impl HapcliApp {
                     &mut self.settings.ssh_shell_colors,
                     "SSH 远程终端彩色输出（连接后自动写入远程启动文件，重连后生效）",
                 );
+                ui.checkbox(
+                    &mut self.settings.sftp_sync_cwd,
+                    "SSH 终端 cd 自动同步到 SFTP 面板（输入 cd 后立即跟随；重连后由 shell 集成精确同步）",
+                );
 
                 if let Some(path) = &self.settings.terminal_font_path {
                     ui.label(
@@ -605,31 +640,46 @@ impl HapcliApp {
         }
     }
 
-    /// 处理 Trzsz：内核事件 → 提示窗 → 启动 worker → 轮询进度。
-    fn handle_trzsz(&mut self, ctx: &egui::Context) {
+    /// 处理终端事件：Trzsz 提示 / 目录变化（SFTP 跟随）→ 提示窗 → worker 轮询。
+    fn handle_terminal_events(&mut self, ctx: &egui::Context) {
         let index = self.active_tab;
+        let mut cwds: Vec<String> = Vec::new();
 
-        // 1. 内核事件 → 传输提示请求。
+        // 1. 内核事件 → 传输提示请求 / 目录变化。
         {
             let tab = &mut self.tabs[index];
             if tab.trzsz_prompt.is_none() && !tab.trzsz_active {
                 for event in tab.session.take_events() {
-                    if let TerminalEvent::TrzszTransferPrompt {
-                        direction,
-                        selection,
-                        remote_is_windows,
-                    } = event
-                    {
-                        tab.trzsz_prompt = Some(TrzszPromptRequest {
+                    match event {
+                        TerminalEvent::TrzszTransferPrompt {
                             direction,
                             selection,
                             remote_is_windows,
-                        });
-                        break;
+                        } => {
+                            tab.trzsz_prompt = Some(TrzszPromptRequest {
+                                direction,
+                                selection,
+                                remote_is_windows,
+                            });
+                            break;
+                        }
+                        TerminalEvent::CwdChanged { cwd, .. } => cwds.push(cwd),
+                        _ => {}
                     }
                 }
             } else {
-                let _ = tab.session.take_events();
+                for event in tab.session.take_events() {
+                    if let TerminalEvent::CwdChanged { cwd, .. } = event {
+                        cwds.push(cwd);
+                    }
+                }
+            }
+        }
+
+        // 1.5 目录变化 → SFTP 面板跟随。
+        if self.settings.sftp_sync_cwd {
+            for cwd in cwds {
+                self.sync_sftp_to(&cwd);
             }
         }
 
@@ -721,6 +771,30 @@ impl HapcliApp {
                 self.start_trzsz_worker(index, action);
                 surrender_focus(ctx);
             }
+        }
+    }
+
+    /// 让当前标签页的 SFTP 面板切换到指定远程目录（目录变化事件触发）。
+    fn sync_sftp_to(&mut self, cwd: &str) {
+        let index = self.active_tab;
+        let cwd = cwd.to_string();
+        let previous = {
+            let tab = &mut self.tabs[index];
+            if tab.session.status().kind != TerminalSessionKind::SshPty {
+                return;
+            }
+            let Some(panel) = tab.sftp.as_mut() else {
+                return;
+            };
+            if panel.cwd == cwd {
+                return;
+            }
+            panel.cwd.clone()
+        };
+        let tab = &mut self.tabs[index];
+        tab.sftp_prev_cwd = Some(previous);
+        if let Some(panel) = tab.sftp.as_ref() {
+            panel.send(sftp::SftpCommand::List(cwd));
         }
     }
 
@@ -1112,6 +1186,9 @@ impl eframe::App for HapcliApp {
         // 4.6.5 SSH 远程颜色环境自动注入（后台线程，结果轮询显示）。
         self.handle_color_envs();
 
+        // 4.6.6 SSH 远程 shell 集成自动安装（OSC 7 目录上报，SFTP 精确跟随）。
+        self.handle_shell_integrations();
+
         // 4.7 长命令完成通知。
         self.poll_notifications();
 
@@ -1119,11 +1196,12 @@ impl eframe::App for HapcliApp {
         let prefs = TerminalPrefs {
             copy_on_select: self.settings.copy_on_select,
             middle_click_paste: self.settings.middle_click_paste,
+            sftp_sync_cwd: self.settings.sftp_sync_cwd,
         };
         self.active_tab().process_input(ctx, cell_size, prefs);
 
-        // 5.5 Trzsz 事件 / 提示窗 / worker 轮询。
-        self.handle_trzsz(ctx);
+        // 5.5 终端事件（Trzsz / 目录变化）处理。
+        self.handle_terminal_events(ctx);
 
         // 6. 底部状态栏。
         let transparent = self.settings.transparent_window;

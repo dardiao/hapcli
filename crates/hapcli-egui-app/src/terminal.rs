@@ -5,6 +5,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::time::{Duration, Instant};
 
 use eframe::egui::{self, FontId, PointerButton, Pos2, Rect, Response, Vec2};
+use hapcli_sftp::join_remote_path;
 use hapcli_terminal::{
     GraphicsOptions, SerialSessionConfig, TerminalEncoding, TerminalSession, TerminalSessionKind,
     TerminalSearchMatch, TerminalSnapshot, TelnetSessionConfig, TrzszTransferPolicy,
@@ -24,6 +25,8 @@ static TRZSZ_OWNER_COUNTER: AtomicU64 = AtomicU64::new(0);
 pub struct TerminalPrefs {
     pub copy_on_select: bool,
     pub middle_click_paste: bool,
+    /// 终端输入 `cd` 后自动让 SFTP 面板跟随目录。
+    pub sftp_sync_cwd: bool,
 }
 
 fn new_trzsz_owner_id() -> String {
@@ -69,6 +72,18 @@ pub struct TerminalTab {
     pub search_current: Option<usize>,
     pub search_focus_requested: bool,
     pub sftp: Option<crate::sftp::SftpPanelState>,
+    /// 上一次同步给 SFTP 面板的目录（用于 `cd -`）。
+    pub sftp_prev_cwd: Option<String>,
+    /// 当前输入行缓冲（用于识别 `cd` 命令）。
+    input_line: String,
+    /// 输入行经过编辑/补全/粘贴后无法可靠解析。
+    input_line_unreliable: bool,
+    /// 按回车时提交的 (输入行, 是否不可靠)。
+    pending_input_line: Option<(String, bool)>,
+    /// SSH 远程 shell 集成自动安装：是否已尝试、结果接收器、显示用状态。
+    pub shell_integration_attempted: bool,
+    pub shell_integration_rx: Option<Receiver<String>>,
+    pub shell_integration_status: Option<String>,
     pub forward: Option<crate::forward::ForwardPanel>,
     pub image_textures: ImageTextureCache,
     /// 长命令完成提醒：标签页显示 🔔，激活后清除。
@@ -123,6 +138,13 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             sftp: None,
+            sftp_prev_cwd: None,
+            input_line: String::new(),
+            input_line_unreliable: false,
+            pending_input_line: None,
+            shell_integration_attempted: false,
+            shell_integration_rx: None,
+            shell_integration_status: None,
             forward: None,
             notify_pending: false,
             foreground_track: None,
@@ -179,6 +201,13 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             sftp: None,
+            sftp_prev_cwd: None,
+            input_line: String::new(),
+            input_line_unreliable: false,
+            pending_input_line: None,
+            shell_integration_attempted: false,
+            shell_integration_rx: None,
+            shell_integration_status: None,
             forward: None,
             notify_pending: false,
             foreground_track: None,
@@ -240,6 +269,13 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             sftp: None,
+            sftp_prev_cwd: None,
+            input_line: String::new(),
+            input_line_unreliable: false,
+            pending_input_line: None,
+            shell_integration_attempted: false,
+            shell_integration_rx: None,
+            shell_integration_status: None,
             forward: None,
             notify_pending: false,
             foreground_track: None,
@@ -301,6 +337,13 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             sftp: None,
+            sftp_prev_cwd: None,
+            input_line: String::new(),
+            input_line_unreliable: false,
+            pending_input_line: None,
+            shell_integration_attempted: false,
+            shell_integration_rx: None,
+            shell_integration_status: None,
             forward: None,
             notify_pending: false,
             foreground_track: None,
@@ -351,6 +394,14 @@ impl TerminalTab {
         self.color_env_attempted = false;
         self.color_env_rx = None;
         self.color_env_status = None;
+        // 新连接需要重新安装目录同步集成，并清空输入行跟踪。
+        self.shell_integration_attempted = false;
+        self.shell_integration_rx = None;
+        self.shell_integration_status = None;
+        self.sftp_prev_cwd = None;
+        self.input_line.clear();
+        self.input_line_unreliable = false;
+        self.pending_input_line = None;
     }
 
     /// 内核有输出时唤醒 egui 重绘；会话销毁后线程自动退出。
@@ -429,6 +480,63 @@ impl TerminalTab {
             let _ = tx.send(match result {
                 Ok(message) => message,
                 Err(error) => format!("远程彩色启用失败: {error}"),
+            });
+        });
+    }
+
+    /// 后台线程：通过 SFTP 安装远程 shell 集成（OSC 7 目录上报）。
+    /// 安装后重连 SSH，终端每次提示符都会上报真实目录，SFTP 面板可精确跟随。
+    pub fn spawn_shell_integration_worker(handle: hapcli_ssh::SshConnectionHandle, tx: Sender<String>) {
+        std::thread::spawn(move || {
+            let runtime = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    let _ = tx.send(format!("目录同步集成安装失败（运行时）: {error}"));
+                    return;
+                }
+            };
+            let deadline = Instant::now() + Duration::from_secs(12);
+            let remote_env = loop {
+                if let Some(env) = handle.remote_env() {
+                    break Some(env);
+                }
+                if Instant::now() >= deadline {
+                    break None;
+                }
+                std::thread::sleep(Duration::from_millis(400));
+            };
+            let Some(remote_env) = remote_env else {
+                let _ = tx.send("远程环境探测超时，未安装目录同步集成".to_string());
+                return;
+            };
+            let session = match runtime.block_on(handle.acquire_sftp()) {
+                Ok(session) => session,
+                Err(error) => {
+                    let _ = tx.send(format!("SFTP 不可用，未安装目录同步集成: {error}"));
+                    return;
+                }
+            };
+            let result = runtime.block_on(async {
+                let sftp = session.lock().await;
+                match hapcli_terminal::inspect_remote_shell_integration(&sftp, Some(&remote_env)).await
+                {
+                    Ok(status)
+                        if status.state
+                            == hapcli_terminal::RemoteShellIntegrationState::Installed =>
+                    {
+                        Ok("目录同步集成已就绪".to_string())
+                    }
+                    _ => hapcli_terminal::install_remote_shell_integration(&sftp, Some(&remote_env))
+                        .await
+                        .map(|_| "目录同步集成已写入，重连后精确生效".to_string()),
+                }
+            });
+            let _ = tx.send(match result {
+                Ok(message) => message,
+                Err(error) => format!("目录同步集成安装失败: {error}"),
             });
         });
     }
@@ -521,13 +629,17 @@ impl TerminalTab {
                         {
                             let mut bytes = text.as_bytes().to_vec();
                             if i.modifiers.alt {
+                                self.input_line_unreliable = true;
                                 bytes.insert(0, 0x1b);
+                            } else {
+                                self.input_line.push_str(text);
                             }
                             writes.push(bytes);
                         }
                     }
                     egui::Event::Paste(text) => {
                         if terminal_owns_keys && !self.search_open {
+                            self.input_line_unreliable = true;
                             let _ = self.session.paste_text(text);
                         }
                     }
@@ -537,6 +649,7 @@ impl TerminalTab {
                             && !text.is_empty()
                             && !i.modifiers.mac_cmd
                         {
+                            self.input_line.push_str(text);
                             writes.push(text.as_bytes().to_vec());
                         }
                     }
@@ -574,6 +687,45 @@ impl TerminalTab {
                             self.search_focus_requested = true;
                             self.refresh_search();
                             continue;
+                        }
+                        // 输入行跟踪：识别 `cd` 命令，供 SFTP 面板目录同步使用。
+                        if *pressed {
+                            match key {
+                                egui::Key::Enter => {
+                                    let line = std::mem::take(&mut self.input_line);
+                                    let unreliable = self.input_line_unreliable;
+                                    self.input_line_unreliable = false;
+                                    self.pending_input_line = Some((line, unreliable));
+                                }
+                                egui::Key::Backspace => {
+                                    self.input_line.pop();
+                                }
+                                egui::Key::Tab => {
+                                    self.input_line_unreliable = true;
+                                }
+                                egui::Key::ArrowLeft
+                                | egui::Key::ArrowRight
+                                | egui::Key::ArrowUp
+                                | egui::Key::ArrowDown
+                                | egui::Key::Home
+                                | egui::Key::End
+                                | egui::Key::Delete => {
+                                    self.input_line_unreliable = true;
+                                }
+                                _ => {}
+                            }
+                            if modifiers.ctrl {
+                                match key {
+                                    egui::Key::C | egui::Key::U => {
+                                        self.input_line.clear();
+                                        self.input_line_unreliable = false;
+                                    }
+                                    egui::Key::W => {
+                                        delete_last_word(&mut self.input_line);
+                                    }
+                                    _ => {}
+                                }
+                            }
                         }
                         if let Some(bytes) =
                             keys::key_event_to_bytes(*key, *modifiers, *pressed)
@@ -703,6 +855,32 @@ impl TerminalTab {
         for bytes in writes {
             self.selection = None;
             let _ = self.session.write_input(&bytes);
+        }
+        // 回车提交的命令行：尝试让 SFTP 面板跟随 `cd` 目录。
+        if let Some((line, unreliable)) = self.pending_input_line.take()
+            && !unreliable
+        {
+            self.sync_sftp_after_submit(&line, &prefs);
+        }
+    }
+
+    /// 提交的输入行以 `cd` 开头时，把 SFTP 面板切换到解析出的目录。
+    fn sync_sftp_after_submit(&mut self, line: &str, prefs: &TerminalPrefs) {
+        if !prefs.sftp_sync_cwd {
+            return;
+        }
+        if self.session.status().kind != TerminalSessionKind::SshPty {
+            return;
+        }
+        let Some(panel_cwd) = self.sftp.as_ref().map(|panel| panel.cwd.clone()) else {
+            return;
+        };
+        let Some(target) = resolve_cd_target(line, &panel_cwd, self.sftp_prev_cwd.as_deref()) else {
+            return;
+        };
+        self.sftp_prev_cwd = Some(panel_cwd);
+        if let Some(panel) = self.sftp.as_ref() {
+            panel.send(crate::sftp::SftpCommand::List(target));
         }
     }
 
@@ -879,4 +1057,159 @@ impl TerminalTab {
 fn enable_trzsz(mut session: TerminalSession) -> TerminalSession {
     session.set_trzsz_policy(Some(TrzszTransferPolicy::default()));
     session
+}
+
+/// Ctrl+W：删除输入行里最后一个词（含其前导空白）。
+fn delete_last_word(line: &mut String) {
+    let end = line.trim_end().len();
+    if end == 0 {
+        line.clear();
+        return;
+    }
+    let bytes = line.as_bytes();
+    let mut start = end;
+    while start > 0 && !bytes[start - 1].is_ascii_whitespace() {
+        start -= 1;
+    }
+    let mut after_space = start;
+    while after_space > 0 && bytes[after_space - 1].is_ascii_whitespace() {
+        after_space -= 1;
+    }
+    line.truncate(after_space);
+}
+
+/// 判断远程路径是否为绝对路径（Unix `/` 或 Windows 盘符 `C:/`）。
+fn looks_absolute_remote(path: &str) -> bool {
+    if path.starts_with('/') {
+        return true;
+    }
+    let bytes = path.as_bytes();
+    bytes.len() >= 3
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && (bytes[2] == b'/' || bytes[2] == b'\\')
+}
+
+/// 从已提交的命令行中解析 `cd` 目标目录。
+///
+/// 返回可以直接交给 SFTP 面板的路径；遇到无法可靠解析的形式返回 `None`
+/// （此时留给远程 shell 集成（OSC 7）在后续提示符精确上报）。
+fn resolve_cd_target(line: &str, panel_cwd: &str, prev_cwd: Option<&str>) -> Option<String> {
+    let mut parts = line.split_whitespace();
+    if parts.next()? != "cd" {
+        return None;
+    }
+    let Some(target) = parts.next() else {
+        // `cd` 单独输入：回到用户主目录。
+        return Some("~".to_string());
+    };
+    if target == "-" {
+        return prev_cwd.map(str::to_string);
+    }
+    if target.starts_with('-') {
+        return None;
+    }
+    if target == "$HOME" {
+        return Some("~".to_string());
+    }
+    if let Some(rest) = target.strip_prefix("$HOME/") {
+        return Some(join_remote_path("~", rest));
+    }
+    if target.starts_with('$') {
+        return None;
+    }
+    if target.contains(['&', '|', ';', '<', '>', '"', '\'', '(', ')', '`']) {
+        return None;
+    }
+    if target.starts_with('~') {
+        return Some(target.to_string());
+    }
+    if looks_absolute_remote(target) {
+        return Some(target.to_string());
+    }
+    Some(join_remote_path(panel_cwd, target))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cd_resolves_relative_paths_against_panel_cwd() {
+        assert_eq!(
+            resolve_cd_target("cd cert", "/home/user", None),
+            Some("/home/user/cert".to_string())
+        );
+        assert_eq!(
+            resolve_cd_target("cd ../www", "/home/user", None),
+            Some("/home/user/../www".to_string())
+        );
+        assert_eq!(
+            resolve_cd_target("cd cert && make", "/home/user", None),
+            Some("/home/user/cert".to_string())
+        );
+    }
+
+    #[test]
+    fn cd_resolves_absolute_home_and_previous() {
+        assert_eq!(
+            resolve_cd_target("cd /etc", "/home/user", None),
+            Some("/etc".to_string())
+        );
+        assert_eq!(
+            resolve_cd_target("cd ~/projects", "/home/user", None),
+            Some("~/projects".to_string())
+        );
+        assert_eq!(
+            resolve_cd_target("cd", "/var/www", None),
+            Some("~".to_string())
+        );
+        assert_eq!(
+            resolve_cd_target("cd $HOME/code", "/var/www", None),
+            Some("~/code".to_string())
+        );
+        assert_eq!(
+            resolve_cd_target("cd -", "/var/www", Some("/var/log")),
+            Some("/var/log".to_string())
+        );
+    }
+
+    #[test]
+    fn cd_skips_unreliable_or_non_cd_commands() {
+        assert_eq!(resolve_cd_target("ls cert", "/home/user", None), None);
+        assert_eq!(resolve_cd_target("git cd x", "/home/user", None), None);
+        assert_eq!(resolve_cd_target("cd && pwd", "/home/user", None), None);
+        assert_eq!(resolve_cd_target("cd $MYDIR", "/home/user", None), None);
+        assert_eq!(resolve_cd_target("cd --", "/home/user", None), None);
+        assert_eq!(resolve_cd_target("cd -", "/home/user", None), None);
+        assert_eq!(
+            resolve_cd_target("cd \"my dir\"", "/home/user", None),
+            None
+        );
+    }
+
+    #[test]
+    fn windows_cd_paths_are_absolute() {
+        assert_eq!(
+            resolve_cd_target("cd C:\\Users\\demo", "/home/user", None),
+            Some("C:\\Users\\demo".to_string())
+        );
+        assert_eq!(
+            resolve_cd_target("cd D:/Data", "/home/user", None),
+            Some("D:/Data".to_string())
+        );
+    }
+
+    #[test]
+    fn ctrl_w_deletes_last_word() {
+        let mut line = "cd cert ".to_string();
+        delete_last_word(&mut line);
+        assert_eq!(line, "cd");
+        let mut line = "cd cert".to_string();
+        delete_last_word(&mut line);
+        assert_eq!(line, "cd");
+        let mut line = "cd".to_string();
+        delete_last_word(&mut line);
+        assert_eq!(line, "");
+    }
 }
