@@ -11,6 +11,7 @@ mod settings;
 mod sftp;
 mod terminal;
 mod trzsz;
+mod update;
 
 use eframe::egui;
 

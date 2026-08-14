@@ -33,6 +33,12 @@ pub struct AppSettings {
     /// SSH 终端输入 cd 时，自动让 SFTP 面板跟随切换目录。
     #[serde(default = "default_true")]
     pub sftp_sync_cwd: bool,
+    /// 启动后自动检查 GitHub 新版本。
+    #[serde(default = "default_true")]
+    pub check_updates: bool,
+    /// 用户选择“忽略此版本”的版本号；再次提示会跳过它。
+    #[serde(default)]
+    pub ignored_update_version: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -53,6 +59,8 @@ impl Default for AppSettings {
             notify_on_long_command: true,
             ssh_shell_colors: true,
             sftp_sync_cwd: true,
+            check_updates: true,
+            ignored_update_version: None,
         }
     }
 }
@@ -109,6 +117,8 @@ mod tests {
             notify_on_long_command: true,
             ssh_shell_colors: false,
             sftp_sync_cwd: true,
+            check_updates: true,
+            ignored_update_version: None,
         };
         save_settings_to(&path, &settings).unwrap();
         let loaded: AppSettings =

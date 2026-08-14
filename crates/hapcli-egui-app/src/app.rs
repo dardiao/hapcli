@@ -14,6 +14,7 @@ use crate::settings::{AppSettings, ThemeChoice, load_settings, save_settings};
 use crate::sftp;
 use crate::terminal::{TerminalPrefs, TerminalTab};
 use crate::trzsz::{TrzszPromptRequest, TrzszPromptSelection, TrzszWorkerEvent, spawn_trzsz_worker};
+use crate::update::{UpdateCheckState, UpdateStatus, open_url};
 
 const MIN_FONT_SIZE: f32 = 9.0;
 const MAX_FONT_SIZE: f32 = 24.0;
@@ -43,6 +44,7 @@ pub struct HapcliApp {
     ssh_registry: hapcli_ssh::SshConnectionRegistry,
     last_window_title: String,
     quick_panel: QuickCommandsPanel,
+    update_state: UpdateCheckState,
 }
 
 impl HapcliApp {
@@ -67,6 +69,7 @@ impl HapcliApp {
             ),
             last_window_title: String::new(),
             quick_panel: QuickCommandsPanel::new(),
+            update_state: UpdateCheckState::default(),
         })
     }
 
@@ -582,6 +585,39 @@ impl HapcliApp {
                     &mut self.settings.sftp_sync_cwd,
                     "SSH 终端 cd 自动同步到 SFTP 面板（输入 cd 后立即跟随；重连后由 shell 集成精确同步）",
                 );
+                ui.horizontal(|ui| {
+                    ui.checkbox(
+                        &mut self.settings.check_updates,
+                        "启动时及每 6 小时自动检查新版本",
+                    );
+                    if ui.small_button("立即检查").clicked() {
+                        self.update_state
+                            .check_now(env!("CARGO_PKG_VERSION"), Duration::ZERO);
+                    }
+                    match &self.update_state.status {
+                        UpdateStatus::Checking => {
+                            ui.weak("正在检查…");
+                        }
+                        UpdateStatus::UpToDate => {
+                            ui.weak("已是最新版本");
+                        }
+                        UpdateStatus::Error(message) => {
+                            ui.weak(format!("检查失败：{message}"));
+                        }
+                        _ => {}
+                    }
+                });
+                if self.settings.ignored_update_version.is_some() {
+                    ui.horizontal(|ui| {
+                        ui.weak(format!(
+                            "已忽略版本：{}",
+                            self.settings.ignored_update_version.as_deref().unwrap_or("")
+                        ));
+                        if ui.small_button("恢复提示").clicked() {
+                            self.settings.ignored_update_version = None;
+                        }
+                    });
+                }
 
                 if let Some(path) = &self.settings.terminal_font_path {
                     ui.label(
@@ -1293,6 +1329,12 @@ impl eframe::App for HapcliApp {
             self.last_window_title = title.clone();
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
         }
+
+        // 9. 更新检查：轮询后台结果、按计划检查、有新版本时弹窗。
+        self.update_state.poll();
+        self.update_state
+            .maybe_periodic_check(env!("CARGO_PKG_VERSION"), self.settings.check_updates);
+        self.update_window(ctx);
     }
 }
 
@@ -1317,6 +1359,96 @@ impl HapcliApp {
         if let Some(focused) = focused {
             self.window_focused = focused;
             let _ = self.active_tab().session.set_focused(focused);
+        }
+    }
+
+    /// 发现新版本时弹出升级提示窗口。
+    fn update_window(&mut self, ctx: &egui::Context) {
+        let UpdateStatus::UpdateAvailable {
+            version,
+            name,
+            notes,
+            html_url,
+        } = self.update_state.status.clone()
+        else {
+            return;
+        };
+        if self.update_state.dismissed {
+            return;
+        }
+        if self.settings.ignored_update_version.as_deref() == Some(version.as_str()) {
+            return;
+        }
+
+        let mut upgrade = false;
+        let mut toggle_notes = false;
+        let mut ignore = false;
+        let mut later = false;
+        let current = env!("CARGO_PKG_VERSION");
+        egui::Window::new("软件更新")
+            .collapsible(false)
+            .resizable(false)
+            .default_pos(ctx.screen_rect().center() - egui::vec2(180.0, 90.0))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("🎉");
+                    ui.label(egui::RichText::new(format!("发现新版本 {version}")).strong());
+                });
+                ui.add_space(4.0);
+                ui.label(format!("当前版本 {current} · {name}"));
+                ui.add_space(8.0);
+                if self.update_state.show_notes {
+                    ui.label(egui::RichText::new("更新内容").strong());
+                    let notes = if notes.trim().is_empty() {
+                        "（本版本没有提供更新说明）".to_string()
+                    } else {
+                        notes.clone()
+                    };
+                    egui::ScrollArea::vertical()
+                        .max_height(180.0)
+                        .auto_shrink([false, true])
+                        .show(ui, |ui| {
+                            ui.label(notes);
+                        });
+                    ui.add_space(6.0);
+                }
+                ui.horizontal(|ui| {
+                    if ui
+                        .button(if self.update_state.show_notes {
+                            "收起更新内容"
+                        } else {
+                            "更新了什么"
+                        })
+                        .clicked()
+                    {
+                        toggle_notes = true;
+                    }
+                    if ui.button("升级").clicked() {
+                        upgrade = true;
+                    }
+                    if ui.small_button("忽略此版本").clicked() {
+                        ignore = true;
+                    }
+                    if ui.small_button("稍后再说").clicked() {
+                        later = true;
+                    }
+                });
+            });
+
+        if toggle_notes {
+            self.update_state.show_notes = !self.update_state.show_notes;
+        }
+        if upgrade {
+            let _ = open_url(&html_url);
+            self.update_state.dismissed = true;
+        }
+        if ignore {
+            self.settings.ignored_update_version = Some(version.clone());
+            self.update_state.dismissed = true;
+            let _ = save_settings(&self.settings);
+        }
+        if later {
+            self.update_state.dismissed = true;
         }
     }
 }

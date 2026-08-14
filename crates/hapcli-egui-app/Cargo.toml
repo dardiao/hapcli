@@ -39,6 +39,8 @@ tokio = { workspace = true }
 # 快捷命令与端口转发（复用自研内核）
 hapcli-quick-commands = { path = "../hapcli-quick-commands" }
 hapcli-forwarding = { path = "../hapcli-forwarding" }
+# 新版本检测（GitHub Releases API）
+reqwest = { workspace = true, features = ["blocking"] }
 
 [build-dependencies]
 winres = "0.1"
