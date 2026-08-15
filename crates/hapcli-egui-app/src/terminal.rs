@@ -94,6 +94,11 @@ pub struct TerminalTab {
     pub shell_integration_attempted: bool,
     pub shell_integration_rx: Option<Receiver<String>>,
     pub shell_integration_status: Option<String>,
+    /// 用户自定义标签名；None 表示自动显示（会话标题 / 连接名）。
+    pub custom_label: Option<String>,
+    /// Telnet / 串口配置（用于“复制标签”）。
+    pub telnet_config: Option<TelnetSessionConfig>,
+    pub serial_config: Option<SerialSessionConfig>,
     pub forward: Option<crate::forward::ForwardPanel>,
     pub image_textures: ImageTextureCache,
     /// 长命令完成提醒：标签页显示 🔔，激活后清除。
@@ -155,6 +160,9 @@ impl TerminalTab {
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
+            custom_label: None,
+            telnet_config: None,
+            serial_config: None,
             forward: None,
             notify_pending: false,
             foreground_track: None,
@@ -218,6 +226,9 @@ impl TerminalTab {
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
+            custom_label: None,
+            telnet_config: None,
+            serial_config: None,
             forward: None,
             notify_pending: false,
             foreground_track: None,
@@ -234,6 +245,7 @@ impl TerminalTab {
         cols: usize,
         rows: usize,
     ) -> Self {
+        let stored_config = config.clone();
         let session = enable_trzsz(TerminalSession::telnet_with_graphics_and_encoding(
             config,
             cols,
@@ -286,6 +298,9 @@ impl TerminalTab {
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
+            custom_label: None,
+            telnet_config: Some(stored_config),
+            serial_config: None,
             forward: None,
             notify_pending: false,
             foreground_track: None,
@@ -302,6 +317,7 @@ impl TerminalTab {
         cols: usize,
         rows: usize,
     ) -> Result<Self, hapcli_terminal::SerialError> {
+        let stored_config = config.clone();
         let session = TerminalSession::serial_with_graphics_and_encoding(
             config,
             cols,
@@ -354,6 +370,9 @@ impl TerminalTab {
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
+            custom_label: None,
+            telnet_config: None,
+            serial_config: Some(stored_config),
             forward: None,
             notify_pending: false,
             foreground_track: None,
@@ -553,12 +572,20 @@ impl TerminalTab {
 
     /// 标签页显示名：本地跟随 shell 标题，SSH 显示连接状态。
     pub fn display_label(&self) -> String {
-        let label = self.display_label_inner();
+        let label = self
+            .custom_label
+            .clone()
+            .unwrap_or_else(|| self.display_label_inner());
         if self.notify_pending {
             format!("🔔 {label}")
         } else {
             label
         }
+    }
+
+    /// 会话的基础标签（连接名 / “本地”）。
+    pub fn base_label(&self) -> &str {
+        &self.base_label
     }
 
     fn display_label_inner(&self) -> String {

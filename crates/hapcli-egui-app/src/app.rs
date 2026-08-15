@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use eframe::egui::{self, FontFamily, FontId, RichText, Vec2};
+use eframe::egui::{self, FontFamily, FontId, PointerButton, RichText, Vec2};
 use hapcli_terminal::{
     TerminalEvent, TerminalSessionKind, TrzszTransferDirection, TrzszTransferSelection,
 };
@@ -45,6 +45,8 @@ pub struct HapcliApp {
     last_window_title: String,
     quick_panel: QuickCommandsPanel,
     update_state: UpdateCheckState,
+    rename_tab_index: Option<usize>,
+    rename_draft: String,
 }
 
 impl HapcliApp {
@@ -70,6 +72,8 @@ impl HapcliApp {
             last_window_title: String::new(),
             quick_panel: QuickCommandsPanel::new(),
             update_state: UpdateCheckState::default(),
+            rename_tab_index: None,
+            rename_draft: String::new(),
         })
     }
 
@@ -92,11 +96,173 @@ impl HapcliApp {
             return;
         }
         self.tabs[index].session.shutdown();
+        if self.rename_tab_index == Some(index) {
+            self.rename_tab_index = None;
+            self.rename_draft.clear();
+        } else if let Some(rename_index) = self.rename_tab_index
+            && rename_index > index
+        {
+            self.rename_tab_index = Some(rename_index - 1);
+        }
         self.tabs.remove(index);
         if self.active_tab >= self.tabs.len() {
             self.active_tab = self.tabs.len() - 1;
         } else if self.active_tab > index {
             self.active_tab -= 1;
+        }
+    }
+
+    /// 处理标签右键菜单动作。
+    fn handle_tab_menu(&mut self, ctx: &egui::Context, index: usize, action: TabMenuAction) {
+        match action {
+            TabMenuAction::Rename => {
+                let draft = self.tabs[index]
+                    .custom_label
+                    .clone()
+                    .unwrap_or_else(|| self.tabs[index].base_label().to_string());
+                self.rename_draft = draft;
+                self.rename_tab_index = Some(index);
+            }
+            TabMenuAction::Duplicate => {
+                let (cols, rows) = self.tabs[index].last_terminal_size;
+                self.duplicate_tab(ctx, index, cols, rows);
+            }
+            TabMenuAction::Close => {
+                self.close_tab(index);
+            }
+            TabMenuAction::CloseOthers => {
+                self.close_other_tabs(index);
+            }
+        }
+    }
+
+    /// 复制当前标签：按会话类型用保存的配置新建一个同款标签。
+    fn duplicate_tab(&mut self, ctx: &egui::Context, index: usize, cols: usize, rows: usize) {
+        let Some(source) = self.tabs.get(index) else {
+            return;
+        };
+        let base = source.base_label().to_string();
+        let label = format!("{base} (副本)");
+        match source.session.status().kind {
+            TerminalSessionKind::LocalPty => {
+                self.add_local_tab(ctx, cols, rows);
+            }
+            TerminalSessionKind::SshPty => {
+                let Some(config) = source.ssh_reconnect_config.clone() else {
+                    return;
+                };
+                let registry = source.ssh_registry.clone();
+                let session_config = crate::connect::build_reconnect_session_config(&config);
+                let session_config = if let Some(registry) = &registry {
+                    session_config.with_registry(
+                        registry.clone(),
+                        hapcli_ssh::ConnectionConsumer::Terminal("egui-terminal".to_string()),
+                    )
+                } else {
+                    session_config
+                };
+                let tab = TerminalTab::new_ssh(
+                    ctx,
+                    session_config,
+                    Some(config),
+                    registry,
+                    label,
+                    cols,
+                    rows,
+                );
+                self.tabs.push(tab);
+                self.active_tab = self.tabs.len() - 1;
+            }
+            TerminalSessionKind::Telnet => {
+                let Some(config) = source.telnet_config.clone() else {
+                    return;
+                };
+                let tab = TerminalTab::new_telnet(ctx, config, label, cols, rows);
+                self.tabs.push(tab);
+                self.active_tab = self.tabs.len() - 1;
+            }
+            TerminalSessionKind::Serial => {
+                let Some(config) = source.serial_config.clone() else {
+                    return;
+                };
+                match TerminalTab::new_serial(ctx, config, label, cols, rows) {
+                    Ok(tab) => {
+                        self.tabs.push(tab);
+                        self.active_tab = self.tabs.len() - 1;
+                    }
+                    Err(error) => {
+                        self.connect_form.show_error(format!("复制串口标签失败: {error}"));
+                    }
+                }
+            }
+        }
+    }
+
+    /// 关闭除指定标签外的所有标签。
+    fn close_other_tabs(&mut self, keep: usize) {
+        if self.tabs.len() <= 1 {
+            return;
+        }
+        let keep_tab = self.tabs.remove(keep);
+        for tab in &mut self.tabs {
+            tab.session.shutdown();
+        }
+        self.tabs = vec![keep_tab];
+        self.active_tab = 0;
+        self.rename_tab_index = None;
+        self.rename_draft.clear();
+    }
+
+    /// 重命名标签弹窗。
+    fn rename_tab_window(&mut self, ctx: &egui::Context) {
+        let Some(index) = self.rename_tab_index else {
+            return;
+        };
+        if index >= self.tabs.len() {
+            self.rename_tab_index = None;
+            self.rename_draft.clear();
+            return;
+        }
+        let current = self.tabs[index].display_label();
+        let mut confirmed = false;
+        let mut cancelled = false;
+        egui::Window::new("重命名标签")
+            .collapsible(false)
+            .resizable(false)
+            .default_pos(ctx.screen_rect().center() - egui::vec2(140.0, 45.0))
+            .show(ctx, |ui| {
+                ui.label(format!("当前名称：{current}"));
+                let response = ui.add(
+                    egui::TextEdit::singleline(&mut self.rename_draft)
+                        .desired_width(240.0)
+                        .hint_text("留空恢复默认名称"),
+                );
+                let enter_pressed =
+                    response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    if ui.button("确定").clicked() || enter_pressed {
+                        confirmed = true;
+                    }
+                    if ui.button("取消").clicked() {
+                        cancelled = true;
+                    }
+                });
+            });
+        if confirmed {
+            let name = self.rename_draft.trim().to_string();
+            if name.is_empty() {
+                self.tabs[index].custom_label = None;
+            } else {
+                self.tabs[index].custom_label = Some(name);
+            }
+            self.rename_tab_index = None;
+            self.rename_draft.clear();
+            surrender_focus(ctx);
+        } else if cancelled {
+            self.rename_tab_index = None;
+            self.rename_draft.clear();
+            surrender_focus(ctx);
         }
     }
 
@@ -934,6 +1100,7 @@ impl eframe::App for HapcliApp {
         // 2. 顶部标签栏。
         let mut clicked_tab: Option<usize> = None;
         let mut close_tab: Option<usize> = None;
+        let mut tab_menu: Option<(usize, TabMenuAction)> = None;
         let mut want_connect = false;
         let mut want_local = false;
         let mut want_settings = false;
@@ -960,12 +1127,16 @@ impl eframe::App for HapcliApp {
                     for index in 0..self.tabs.len() {
                         let selected = index == self.active_tab;
                         let label = self.tabs[index].display_label();
-                        let (clicked, close_clicked) = draw_tab(ui, index, &label, selected);
+                        let (clicked, close_clicked, menu) =
+                            draw_tab(ui, index, &label, selected, self.tabs.len() > 1);
                         if clicked {
                             clicked_tab = Some(index);
                         }
                         if close_clicked {
                             close_tab = Some(index);
+                        }
+                        if let Some(action) = menu {
+                            tab_menu = Some((index, action));
                         }
                     }
                     ui.separator();
@@ -1036,6 +1207,9 @@ impl eframe::App for HapcliApp {
         }
         if let Some(index) = close_tab {
             self.close_tab(index);
+        }
+        if let Some((index, action)) = tab_menu {
+            self.handle_tab_menu(ctx, index, action);
         }
         if want_connect {
             self.connect_form.shell_colors = self.settings.ssh_shell_colors;
@@ -1335,6 +1509,7 @@ impl eframe::App for HapcliApp {
         self.update_state
             .maybe_periodic_check(env!("CARGO_PKG_VERSION"), self.settings.check_updates);
         self.update_window(ctx);
+        self.rename_tab_window(ctx);
     }
 }
 
@@ -1461,14 +1636,24 @@ impl Drop for HapcliApp {
     }
 }
 
-/// 自绘标签页：圆角胶囊 + 当前标签绿色指示灯 + 内嵌关闭按钮（×）。
-/// 返回 (是否点击标签, 是否点击关闭)。
+/// 标签右键菜单动作。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum TabMenuAction {
+    Rename,
+    Duplicate,
+    Close,
+    CloseOthers,
+}
+
+/// 自绘标签页：圆角胶囊 + 当前标签绿色指示灯 + 内嵌关闭按钮（×）+ 右键菜单。
+/// 返回 (是否点击标签, 是否点击关闭, 右键菜单动作)。
 fn draw_tab(
     ui: &mut egui::Ui,
     index: usize,
     label: &str,
     selected: bool,
-) -> (bool, bool) {
+    can_close: bool,
+) -> (bool, bool, Option<TabMenuAction>) {
     const TAB_HEIGHT: f32 = 26.0;
     const PADDING_X: f32 = 12.0;
     const CLOSE_SIZE: f32 = 16.0;
@@ -1549,7 +1734,40 @@ fn draw_tab(
         },
     );
 
-    (response.clicked(), close_response.clicked())
+    // 右键菜单：重命名 / 复制标签 / 关闭 / 关闭其他。
+    let mut menu_action: Option<TabMenuAction> = None;
+    response.context_menu(|ui| {
+        ui.set_min_width(150.0);
+        if ui.button("重命名…").clicked() {
+            menu_action = Some(TabMenuAction::Rename);
+            ui.close_menu();
+        }
+        if ui.button("复制标签").clicked() {
+            menu_action = Some(TabMenuAction::Duplicate);
+            ui.close_menu();
+        }
+        ui.separator();
+        if ui
+            .add_enabled(can_close, egui::Button::new("关闭标签"))
+            .clicked()
+        {
+            menu_action = Some(TabMenuAction::Close);
+            ui.close_menu();
+        }
+        if ui
+            .add_enabled(can_close, egui::Button::new("关闭其他标签"))
+            .clicked()
+        {
+            menu_action = Some(TabMenuAction::CloseOthers);
+            ui.close_menu();
+        }
+    });
+
+    (
+        response.clicked_by(PointerButton::Primary),
+        close_response.clicked_by(PointerButton::Primary),
+        menu_action,
+    )
 }
 
 /// 发送 macOS 系统通知；其他平台暂为 no-op。
