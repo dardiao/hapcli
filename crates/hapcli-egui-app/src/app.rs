@@ -1550,91 +1550,191 @@ impl HapcliApp {
 
     /// 发现新版本时弹出升级提示窗口。
     fn update_window(&mut self, ctx: &egui::Context) {
-        let UpdateStatus::UpdateAvailable {
-            version,
-            name,
-            notes,
-            html_url,
-        } = self.update_state.status.clone()
-        else {
+        // 新版本已就位：替换脚本正在等待本进程退出，关闭窗口即退出。
+        if matches!(self.update_state.status, UpdateStatus::ReadyToInstall) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
-        };
+        }
         if self.update_state.dismissed {
             return;
         }
-        if self.settings.ignored_update_version.as_deref() == Some(version.as_str()) {
-            return;
-        }
 
-        let mut upgrade = false;
-        let mut toggle_notes = false;
-        let mut ignore = false;
-        let mut later = false;
         let current = env!("CARGO_PKG_VERSION");
-        egui::Window::new("软件更新")
-            .collapsible(false)
-            .resizable(false)
-            .default_pos(ctx.screen_rect().center() - egui::vec2(180.0, 90.0))
-            .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("🎉");
-                    ui.label(egui::RichText::new(format!("发现新版本 {version}")).strong());
-                });
-                ui.add_space(4.0);
-                ui.label(format!("当前版本 {current} · {name}"));
-                ui.add_space(8.0);
-                if self.update_state.show_notes {
-                    ui.label(egui::RichText::new("更新内容").strong());
-                    let notes = if notes.trim().is_empty() {
-                        "（本版本没有提供更新说明）".to_string()
-                    } else {
-                        notes.clone()
-                    };
-                    egui::ScrollArea::vertical()
-                        .max_height(180.0)
-                        .auto_shrink([false, true])
-                        .show(ui, |ui| {
-                            ui.label(notes);
-                        });
-                    ui.add_space(6.0);
+        match self.update_state.status.clone() {
+            UpdateStatus::UpdateAvailable {
+                version,
+                name,
+                notes,
+                assets,
+                ..
+            } => {
+                if self.settings.ignored_update_version.as_deref() == Some(version.as_str()) {
+                    return;
                 }
-                ui.horizontal(|ui| {
-                    if ui
-                        .button(if self.update_state.show_notes {
-                            "收起更新内容"
-                        } else {
-                            "更新了什么"
-                        })
-                        .clicked()
-                    {
-                        toggle_notes = true;
-                    }
-                    if ui.button("升级").clicked() {
-                        upgrade = true;
-                    }
-                    if ui.small_button("忽略此版本").clicked() {
-                        ignore = true;
-                    }
-                    if ui.small_button("稍后再说").clicked() {
-                        later = true;
-                    }
-                });
-            });
+                let mut start = false;
+                let mut toggle_notes = false;
+                let mut ignore = false;
+                let mut later = false;
+                egui::Window::new("软件更新")
+                    .collapsible(false)
+                    .resizable(false)
+                    .default_pos(ctx.screen_rect().center() - egui::vec2(190.0, 90.0))
+                    .show(ctx, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("🎉");
+                            ui.label(egui::RichText::new(format!("发现新版本 {version}")).strong());
+                        });
+                        ui.add_space(4.0);
+                        ui.label(format!("当前版本 {current} · {name}"));
+                        ui.add_space(8.0);
+                        if self.update_state.show_notes {
+                            ui.label(egui::RichText::new("更新内容").strong());
+                            let notes = if notes.trim().is_empty() {
+                                "（本版本没有提供更新说明）".to_string()
+                            } else {
+                                notes.clone()
+                            };
+                            egui::ScrollArea::vertical()
+                                .max_height(180.0)
+                                .auto_shrink([false, true])
+                                .show(ui, |ui| {
+                                    ui.label(notes);
+                                });
+                            ui.add_space(6.0);
+                        }
+                        ui.horizontal(|ui| {
+                            if ui
+                                .button(if self.update_state.show_notes {
+                                    "收起更新内容"
+                                } else {
+                                    "更新了什么"
+                                })
+                                .clicked()
+                            {
+                                toggle_notes = true;
+                            }
+                            if ui.button("升级并安装").clicked() {
+                                start = true;
+                            }
+                            if ui.small_button("忽略此版本").clicked() {
+                                ignore = true;
+                            }
+                            if ui.small_button("稍后再说").clicked() {
+                                later = true;
+                            }
+                        });
+                    });
 
-        if toggle_notes {
-            self.update_state.show_notes = !self.update_state.show_notes;
-        }
-        if upgrade {
-            let _ = open_url(&html_url);
-            self.update_state.dismissed = true;
-        }
-        if ignore {
-            self.settings.ignored_update_version = Some(version.clone());
-            self.update_state.dismissed = true;
-            let _ = save_settings(&self.settings);
-        }
-        if later {
-            self.update_state.dismissed = true;
+                if toggle_notes {
+                    self.update_state.show_notes = !self.update_state.show_notes;
+                }
+                if start {
+                    self.update_state.start_download(&version, &assets);
+                }
+                if ignore {
+                    self.settings.ignored_update_version = Some(version.clone());
+                    self.update_state.dismissed = true;
+                    let _ = save_settings(&self.settings);
+                }
+                if later {
+                    self.update_state.dismissed = true;
+                }
+            }
+            UpdateStatus::Downloading {
+                version,
+                transferred,
+                total,
+                speed_bps,
+            } => {
+                let mut cancel = false;
+                egui::Window::new("软件更新")
+                    .collapsible(false)
+                    .resizable(false)
+                    .default_pos(ctx.screen_rect().center() - egui::vec2(190.0, 70.0))
+                    .show(ctx, |ui| {
+                        ui.label(
+                            egui::RichText::new(format!("正在下载 v{version} …")).strong(),
+                        );
+                        ui.add_space(6.0);
+                        let fraction = if total > 0 {
+                            (transferred as f64 / total as f64).clamp(0.0, 1.0)
+                        } else {
+                            0.0
+                        };
+                        let mut progress = egui::ProgressBar::new(fraction as f32)
+                            .desired_width(320.0)
+                            .show_percentage();
+                        if total == 0 {
+                            progress = progress.animate(true);
+                        }
+                        ui.add(progress);
+                        ui.add_space(4.0);
+                        ui.weak(if total > 0 {
+                            format!(
+                                "{} / {} · {}",
+                                format_bytes(transferred),
+                                format_bytes(total),
+                                format_speed(speed_bps)
+                            )
+                        } else {
+                            format!("{} · {}", format_bytes(transferred), format_speed(speed_bps))
+                        });
+                        ui.add_space(6.0);
+                        ui.horizontal(|ui| {
+                            if ui.button("取消").clicked() {
+                                cancel = true;
+                            }
+                        });
+                    });
+                if cancel {
+                    self.update_state.cancel_download_now();
+                    self.update_state.dismissed = true;
+                }
+            }
+            UpdateStatus::DownloadFailed { version, message } => {
+                let mut retry = false;
+                let mut open_page = false;
+                let mut later = false;
+                egui::Window::new("软件更新")
+                    .collapsible(false)
+                    .resizable(false)
+                    .default_pos(ctx.screen_rect().center() - egui::vec2(190.0, 80.0))
+                    .show(ctx, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("⚠️");
+                            ui.label(
+                                egui::RichText::new(format!("更新 v{version} 失败")).strong(),
+                            );
+                        });
+                        ui.add_space(4.0);
+                        ui.label(message);
+                        ui.add_space(8.0);
+                        ui.horizontal(|ui| {
+                            if ui.button("重试").clicked() {
+                                retry = true;
+                            }
+                            if ui.button("打开下载页").clicked() {
+                                open_page = true;
+                            }
+                            if ui.small_button("稍后再说").clicked() {
+                                later = true;
+                            }
+                        });
+                    });
+                if retry {
+                    self.update_state.retry_download();
+                }
+                if open_page {
+                    let _ = open_url(&format!(
+                        "https://github.com/dardiao/hapcli/releases/tag/v{version}"
+                    ));
+                    self.update_state.dismissed = true;
+                }
+                if later {
+                    self.update_state.dismissed = true;
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -1799,6 +1899,28 @@ fn system_notify(title: &str, message: &str) {
     {
         let _ = (title, message);
     }
+}
+
+/// 字节数的人类可读格式。
+fn format_bytes(bytes: u64) -> String {
+    const KB: f64 = 1024.0;
+    const MB: f64 = KB * 1024.0;
+    const GB: f64 = MB * 1024.0;
+    let bytes = bytes as f64;
+    if bytes >= GB {
+        format!("{:.2} GB", bytes / GB)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes / MB)
+    } else if bytes >= KB {
+        format!("{:.0} KB", bytes / KB)
+    } else {
+        format!("{bytes:.0} B")
+    }
+}
+
+/// 下载速度的人类可读格式。
+fn format_speed(bytes_per_second: f64) -> String {
+    format!("{}/s", format_bytes(bytes_per_second.max(0.0) as u64))
 }
 
 #[cfg(target_os = "macos")]

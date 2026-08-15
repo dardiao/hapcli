@@ -1,6 +1,12 @@
-//! 新版本检测：后台线程查询 GitHub Releases API，GUI 弹出升级提示。
+//! 新版本检测与自动更新：
+//! 检查 GitHub Releases → 弹窗提示 → 应用内下载（进度条）→ 解压 → 替换安装 → 重启。
 
 use std::cmp::Ordering;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -13,8 +19,19 @@ const UPDATE_API_URL: &str = "https://api.github.com/repos/dardiao/hapcli/releas
 const CHECK_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
 /// 启动后的首次检查延迟（等窗口先显示出来）。
 const INITIAL_DELAY: Duration = Duration::from_secs(4);
+/// 下载分块大小（用于刷新进度条）。
+const DOWNLOAD_CHUNK: usize = 256 * 1024;
+/// 下载总体超时。
+const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(600);
 
-/// 当前更新检查状态（GUI 展示与弹窗判断用）。
+/// GitHub Release 资产（下载安装包用）。
+#[derive(Debug, Clone)]
+pub struct UpdateAsset {
+    pub name: String,
+    pub browser_download_url: String,
+}
+
+/// 当前更新状态（GUI 展示与弹窗判断用）。
 #[derive(Debug, Clone)]
 pub enum UpdateStatus {
     Idle,
@@ -24,16 +41,39 @@ pub enum UpdateStatus {
         version: String,
         name: String,
         notes: String,
-        html_url: String,
+        assets: Vec<UpdateAsset>,
     },
+    Downloading {
+        version: String,
+        transferred: u64,
+        total: u64,
+        speed_bps: f64,
+    },
+    DownloadFailed {
+        version: String,
+        message: String,
+    },
+    /// 新版本已就位、替换脚本已启动，等待本应用退出并重启。
+    ReadyToInstall,
     Error(String),
 }
 
 enum UpdateCheckEvent {
     Result(UpdateStatus),
+    Download(DownloadEvent),
 }
 
-/// 更新检查状态机：持有后台检查线程的结果通道。
+enum DownloadEvent {
+    Progress {
+        transferred: u64,
+        total: u64,
+        speed_bps: f64,
+    },
+    Finished,
+    Failed(String),
+}
+
+/// 更新检查与下载状态机：持有后台线程的结果通道。
 pub struct UpdateCheckState {
     tx: Sender<UpdateCheckEvent>,
     rx: Receiver<UpdateCheckEvent>,
@@ -43,6 +83,11 @@ pub struct UpdateCheckState {
     /// 本次运行内已“稍后再说”，不再重复弹出。
     pub dismissed: bool,
     pub last_check_at: Option<Instant>,
+    /// 下载取消标记。
+    cancel_download: Arc<AtomicBool>,
+    /// 最近一次可更新的版本与资产（下载失败后“重试”用）。
+    last_version: Option<String>,
+    last_assets: Vec<UpdateAsset>,
 }
 
 impl Default for UpdateCheckState {
@@ -55,6 +100,9 @@ impl Default for UpdateCheckState {
             show_notes: false,
             dismissed: false,
             last_check_at: None,
+            cancel_download: Arc::new(AtomicBool::new(false)),
+            last_version: None,
+            last_assets: Vec::new(),
         }
     }
 }
@@ -79,6 +127,53 @@ impl UpdateCheckState {
         });
     }
 
+    /// 开始下载并安装新版本。
+    pub fn start_download(&mut self, version: &str, assets: &[UpdateAsset]) {
+        let Some(asset) = pick_platform_asset(assets) else {
+            self.status = UpdateStatus::DownloadFailed {
+                version: version.to_string(),
+                message: "当前平台没有可用的自动更新安装包，请打开下载页手动安装".to_string(),
+            };
+            return;
+        };
+        self.last_version = Some(version.to_string());
+        self.last_assets = assets.to_vec();
+        self.cancel_download.store(false, AtomicOrdering::Relaxed);
+        self.dismissed = false;
+        self.status = UpdateStatus::Downloading {
+            version: version.to_string(),
+            transferred: 0,
+            total: 0,
+            speed_bps: 0.0,
+        };
+        let tx = self.tx.clone();
+        let cancel = self.cancel_download.clone();
+        thread::spawn(move || {
+            match download_and_stage(&asset, &cancel, &tx) {
+                Ok(()) => {
+                    let _ = tx.send(UpdateCheckEvent::Download(DownloadEvent::Finished));
+                }
+                Err(message) => {
+                    let _ = tx.send(UpdateCheckEvent::Download(DownloadEvent::Failed(message)));
+                }
+            }
+        });
+    }
+
+    /// 取消进行中的下载。
+    pub fn cancel_download_now(&mut self) {
+        self.cancel_download.store(true, AtomicOrdering::Relaxed);
+    }
+
+    /// 下载失败后使用相同的版本与资产重试。
+    pub fn retry_download(&mut self) {
+        let Some(version) = self.last_version.clone() else {
+            return;
+        };
+        let assets = self.last_assets.clone();
+        self.start_download(&version, &assets);
+    }
+
     /// 每帧轮询后台结果。
     pub fn poll(&mut self) {
         while let Ok(event) = self.rx.try_recv() {
@@ -87,13 +182,34 @@ impl UpdateCheckState {
                     self.status = status;
                     self.last_check_at = Some(Instant::now());
                 }
+                UpdateCheckEvent::Download(DownloadEvent::Progress {
+                    transferred,
+                    total,
+                    speed_bps,
+                }) => {
+                    if let UpdateStatus::Downloading { version, .. } = &self.status {
+                        self.status = UpdateStatus::Downloading {
+                            version: version.clone(),
+                            transferred,
+                            total,
+                            speed_bps,
+                        };
+                    }
+                }
+                UpdateCheckEvent::Download(DownloadEvent::Finished) => {
+                    self.status = UpdateStatus::ReadyToInstall;
+                }
+                UpdateCheckEvent::Download(DownloadEvent::Failed(message)) => {
+                    let version = self.last_version.clone().unwrap_or_default();
+                    self.status = UpdateStatus::DownloadFailed { version, message };
+                }
             }
         }
     }
 
     /// 到点（6 小时）且用户开启自动检查时，触发新一轮检查。
     pub fn maybe_periodic_check(&mut self, current_version: &str, enabled: bool) {
-        if !enabled {
+        if !enabled || matches!(self.status, UpdateStatus::Downloading { .. }) {
             return;
         }
         let due = match self.last_check_at {
@@ -119,11 +235,18 @@ struct GithubRelease {
     name: Option<String>,
     #[serde(default)]
     body: Option<String>,
-    html_url: String,
     #[serde(default)]
     prerelease: bool,
     #[serde(default)]
     draft: bool,
+    #[serde(default)]
+    assets: Vec<GithubAsset>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GithubAsset {
+    name: String,
+    browser_download_url: String,
 }
 
 fn fetch_latest_release(current_version: &str) -> UpdateStatus {
@@ -165,7 +288,384 @@ fn fetch_latest_release(current_version: &str) -> UpdateStatus {
         name: release.name.unwrap_or_else(|| release.tag_name.clone()),
         version,
         notes: release.body.unwrap_or_default(),
-        html_url: release.html_url,
+        assets: release
+            .assets
+            .into_iter()
+            .map(|asset| UpdateAsset {
+                name: asset.name,
+                browser_download_url: asset.browser_download_url,
+            })
+            .collect(),
+    }
+}
+
+/// 当前平台对应的安装包文件名。
+fn platform_asset_name() -> Option<&'static str> {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        Some("hapcli-macos-arm64.zip")
+    }
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    {
+        Some("hapcli-windows-x86_64.zip")
+    }
+    #[cfg(not(any(
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "windows", target_arch = "x86_64")
+    )))]
+    {
+        None
+    }
+}
+
+fn pick_platform_asset(assets: &[UpdateAsset]) -> Option<UpdateAsset> {
+    let expected = platform_asset_name()?;
+    assets
+        .iter()
+        .find(|asset| asset.name == expected)
+        .cloned()
+}
+
+/// 安装目标：macOS 打包的 .app 整体替换，或裸二进制直接替换。
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum InstallTarget {
+    AppBundle(PathBuf),
+    Executable(PathBuf),
+}
+
+/// 从当前可执行文件路径推断安装目标。
+fn detect_install_target(exe: &Path) -> InstallTarget {
+    if let Some(bundle) = macos_bundle_root(exe) {
+        return InstallTarget::AppBundle(bundle);
+    }
+    InstallTarget::Executable(exe.to_path_buf())
+}
+
+/// 若可执行文件位于 …/xxx.app/Contents/MacOS/ 内，返回 xxx.app 路径。
+fn macos_bundle_root(exe: &Path) -> Option<PathBuf> {
+    let mac_os = exe.parent()?;
+    if mac_os.file_name().and_then(|name| name.to_str()) != Some("MacOS") {
+        return None;
+    }
+    let contents = mac_os.parent()?;
+    if contents.file_name().and_then(|name| name.to_str()) != Some("Contents") {
+        return None;
+    }
+    let bundle = contents.parent()?;
+    if bundle.extension().and_then(|ext| ext.to_str()) != Some("app") {
+        return None;
+    }
+    Some(bundle.to_path_buf())
+}
+
+/// 下载安装包、解压、生成替换脚本并启动；全部完成后由脚本负责替换与重启。
+fn download_and_stage(
+    asset: &UpdateAsset,
+    cancel: &AtomicBool,
+    tx: &Sender<UpdateCheckEvent>,
+) -> Result<(), String> {
+    let current_exe = std::env::current_exe().map_err(|error| format!("无法定位当前程序: {error}"))?;
+    let target = detect_install_target(&current_exe);
+    // 安装目录不可写（如 /Applications 需要管理员权限）时提前失败，
+    // 避免替换脚本静默失败。
+    let target_dir = match &target {
+        InstallTarget::AppBundle(bundle) => bundle.parent(),
+        InstallTarget::Executable(exe) => exe.parent(),
+    };
+    if !target_dir.is_some_and(parent_dir_writable) {
+        return Err(
+            "安装目录没有写入权限（例如安装到了 /Applications），请改用下载页手动安装".to_string(),
+        );
+    }
+    let staging = staging_dir();
+    let _ = std::fs::remove_dir_all(&staging);
+    std::fs::create_dir_all(&staging).map_err(|error| format!("无法创建临时目录: {error}"))?;
+
+    // 1. 下载 zip。
+    let zip_path = staging.join(&asset.name);
+    let client = reqwest::blocking::Client::builder()
+        .user_agent(format!("hapcli-updater/{}", env!("CARGO_PKG_VERSION")))
+        .connect_timeout(Duration::from_secs(20))
+        .timeout(DOWNLOAD_TIMEOUT)
+        .build()
+        .map_err(|error| format!("HTTP 客户端创建失败: {error}"))?;
+    let mut response = client
+        .get(&asset.browser_download_url)
+        .send()
+        .map_err(|error| format!("下载失败: {error}"))?;
+    if !response.status().is_success() {
+        return Err(format!("下载失败：服务器返回 {}", response.status()));
+    }
+    let total = response.content_length().unwrap_or(0);
+    let mut file = std::fs::File::create(&zip_path).map_err(|error| format!("无法写入临时文件: {error}"))?;
+    let mut transferred: u64 = 0;
+    let mut buffer = vec![0u8; DOWNLOAD_CHUNK];
+    let started = Instant::now();
+    let mut last_send = Instant::now();
+    loop {
+        if cancel.load(AtomicOrdering::Relaxed) {
+            let _ = std::fs::remove_dir_all(&staging);
+            return Err("下载已取消".to_string());
+        }
+        let read = response
+            .read(&mut buffer)
+            .map_err(|error| format!("下载中断: {error}"))?;
+        if read == 0 {
+            break;
+        }
+        file.write_all(&buffer[..read])
+            .map_err(|error| format!("写入临时文件失败: {error}"))?;
+        transferred += read as u64;
+        if last_send.elapsed() >= Duration::from_millis(80) {
+            let speed_bps = transferred as f64 / started.elapsed().as_secs_f64().max(0.001);
+            let _ = tx.send(UpdateCheckEvent::Download(DownloadEvent::Progress {
+                transferred,
+                total,
+                speed_bps,
+            }));
+            last_send = Instant::now();
+        }
+    }
+    file.flush().map_err(|error| format!("写入临时文件失败: {error}"))?;
+    drop(file);
+    if total > 0 && transferred != total {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(format!("下载不完整（{transferred}/{total} 字节）"));
+    }
+    if cancel.load(AtomicOrdering::Relaxed) {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err("下载已取消".to_string());
+    }
+
+    // 2. 解压。
+    extract_archive(&zip_path, &staging)?;
+
+    // 3. 定位新程序。
+    let payload = locate_payload(&staging)?;
+
+    // 4. 生成并启动替换脚本（脱离本进程，等本应用退出后替换并重启）。
+    write_and_launch_helper(&staging, &target, &payload, std::process::id())?;
+    Ok(())
+}
+
+/// 临时目录：系统临时目录下的固定命名目录（脚本结束后自行清理）。
+fn staging_dir() -> PathBuf {
+    std::env::temp_dir().join(format!("hapcli-update-{}", std::process::id()))
+}
+
+/// 探测目录是否可写（创建并删除一个临时文件）。
+fn parent_dir_writable(dir: &Path) -> bool {
+    let probe = dir.join(format!(".hapcli-write-test-{}", std::process::id()));
+    match std::fs::File::create(&probe) {
+        Ok(file) => {
+            drop(file);
+            let _ = std::fs::remove_file(&probe);
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+fn extract_archive(zip_path: &Path, staging: &Path) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        // ditto 保留 .app 内权限与符号链接。
+        let output = Command::new("ditto")
+            .args(["-x", "-k"])
+            .arg(zip_path)
+            .arg(staging)
+            .output()
+            .map_err(|error| format!("解压失败: {error}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "解压失败：{}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ));
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let script = format!(
+            "Expand-Archive -LiteralPath '{}' -DestinationPath '{}' -Force",
+            zip_path.display(),
+            staging.display()
+        );
+        let output = Command::new("powershell")
+            .args(["-NoProfile", "-Command", &script])
+            .output()
+            .map_err(|error| format!("解压失败: {error}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "解压失败：{}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ));
+        }
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = (zip_path, staging);
+        return Err("当前平台暂不支持自动更新".to_string());
+    }
+    Ok(())
+}
+
+/// 在解压目录中定位新版本程序：
+/// macOS 为 hapcli.app/Contents/MacOS/hapcli，Windows 为 hapcli.exe。
+fn locate_payload(staging: &Path) -> Result<PathBuf, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let app = staging.join("hapcli.app");
+        let exe = app.join("Contents/MacOS/hapcli");
+        if exe.is_file() {
+            return Ok(exe);
+        }
+        // 兼容 zip 内多一层目录的情况。
+        let Ok(entries) = std::fs::read_dir(staging) else {
+            return Err("解压后未找到 hapcli.app".to_string());
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() && path.extension().and_then(|ext| ext.to_str()) == Some("app") {
+                let nested = path.join("Contents/MacOS/hapcli");
+                if nested.is_file() {
+                    return Ok(nested);
+                }
+            }
+        }
+        Err("解压后未找到 hapcli.app".to_string())
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let exe = staging.join("hapcli.exe");
+        if exe.is_file() {
+            return Ok(exe);
+        }
+        Err("解压后未找到 hapcli.exe".to_string())
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = staging;
+        Err("当前平台暂不支持自动更新".to_string())
+    }
+}
+
+/// 把路径转成 shell 单引号形式（macOS）。
+fn sh_quote(path: &str) -> String {
+    format!("'{}'", path.replace('\'', "'\\''"))
+}
+
+/// 把路径转成 Windows 批处理可用的双引号形式。
+#[cfg(target_os = "windows")]
+fn bat_quote(path: &str) -> String {
+    format!("\"{}\"", path.replace('"', "\"\""))
+}
+
+/// 生成替换脚本并脱离启动；脚本等待本进程退出后替换文件并重新启动。
+fn write_and_launch_helper(
+    staging: &Path,
+    target: &InstallTarget,
+    payload: &Path,
+    pid: u32,
+) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let script_path = staging.join("hapcli-update.sh");
+        let script = match target {
+            InstallTarget::AppBundle(bundle) => format!(
+                "#!/bin/sh\n\
+                 PID={pid}\n\
+                 i=0\n\
+                 while kill -0 \"$PID\" 2>/dev/null; do\n\
+                 \x20 i=$((i+1))\n\
+                 \x20 [ \"$i\" -ge 120 ] && break\n\
+                 \x20 sleep 0.3\n\
+                 done\n\
+                 sleep 1\n\
+                 rm -rf {}\n\
+                 ditto {} {}\n\
+                 xattr -dr com.apple.quarantine {} 2>/dev/null || true\n\
+                 open {}\n\
+                 rm -rf {}\n",
+                sh_quote(&bundle.to_string_lossy()),
+                sh_quote(&payload.to_string_lossy()),
+                sh_quote(&bundle.to_string_lossy()),
+                sh_quote(&bundle.to_string_lossy()),
+                sh_quote(&bundle.to_string_lossy()),
+                sh_quote(&staging.to_string_lossy()),
+            ),
+            InstallTarget::Executable(exe) => format!(
+                "#!/bin/sh\n\
+                 PID={pid}\n\
+                 i=0\n\
+                 while kill -0 \"$PID\" 2>/dev/null; do\n\
+                 \x20 i=$((i+1))\n\
+                 \x20 [ \"$i\" -ge 120 ] && break\n\
+                 \x20 sleep 0.3\n\
+                 done\n\
+                 sleep 1\n\
+                 rm -f {}\n\
+                 cp {} {}\n\
+                 chmod +x {}\n\
+                 {}\n\
+                 rm -rf {}\n",
+                sh_quote(&exe.to_string_lossy()),
+                sh_quote(&payload.to_string_lossy()),
+                sh_quote(&exe.to_string_lossy()),
+                sh_quote(&exe.to_string_lossy()),
+                sh_quote(&exe.to_string_lossy()),
+                sh_quote(&staging.to_string_lossy()),
+            ),
+        };
+        std::fs::write(&script_path, script).map_err(|error| format!("写入更新脚本失败: {error}"))?;
+        let output = Command::new("nohup")
+            .args(["sh", script_path.to_str().unwrap_or_default()])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .map_err(|error| format!("启动更新脚本失败: {error}"))?;
+        let _ = output;
+        Ok(())
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let script_path = staging.join("hapcli-update.bat");
+        let (target_exe, payload_exe) = match target {
+            InstallTarget::Executable(exe) => (exe.to_path_buf(), payload.to_path_buf()),
+            InstallTarget::AppBundle(_) => {
+                return Err("Windows 不支持 .app 安装目标".to_string());
+            }
+        };
+        let script = format!(
+            "@echo off\r\n\
+             timeout /t 2 /nobreak >nul\r\n\
+             :wait\r\n\
+             tasklist /FI \"PID eq {pid}\" | findstr \"{pid}\" >nul\r\n\
+             if not errorlevel 1 (\r\n\
+             \x20 timeout /t 1 /nobreak >nul\r\n\
+             \x20 goto wait\r\n\
+             )\r\n\
+             timeout /t 1 /nobreak >nul\r\n\
+             copy /y {} {} >nul\r\n\
+             start \"\" {}\r\n\
+             rmdir /s /q {}\r\n",
+            bat_quote(&payload_exe.to_string_lossy()),
+            bat_quote(&target_exe.to_string_lossy()),
+            bat_quote(&target_exe.to_string_lossy()),
+            bat_quote(&staging.to_string_lossy()),
+        );
+        std::fs::write(&script_path, script).map_err(|error| format!("写入更新脚本失败: {error}"))?;
+        use std::os::windows::process::CommandExt;
+        let _ = Command::new("cmd")
+            .args(["/C", "start", "", "/b", script_path.to_str().unwrap_or_default()])
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
+            .spawn()
+            .map_err(|error| format!("启动更新脚本失败: {error}"))?;
+        Ok(())
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = (staging, target, payload, pid);
+        Err("当前平台暂不支持自动更新".to_string())
     }
 }
 
@@ -203,7 +703,7 @@ pub fn is_update_newer(candidate: &str, current: &str) -> bool {
     compare_versions(candidate, current) == Ordering::Greater
 }
 
-/// 用系统默认浏览器打开链接。
+/// 用系统默认浏览器打开链接（下载失败时的兜底方案）。
 pub fn open_url(url: &str) -> bool {
     #[cfg(target_os = "macos")]
     {
@@ -263,13 +763,54 @@ mod tests {
             "body": "修复了若干问题",
             "html_url": "https://github.com/dardiao/hapcli/releases/tag/v2.0.24",
             "prerelease": false,
-            "draft": false
+            "draft": false,
+            "assets": [
+                {
+                    "name": "hapcli-macos-arm64.zip",
+                    "browser_download_url": "https://github.com/dardiao/hapcli/releases/download/v2.0.24/hapcli-macos-arm64.zip"
+                }
+            ]
         }"#;
         let release: GithubRelease = serde_json::from_str(json).unwrap();
         assert_eq!(release.tag_name, "v2.0.24");
-        assert_eq!(release.name.as_deref(), Some("hapcli 2.0.24"));
-        assert_eq!(release.body.as_deref(), Some("修复了若干问题"));
-        assert!(!release.prerelease);
-        assert!(!release.draft);
+        assert_eq!(release.assets.len(), 1);
+        assert_eq!(release.assets[0].name, "hapcli-macos-arm64.zip");
+    }
+
+    #[test]
+    fn platform_asset_picks_matching_name() {
+        let assets = vec![
+            UpdateAsset {
+                name: "hapcli-windows-x86_64.zip".to_string(),
+                browser_download_url: "https://example.invalid/win.zip".to_string(),
+            },
+            UpdateAsset {
+                name: "hapcli-macos-arm64.zip".to_string(),
+                browser_download_url: "https://example.invalid/mac.zip".to_string(),
+            },
+        ];
+        if let Some(expected) = platform_asset_name() {
+            let picked = pick_platform_asset(&assets).expect("asset should match");
+            assert_eq!(picked.name, expected);
+        } else {
+            assert!(pick_platform_asset(&assets).is_none());
+        }
+    }
+
+    #[test]
+    fn macos_bundle_root_detects_app_bundle() {
+        let exe = Path::new("/Applications/hapcli.app/Contents/MacOS/hapcli");
+        assert_eq!(
+            macos_bundle_root(exe),
+            Some(PathBuf::from("/Applications/hapcli.app"))
+        );
+        let bare = Path::new("/usr/local/bin/hapcli");
+        assert_eq!(macos_bundle_root(bare), None);
+    }
+
+    #[test]
+    fn shell_quote_escapes_single_quotes() {
+        assert_eq!(sh_quote("/a b/c"), "'/a b/c'");
+        assert_eq!(sh_quote("/it's"), "'/it'\\''s'");
     }
 }
