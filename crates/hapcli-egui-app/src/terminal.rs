@@ -29,6 +29,16 @@ pub struct TerminalPrefs {
     pub sftp_sync_cwd: bool,
 }
 
+/// 终端右键菜单动作（菜单关闭后统一处理，避免在菜单闭包内借用会话）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum TerminalMenuAction {
+    Copy,
+    Paste,
+    SelectAll,
+    Search,
+    Clear,
+}
+
 fn new_trzsz_owner_id() -> String {
     let sequence = TRZSZ_OWNER_COUNTER.fetch_add(1, Ordering::Relaxed);
     format!("egui-{}-{sequence}", std::process::id())
@@ -933,6 +943,17 @@ impl TerminalTab {
         }
     }
 
+    /// 全选当前可见屏幕（与三击选行同一套选区坐标）。
+    fn select_all(&mut self) {
+        self.selection = Some(TextSelection {
+            anchor: (0, 0),
+            active: (
+                self.snapshot.rows.saturating_sub(1),
+                self.snapshot.cols.saturating_sub(1),
+            ),
+        });
+    }
+
     /// 按当前查询刷新匹配结果（空查询清空）。
     pub fn refresh_search(&mut self) {
         let query = self.search_query.trim().to_string();
@@ -1049,6 +1070,60 @@ impl TerminalTab {
                 },
             );
         });
+
+        // 终端右键菜单：复制 / 粘贴 / 全选 / 搜索 / 清屏。
+        let copy_enabled = self.selection.is_some();
+        let mut menu_action: Option<TerminalMenuAction> = None;
+        response.context_menu(|ui| {
+            ui.set_min_width(150.0);
+            if ui
+                .add_enabled(copy_enabled, egui::Button::new("复制"))
+                .on_hover_text("复制选中内容（⌘C）")
+                .clicked()
+            {
+                menu_action = Some(TerminalMenuAction::Copy);
+                ui.close_menu();
+            }
+            if ui
+                .button("粘贴")
+                .on_hover_text("粘贴剪贴板内容（⌘V）")
+                .clicked()
+            {
+                menu_action = Some(TerminalMenuAction::Paste);
+                ui.close_menu();
+            }
+            ui.separator();
+            if ui.button("全选").clicked() {
+                menu_action = Some(TerminalMenuAction::SelectAll);
+                ui.close_menu();
+            }
+            if ui.button("搜索…").clicked() {
+                menu_action = Some(TerminalMenuAction::Search);
+                ui.close_menu();
+            }
+            ui.separator();
+            if ui.button("清屏").clicked() {
+                menu_action = Some(TerminalMenuAction::Clear);
+                ui.close_menu();
+            }
+        });
+        match menu_action {
+            Some(TerminalMenuAction::Copy) => self.copy_selection(ui.ctx()),
+            Some(TerminalMenuAction::Paste) => self.paste_clipboard(),
+            Some(TerminalMenuAction::SelectAll) => self.select_all(),
+            Some(TerminalMenuAction::Search) => {
+                self.search_open = true;
+                self.search_focus_requested = true;
+                self.refresh_search();
+            }
+            Some(TerminalMenuAction::Clear) => {
+                self.session.clear_buffer();
+                self.selection = None;
+                self.search_matches.clear();
+                self.search_current = None;
+            }
+            None => {}
+        }
 
         response
     }
