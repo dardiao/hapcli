@@ -3,6 +3,7 @@
 
 use std::{
     future::Future,
+    path::Path,
     pin::Pin,
     sync::{Arc, mpsc::Receiver, mpsc::Sender, mpsc::channel},
 };
@@ -56,6 +57,8 @@ pub struct SftpPanelState {
     pub transfer_progress: Option<(u64, u64)>,
     pub busy: bool,
     pub new_dir_name: String,
+    /// 是否有本地文件正拖拽悬停在面板上（用于显示“松开上传”提示）。
+    drop_hovering: bool,
     confirm_delete: Option<FileInfo>,
 }
 
@@ -332,6 +335,7 @@ pub fn spawn_sftp_worker(handle: SshConnectionHandle) -> SftpPanelState {
         transfer_progress: None,
         busy: false,
         new_dir_name: String::new(),
+        drop_hovering: false,
         confirm_delete: None,
     }
 }
@@ -415,9 +419,67 @@ fn fast_id() -> u64 {
         ^ std::process::id() as u64
 }
 
+/// 为拖拽落下的本地路径生成上传命令：目录 → UploadDir，文件 → Upload。
+fn upload_command_for_drop(path: &Path, cwd: &str) -> Option<SftpCommand> {
+    let metadata = std::fs::metadata(path).ok()?;
+    let name = path.file_name()?.to_string_lossy().to_string();
+    let local = path.to_string_lossy().to_string();
+    let remote = join_remote_path(cwd, &name);
+    if metadata.is_dir() {
+        Some(SftpCommand::UploadDir { local, remote })
+    } else {
+        Some(SftpCommand::Upload { local, remote })
+    }
+}
+
 /// 渲染 SFTP 面板，返回需要发送给 worker 的命令。
 pub fn sftp_panel_ui(ui: &mut egui::Ui, panel: &mut SftpPanelState) -> Vec<SftpCommand> {
     let mut commands = Vec::new();
+
+    // 拖拽上传：检测系统文件拖入面板，松手时对每个文件/目录生成上传命令。
+    let panel_rect = ui.max_rect();
+    let (over_panel, hovering, dropped_paths) = ui.input(|input| {
+        let over_panel = input
+            .pointer
+            .hover_pos()
+            .is_some_and(|pos| panel_rect.contains(pos));
+        let hovering = over_panel && !input.raw.hovered_files.is_empty();
+        let dropped_paths = input
+            .raw
+            .dropped_files
+            .iter()
+            .filter_map(|file| file.path.clone())
+            .collect::<Vec<_>>();
+        (over_panel, hovering, dropped_paths)
+    });
+    let was_hovering = panel.drop_hovering;
+    panel.drop_hovering = hovering;
+    if (was_hovering || over_panel) && !dropped_paths.is_empty() {
+        for path in dropped_paths {
+            if let Some(command) = upload_command_for_drop(&path, &panel.cwd) {
+                commands.push(command);
+            }
+        }
+    }
+
+    if panel.drop_hovering {
+        egui::Frame::none()
+            .fill(egui::Color32::from_rgba_unmultiplied(0xbd, 0x93, 0xf9, 36))
+            .stroke(egui::Stroke::new(
+                1.5_f32,
+                egui::Color32::from_rgb(0xbd, 0x93, 0xf9),
+            ))
+            .rounding(6.0)
+            .inner_margin(8.0)
+            .show(ui, |ui| {
+                ui.label(
+                    egui::RichText::new("松开以上传到当前目录")
+                        .strong()
+                        .color(egui::Color32::from_rgb(0xd8, 0xcf, 0xf5)),
+                );
+            });
+        ui.add_space(4.0);
+    }
 
     ui.horizontal(|ui| {
         ui.label("路径");
@@ -657,6 +719,7 @@ mod tests {
             transfer_progress: Some((100, 200)),
             busy: true,
             new_dir_name: String::new(),
+            drop_hovering: false,
             confirm_delete: None,
         };
         let refresh = panel.apply_event(SftpEvent::Progress {
@@ -670,5 +733,41 @@ mod tests {
         assert!(panel.transfer_id.is_none());
         assert!(panel.transfer_progress.is_none());
         assert!(!panel.busy);
+    }
+
+    #[test]
+    fn drop_file_builds_upload_command_into_cwd() {
+        let mut path = std::env::temp_dir();
+        path.push(format!("hapcli-drop-file-{}.txt", std::process::id()));
+        std::fs::write(&path, b"content").unwrap();
+
+        let command = upload_command_for_drop(&path, "/home/user").unwrap();
+        let SftpCommand::Upload { local, remote } = command else {
+            panic!("expected Upload command");
+        };
+        let expected_name = format!("hapcli-drop-file-{}.txt", std::process::id());
+        assert!(local.ends_with(&expected_name));
+        assert_eq!(remote, format!("/home/user/{expected_name}"));
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn drop_directory_builds_upload_dir_command() {
+        let mut path = std::env::temp_dir();
+        path.push(format!("hapcli-drop-dir-{}", std::process::id()));
+        std::fs::create_dir_all(&path).unwrap();
+
+        let command = upload_command_for_drop(&path, "/").unwrap();
+        let SftpCommand::UploadDir { remote, .. } = command else {
+            panic!("expected UploadDir command");
+        };
+        assert_eq!(remote, format!("/hapcli-drop-dir-{}", std::process::id()));
+        std::fs::remove_dir_all(&path).ok();
+    }
+
+    #[test]
+    fn drop_missing_path_returns_none() {
+        let path = Path::new("/nonexistent/hapcli-sftp-drop-missing");
+        assert!(upload_command_for_drop(path, "/").is_none());
     }
 }
