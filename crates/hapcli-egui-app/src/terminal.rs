@@ -81,6 +81,8 @@ pub struct TerminalTab {
     pub search_matches: Vec<TerminalSearchMatch>,
     pub search_current: Option<usize>,
     pub search_focus_requested: bool,
+    /// 搜索框已消费 Enter（用于导航），终端不应再把该 Enter 转发给 shell。
+    pub search_enter_consumed: bool,
     pub sftp: Option<crate::sftp::SftpPanelState>,
     /// 上一次同步给 SFTP 面板的目录（用于 `cd -`）。
     pub sftp_prev_cwd: Option<String>,
@@ -152,6 +154,7 @@ impl TerminalTab {
             search_matches: Vec::new(),
             search_current: None,
             search_focus_requested: false,
+            search_enter_consumed: false,
             sftp: None,
             sftp_prev_cwd: None,
             input_line: String::new(),
@@ -218,6 +221,7 @@ impl TerminalTab {
             search_matches: Vec::new(),
             search_current: None,
             search_focus_requested: false,
+            search_enter_consumed: false,
             sftp: None,
             sftp_prev_cwd: None,
             input_line: String::new(),
@@ -290,6 +294,7 @@ impl TerminalTab {
             search_matches: Vec::new(),
             search_current: None,
             search_focus_requested: false,
+            search_enter_consumed: false,
             sftp: None,
             sftp_prev_cwd: None,
             input_line: String::new(),
@@ -362,6 +367,7 @@ impl TerminalTab {
             search_matches: Vec::new(),
             search_current: None,
             search_focus_requested: false,
+            search_enter_consumed: false,
             sftp: None,
             sftp_prev_cwd: None,
             input_line: String::new(),
@@ -431,6 +437,7 @@ impl TerminalTab {
         self.input_line.clear();
         self.input_line_unreliable = false;
         self.pending_input_line = None;
+        self.search_enter_consumed = false;
     }
 
     /// 内核有输出时唤醒 egui 重绘；会话销毁后线程自动退出。
@@ -696,23 +703,22 @@ impl TerminalTab {
                         modifiers,
                         ..
                     } => {
-                        // 搜索框持有键盘时，Esc/Enter 控制搜索导航。
-                        if self.search_open && !terminal_owns_keys {
-                            if *pressed {
-                                match key {
-                                    egui::Key::Escape => {
-                                        self.search_open = false;
-                                    }
-                                    egui::Key::Enter => {
-                                        if modifiers.shift {
-                                            self.search_prev();
-                                        } else {
-                                            self.search_next();
-                                        }
-                                    }
-                                    _ => {}
-                                }
+                        // 搜索栏打开时处理导航键。egui 的单行输入框在 Esc/Enter
+                        // 时都会先释放焦点，因此不能依赖“搜索框持有焦点”判断。
+                        if self.search_open && *pressed {
+                            // 搜索框已消费 Enter（导航到下一个/上一个匹配）：
+                            // 该 Enter 不再转发给 shell。
+                            if self.search_enter_consumed {
+                                self.search_enter_consumed = false;
+                                continue;
                             }
+                            if *key == egui::Key::Escape {
+                                self.search_open = false;
+                                continue;
+                            }
+                        }
+                        // 搜索框持有键盘时，其余按键不转发给终端（搜索框自身处理）。
+                        if self.search_open && !terminal_owns_keys {
                             continue;
                         }
                         // 焦点在其他控件（弹窗输入框等）时不转发键盘。
@@ -1144,7 +1150,8 @@ impl TerminalTab {
                 self.refresh_search();
             }
             Some(TerminalMenuAction::Clear) => {
-                self.session.clear_buffer();
+                // 发送 Ctrl+L：shell 会清屏并重绘当前提示符（不丢失输入行）。
+                let _ = self.session.write_input(&[0x0c]);
                 self.selection = None;
                 self.search_matches.clear();
                 self.search_current = None;

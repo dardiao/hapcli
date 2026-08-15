@@ -1287,6 +1287,17 @@ impl eframe::App for HapcliApp {
                         close = true;
                     }
                     query_changed = response.changed();
+                    // 搜索框内按 Enter：提交并导航（egui 单行输入框会在 Enter 时失焦，
+                    // 标记为已消费，避免该 Enter 被转发给 shell 执行命令行）。
+                    if response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter))
+                    {
+                        if ui.input(|input| input.modifiers.shift) {
+                            prev = true;
+                        } else {
+                            next = true;
+                        }
+                        tab.search_enter_consumed = true;
+                    }
                 });
             });
             if query_changed {
