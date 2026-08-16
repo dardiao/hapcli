@@ -337,6 +337,9 @@ pub fn terminal_ui(
     for (row_index, row) in snapshot.lines.iter().enumerate() {
         let y = origin.y + row_index as f32 * cell_size.y;
         let mut wide_spacer_bg: Option<Color32> = None;
+        // 宽字符（CJK 等）的文字延迟到尾随占位 cell 的背景画完后再绘制，
+        // 否则占位 cell 的背景会盖住宽字符的右半。
+        let mut wide_text: Option<(Pos2, String, Color32)> = None;
 
         for (col, cell) in row.cells.iter().enumerate() {
             let x = origin.x + col as f32 * cell_size.x;
@@ -345,6 +348,9 @@ pub fn terminal_ui(
             // 宽字符（CJK 等）的尾随占位 cell 继承宽字符背景色。
             if let Some(bg) = wide_spacer_bg.take() {
                 painter.rect_filled(cell_rect, 0.0, bg);
+                if let Some((pos, text, color)) = wide_text.take() {
+                    painter.text(pos, Align2::LEFT_TOP, text, font_id.clone(), color);
+                }
                 continue;
             }
 
@@ -418,7 +424,11 @@ pub fn terminal_ui(
                 } else {
                     fg
                 };
-                painter.text(cell_rect.min, Align2::LEFT_TOP, text, font_id.clone(), text_color);
+                if cell.wide {
+                    wide_text = Some((cell_rect.min, text, text_color));
+                } else {
+                    painter.text(cell_rect.min, Align2::LEFT_TOP, text, font_id.clone(), text_color);
+                }
             }
 
             // 下划线 / 删除线。
@@ -440,6 +450,10 @@ pub fn terminal_ui(
             if cell.wide {
                 wide_spacer_bg = Some(bg);
             }
+        }
+        // 快照异常（宽字符没有尾随占位 cell）时兜底绘制。
+        if let Some((pos, text, color)) = wide_text.take() {
+            painter.text(pos, Align2::LEFT_TOP, text, font_id.clone(), color);
         }
     }
 
@@ -823,6 +837,115 @@ mod tests {
             output.shapes.len() > 5,
             "expected multiple painted shapes, got {}",
             output.shapes.len()
+        );
+    }
+
+    #[test]
+    fn wide_char_text_is_drawn_after_trailing_cell_background() {
+        use hapcli_terminal::{TerminalAttrs, TerminalCell, TerminalColor, TerminalRow};
+
+        let ctx = egui::Context::default();
+        let mut fonts = egui::FontDefinitions::default();
+        if let Ok(bytes) = std::fs::read("/System/Library/Fonts/Supplemental/Arial Unicode.ttf") {
+            fonts.font_data.insert(
+                "hapcli-cjk".to_owned(),
+                egui::FontData::from_owned(bytes),
+            );
+            for family in [egui::FontFamily::Monospace, egui::FontFamily::Proportional] {
+                fonts
+                    .families
+                    .entry(family)
+                    .or_default()
+                    .push("hapcli-cjk".to_owned());
+            }
+        }
+        ctx.set_fonts(fonts);
+
+        let font_id = FontId::monospace(13.0);
+        let bg = TerminalColor::rgb(0xd0, 0x40, 0x40);
+        let fg = TerminalColor::rgb(0xf8, 0xf8, 0xf2);
+        let empty = TerminalCell {
+            ch: '\0',
+            zerowidth: String::new(),
+            wide: false,
+            fg,
+            bg,
+            attrs: TerminalAttrs::default(),
+            hyperlink: None,
+            cursor: false,
+        };
+        let wide = TerminalCell {
+            ch: '中',
+            wide: true,
+            ..empty.clone()
+        };
+        let snapshot = TerminalSnapshot {
+            generation: 1,
+            cols: 3,
+            rows: 1,
+            cursor_col: 0,
+            cursor_row: 0,
+            cursor_shape: TerminalCursorShape::Block,
+            display_offset: 0,
+            scrollback_lines: 0,
+            lines: vec![TerminalRow {
+                absolute_line: 0,
+                cells: std::sync::Arc::new(vec![wide, empty.clone(), empty]),
+                wrapped: false,
+                active_input: false,
+                signature: 0,
+            }],
+            images: Vec::new(),
+        };
+
+        let output = ctx.run(egui::RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let cell_size = ui.fonts(|f| {
+                    Vec2::new(
+                        f.glyph_width(&font_id, 'W').ceil().max(1.0),
+                        f.row_height(&font_id).ceil().max(1.0),
+                    )
+                });
+                let _ = terminal_ui(
+                    ui,
+                    &snapshot,
+                    &font_id,
+                    cell_size,
+                    false,
+                    &TerminalTheme::default(),
+                    None,
+                    None,
+                    &[],
+                    &mut ImageTextureCache::default(),
+                );
+            });
+        });
+
+        // 找出第一个 Text 形状（宽字符“中”）与它之后是否存在背景矩形，
+        // 断言文字形状排在该矩形之后（修复：不再被尾随 cell 背景盖住）。
+        let mut text_index = None;
+        let mut spacer_rect_index = None;
+        for (index, shape) in output.shapes.iter().enumerate() {
+            match &shape.shape {
+                egui::epaint::Shape::Text(text) => {
+                    if text_index.is_none() {
+                        text_index = Some(index);
+                    }
+                }
+                egui::epaint::Shape::Rect(rect) => {
+                    // 宽字符右侧的尾随占位 cell 背景（第一个 x>8 的矩形）。
+                    if rect.rect.min.x > 8.0 && spacer_rect_index.is_none() {
+                        spacer_rect_index = Some(index);
+                    }
+                }
+                _ => {}
+            }
+        }
+        let text_index = text_index.expect("wide char text shape should exist");
+        let spacer_rect_index = spacer_rect_index.expect("trailing cell background rect should exist");
+        assert!(
+            text_index > spacer_rect_index,
+            "wide char text (shape {text_index}) must be drawn after trailing cell background (shape {spacer_rect_index})"
         );
     }
 
