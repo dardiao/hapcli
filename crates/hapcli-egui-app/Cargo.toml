@@ -41,6 +41,8 @@ hapcli-quick-commands = { path = "../hapcli-quick-commands" }
 hapcli-forwarding = { path = "../hapcli-forwarding" }
 # 新版本检测（GitHub Releases API）
 reqwest = { workspace = true, features = ["blocking"] }
+# 字体解析校验（避免个别 .ttc 字体解析失败导致崩溃或中文缺失）
+ab_glyph = "0.2"
 
 [build-dependencies]
 winres = "0.1"

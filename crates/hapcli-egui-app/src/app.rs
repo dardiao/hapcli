@@ -1933,13 +1933,23 @@ fn install_fonts(ctx: &egui::Context, settings: &AppSettings) -> bool {
     const CANDIDATES: &[&str] = &[
         // macOS
         "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+        "/System/Library/Fonts/Supplemental/Songti.ttc",
+        "/System/Library/Fonts/STHeiti Light.ttc",
+        "/System/Library/Fonts/STHeiti Medium.ttc",
         "/System/Library/Fonts/Hiragino Sans GB.ttc",
         "/System/Library/Fonts/PingFang.ttc",
         // Windows
+        "C:\\Windows\\Fonts\\simhei.ttf",
+        "C:\\Windows\\Fonts\\Deng.ttf",
+        "C:\\Windows\\Fonts\\simkai.ttf",
         "C:\\Windows\\Fonts\\msyh.ttc",
+        "C:\\Windows\\Fonts\\simsun.ttc",
+        "C:\\Windows\\Fonts\\msyhl.ttc",
         // Linux
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+        "/usr/share/fonts/wenquanyi/wqy-microhei/wqy-microhei.ttc",
     ];
 
     let mut fonts = egui::FontDefinitions::default();
@@ -1958,12 +1968,16 @@ fn install_fonts(ctx: &egui::Context, settings: &AppSettings) -> bool {
     let mut cjk_name = None;
     for path in CANDIDATES {
         if let Ok(bytes) = std::fs::read(path) {
-            fonts.font_data.insert(
-                "hapcli-cjk".to_owned(),
-                egui::FontData::from_owned(bytes),
-            );
-            cjk_name = Some("hapcli-cjk".to_owned());
-            break;
+            // 先验证字体可解析（ab_glyph），避免个别 .ttc 集合解析失败
+            // 触发 epaint 的 panic，或悄悄让中文变成方块。
+            if ab_glyph::FontArc::try_from_vec(bytes.clone()).is_ok() {
+                fonts.font_data.insert(
+                    "hapcli-cjk".to_owned(),
+                    egui::FontData::from_owned(bytes),
+                );
+                cjk_name = Some("hapcli-cjk".to_owned());
+                break;
+            }
         }
     }
 
@@ -1976,14 +1990,16 @@ fn install_fonts(ctx: &egui::Context, settings: &AppSettings) -> bool {
     ];
     for path in SYSTEM_MONO_CANDIDATES {
         if let Ok(bytes) = std::fs::read(path) {
-            fonts.font_data.insert(
-                "hapcli-system-mono".to_owned(),
-                egui::FontData::from_owned(bytes),
-            );
-            if let Some(mono) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
-                mono.insert(0, "hapcli-system-mono".to_owned());
+            if ab_glyph::FontArc::try_from_vec(bytes.clone()).is_ok() {
+                fonts.font_data.insert(
+                    "hapcli-system-mono".to_owned(),
+                    egui::FontData::from_owned(bytes),
+                );
+                if let Some(mono) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
+                    mono.insert(0, "hapcli-system-mono".to_owned());
+                }
+                break;
             }
-            break;
         }
     }
 
