@@ -1418,6 +1418,9 @@ impl eframe::App for HapcliApp {
             copy_on_select: self.settings.copy_on_select,
             middle_click_paste: self.settings.middle_click_paste,
             sftp_sync_cwd: self.settings.sftp_sync_cwd,
+            modal_open: self.show_settings
+                || self.show_connect_dialog
+                || self.rename_tab_index.is_some(),
         };
         self.active_tab().process_input(ctx, cell_size, prefs);
 
@@ -1989,17 +1992,43 @@ fn install_fonts(ctx: &egui::Context, settings: &AppSettings) -> bool {
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
     ];
     for path in SYSTEM_MONO_CANDIDATES {
-        if let Ok(bytes) = std::fs::read(path) {
-            if ab_glyph::FontArc::try_from_vec(bytes.clone()).is_ok() {
-                fonts.font_data.insert(
-                    "hapcli-system-mono".to_owned(),
-                    egui::FontData::from_owned(bytes),
-                );
-                if let Some(mono) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
-                    mono.insert(0, "hapcli-system-mono".to_owned());
-                }
-                break;
+        if let Ok(bytes) = std::fs::read(path)
+            && ab_glyph::FontArc::try_from_vec(bytes.clone()).is_ok()
+        {
+            fonts.font_data.insert(
+                "hapcli-system-mono".to_owned(),
+                egui::FontData::from_owned(bytes),
+            );
+            if let Some(mono) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
+                mono.insert(0, "hapcli-system-mono".to_owned());
             }
+            break;
+        }
+    }
+
+    // 符号字体兜底（盲文等 npm 旋转动画字符）：放在中文字体之后，
+    // 保证 ⠋⠙⠹ 等 spinner 字符正常显示而不是方块。
+    const SYMBOL_CANDIDATES: &[&str] = &[
+        "/System/Library/Fonts/Apple Symbols.ttf",
+        "C:\\Windows\\Fonts\\seguisym.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ];
+    for path in SYMBOL_CANDIDATES {
+        if let Ok(bytes) = std::fs::read(path)
+            && ab_glyph::FontArc::try_from_vec(bytes.clone()).is_ok()
+        {
+            fonts.font_data.insert(
+                "hapcli-symbol".to_owned(),
+                egui::FontData::from_owned(bytes),
+            );
+            for family in [egui::FontFamily::Monospace, egui::FontFamily::Proportional] {
+                fonts
+                    .families
+                    .entry(family)
+                    .or_default()
+                    .push("hapcli-symbol".to_owned());
+            }
+            break;
         }
     }
 

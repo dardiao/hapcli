@@ -161,6 +161,137 @@ mod tests {
     use super::*;
 
     #[test]
+    fn ctrl_c_interrupts_foreground_process() {
+        use std::time::{Duration, Instant};
+
+        let mut session = TerminalSession::local_default(100, 30).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            session.read_pending();
+            let snapshot = session.snapshot();
+            let has_prompt = snapshot.lines.iter().any(|row| {
+                row.cells
+                    .iter()
+                    .any(|cell| matches!(cell.ch, '%' | '$' | '#'))
+            });
+            if has_prompt {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "shell 未在 10 秒内就绪"
+            );
+            std::thread::sleep(Duration::from_millis(50));
+        }
+
+        session.write_text("sleep 60\r").unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let mut saw_foreground = false;
+        loop {
+            session.read_pending();
+            session.refresh_process_info();
+            let info = session.process_info();
+            if let Some(fg) = info.foreground_pid
+                && info.shell_pid != Some(fg)
+            {
+                saw_foreground = true;
+                break;
+            }
+            if Instant::now() >= deadline {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert!(saw_foreground, "sleep 未成为前台进程");
+
+        session.write_input(&[0x03]).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            session.read_pending();
+            session.refresh_process_info();
+            let info = session.process_info();
+            if info.foreground_pid.is_none() || info.foreground_pid == info.shell_pid {
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "Ctrl+C 未能中断前台进程，前台仍为 {:?}",
+                info.foreground_pid
+            );
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+
+    #[test]
+    fn ctrl_c_interrupts_spinner_process() {
+        use std::time::{Duration, Instant};
+
+        let mut session = TerminalSession::local_default(100, 30).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            session.read_pending();
+            let snapshot = session.snapshot();
+            let has_prompt = snapshot.lines.iter().any(|row| {
+                row.cells
+                    .iter()
+                    .any(|cell| matches!(cell.ch, '%' | '$' | '#'))
+            });
+            if has_prompt {
+                break;
+            }
+            assert!(Instant::now() < deadline, "shell 未就绪");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+
+        let spinner = "while true; do printf '⠋ ⠙ ⠹ ⠸\\r'; sleep 0.05; done";
+        session.write_text(&format!("{spinner}\r")).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let mut saw_foreground = false;
+        loop {
+            session.read_pending();
+            session.refresh_process_info();
+            let info = session.process_info();
+            if let Some(fg) = info.foreground_pid
+                && info.shell_pid != Some(fg)
+            {
+                saw_foreground = true;
+                break;
+            }
+            if Instant::now() >= deadline {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        if !saw_foreground {
+            session.read_pending();
+            let snapshot = session.snapshot();
+            let text: String = snapshot
+                .lines
+                .iter()
+                .flat_map(|row| row.cells.iter().map(|cell| cell.ch))
+                .collect();
+            panic!("spinner 未成为前台进程，终端内容: {text:?}");
+        }
+
+        session.write_input(&[0x03]).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            session.read_pending();
+            session.refresh_process_info();
+            let info = session.process_info();
+            if info.foreground_pid.is_none() || info.foreground_pid == info.shell_pid {
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "Ctrl+C 未能中断 spinner，前台仍为 {:?}",
+                info.foreground_pid
+            );
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+
+    #[test]
     fn interactive_terminal_config_emits_osc52_clipboard_queries() {
         let size = TerminalSize {
             cols: 12,

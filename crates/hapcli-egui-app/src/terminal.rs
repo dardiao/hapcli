@@ -27,6 +27,8 @@ pub struct TerminalPrefs {
     pub middle_click_paste: bool,
     /// 终端输入 `cd` 后自动让 SFTP 面板跟随目录。
     pub sftp_sync_cwd: bool,
+    /// 是否有模态弹窗（设置 / 新建连接 / 重命名）打开，此时不应把控制键转发给终端。
+    pub modal_open: bool,
 }
 
 /// 终端右键菜单动作（菜单关闭后统一处理，避免在菜单闭包内借用会话）。
@@ -723,7 +725,18 @@ impl TerminalTab {
                         }
                         // 焦点在其他控件（弹窗输入框等）时不转发键盘。
                         if !terminal_owns_keys {
-                            continue;
+                            // 例外：普通控件（如标签栏/工具栏按钮）持有焦点时，
+                            // 控制键（Ctrl+字母）仍转发给终端，保证 npm 等前台
+                            // 进程可被 Ctrl+C 中断；模态弹窗/搜索框打开时不转发。
+                            let forward_control = !self.search_open
+                                && !prefs.modal_open
+                                && *pressed
+                                && modifiers.ctrl
+                                && key.name().len() == 1
+                                && key.name().as_bytes()[0].is_ascii_alphabetic();
+                            if !forward_control {
+                                continue;
+                            }
                         }
                         if *pressed && modifiers.command && *key == egui::Key::F {
                             self.search_open = true;
