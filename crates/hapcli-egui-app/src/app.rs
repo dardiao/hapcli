@@ -799,16 +799,16 @@ impl HapcliApp {
                 );
                 ui.checkbox(
                     &mut self.settings.ssh_shell_colors,
-                    "SSH 远程终端彩色输出（连接后自动写入远程启动文件，重连后生效）",
+                    "SSH 远程终端彩色输出（连接时自动设置 CLICOLOR / LS_COLORS 环境变量，多数服务器无需重连即生效）",
                 );
                 ui.checkbox(
                     &mut self.settings.sftp_sync_cwd,
-                    "SSH 终端 cd 自动同步到 SFTP 面板（输入 cd 后立即跟随；重连后由 shell 集成精确同步）",
+                    "SSH 终端 cd 自动同步到 SFTP 面板（输入 cd 后立即跟随；自动安装并注入 shell 集成，精确同步无需重连）",
                 );
                 ui.horizontal(|ui| {
                     ui.checkbox(
                         &mut self.settings.check_updates,
-                        "启动时及每 6 小时自动检查新版本",
+                        "启动时及每 6 小时自动检查新版本（发现新版可在应用内直接升级）",
                     );
                     if ui.small_button("立即检查").clicked() {
                         self.update_state
