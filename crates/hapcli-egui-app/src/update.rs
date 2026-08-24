@@ -585,24 +585,33 @@ fn write_and_launch_helper(
                     sh_quote(&payload_bundle.to_string_lossy()),
                     sh_quote(&staging.to_string_lossy()),
                 );
+                let log_q = sh_quote("/tmp/hapcli-update.log");
                 format!(
                     "#!/bin/sh\n\
-                     PID={pid}\n\
-                     i=0\n\
-                     while kill -0 \"$PID\" 2>/dev/null; do\n\
-                     \x20 i=$((i+1))\n\
-                     \x20 [ \"$i\" -ge 120 ] && break\n\
-                     \x20 sleep 0.3\n\
-                     done\n\
-                     sleep 1\n\
-                     rm -rf {new_bundle_q}\n\
-                     ditto {payload_bundle_q} {new_bundle_q}\n\
-                     test -x {new_bundle_q}/Contents/MacOS/hapcli || {{ rm -rf {new_bundle_q}; exit 1; }}\n\
-                     rm -rf {bundle_q}\n\
-                     mv {new_bundle_q} {bundle_q}\n\
-                     xattr -dr com.apple.quarantine {bundle_q} 2>/dev/null || true\n\
-                     open {bundle_q}\n\
-                     rm -rf {staging_q}\n",
+                     LOG={log_q}\n\
+                     {{\n\
+                     \x20 echo \"== hapcli update $(date) ==\"\n\
+                     \x20 PID={pid}\n\
+                     \x20 i=0\n\
+                     \x20 while kill -0 \"$PID\" 2>/dev/null; do\n\
+                     \x20\x20 i=$((i+1))\n\
+                     \x20\x20 [ \"$i\" -ge 120 ] && break\n\
+                     \x20\x20 sleep 0.3\n\
+                     \x20 done\n\
+                     \x20 sleep 1\n\
+                     \x20 rm -rf {new_bundle_q}\n\
+                     \x20 ditto {payload_bundle_q} {new_bundle_q} || {{ echo \"ditto failed\"; exit 1; }}\n\
+                     \x20 test -x {new_bundle_q}/Contents/MacOS/hapcli || {{ echo \"verify failed\"; rm -rf {new_bundle_q}; exit 1; }}\n\
+                     \x20 rm -rf {bundle_q}\n\
+                     \x20 mv {new_bundle_q} {bundle_q} || {{ echo \"mv failed\"; exit 1; }}\n\
+                     \x20 xattr -dr com.apple.quarantine {bundle_q} 2>/dev/null || true\n\
+                     \x20 if ! open -n {bundle_q} 2>/dev/null; then\n\
+                     \x20\x20 sleep 1\n\
+                     \x20\x20 open -n {bundle_q} 2>/dev/null || true\n\
+                     \x20 fi\n\
+                     \x20 rm -rf {staging_q}\n\
+                     \x20 echo \"done\"\n\
+                     }} >> \"$LOG\" 2>&1\n",
                 )
             }
             InstallTarget::Executable(exe) => {
