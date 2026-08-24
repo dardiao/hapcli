@@ -94,6 +94,8 @@ pub struct TerminalTab {
     input_line_unreliable: bool,
     /// 按回车时提交的 (输入行, 是否不可靠)。
     pending_input_line: Option<(String, bool)>,
+    /// 拖选自动滚动的累积量（跨帧，保证越过边界时平滑持续滚动）。
+    drag_scroll_accum: f32,
     /// SSH 远程 shell 集成自动安装：是否已尝试、结果接收器、显示用状态。
     pub shell_integration_attempted: bool,
     pub shell_integration_rx: Option<Receiver<String>>,
@@ -162,6 +164,7 @@ impl TerminalTab {
             input_line: String::new(),
             input_line_unreliable: false,
             pending_input_line: None,
+            drag_scroll_accum: 0.0,
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
@@ -229,6 +232,7 @@ impl TerminalTab {
             input_line: String::new(),
             input_line_unreliable: false,
             pending_input_line: None,
+            drag_scroll_accum: 0.0,
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
@@ -302,6 +306,7 @@ impl TerminalTab {
             input_line: String::new(),
             input_line_unreliable: false,
             pending_input_line: None,
+            drag_scroll_accum: 0.0,
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
@@ -375,6 +380,7 @@ impl TerminalTab {
             input_line: String::new(),
             input_line_unreliable: false,
             pending_input_line: None,
+            drag_scroll_accum: 0.0,
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
@@ -439,6 +445,7 @@ impl TerminalTab {
         self.input_line.clear();
         self.input_line_unreliable = false;
         self.pending_input_line = None;
+        self.drag_scroll_accum = 0.0;
         self.search_enter_consumed = false;
     }
 
@@ -641,6 +648,8 @@ impl TerminalTab {
     ) {
         let mut writes: Vec<Vec<u8>> = Vec::new();
         let mut scroll_lines: i32 = 0;
+        // 拖选自动滚动的累积量（与滚轮分开，滚动时不清除选区）。
+        let mut drag_scroll: i32 = 0;
         let mut focus_changed = false;
         let mut copy_requested = false;
         // 键盘归属：无焦点（兜底给终端）或焦点就是终端自身时，才把输入转发给终端。
@@ -884,6 +893,58 @@ impl TerminalTab {
         // 拖选更新（每帧跟随指针）。
         if self.selection_active && primary_down {
             if let Some(pos) = latest_pos {
+                // 指针越过终端边界时自动滚动视口：越过下边界向下翻页，
+                // 越过上边界向上翻页，选区同步平移/扩展以便连续复制。
+                if let Some(rect) = self.last_rect {
+                    let rows = self.snapshot.rows;
+                    let cols = self.snapshot.cols.max(1);
+                    let edge_col = |x: f32| {
+                        (((x - rect.left()) / cell_size.x).floor() as i32)
+                            .clamp(0, cols.saturating_sub(1) as i32)
+                            as usize
+                    };
+                    if pos.y > rect.bottom() {
+                        let depth = ((pos.y - rect.bottom()) / cell_size.y).clamp(0.0, 8.0);
+                        self.drag_scroll_accum += depth * 0.25;
+                        let whole = self.drag_scroll_accum.trunc() as i32;
+                        self.drag_scroll_accum -= whole as f32;
+                        if whole > 0 {
+                            let delta = -whole;
+                            if let Some(mut selection) = self.selection {
+                                // anchor 跟随视口平移（保持同一行内容），
+                                // active 钉在底部行，让新滚入的内容继续进入选区。
+                                selection.anchor.0 =
+                                    selection.anchor.0.saturating_add_signed(delta as isize);
+                                selection.active = (rows.saturating_sub(1), edge_col(pos.x));
+                                self.selection = Some(selection);
+                                self.selection_dragged = true;
+                            }
+                            drag_scroll += delta;
+                        }
+                    } else if pos.y < rect.top() {
+                        let depth = ((rect.top() - pos.y) / cell_size.y).clamp(0.0, 8.0);
+                        self.drag_scroll_accum += depth * 0.25;
+                        let whole = self.drag_scroll_accum.trunc() as i32;
+                        self.drag_scroll_accum -= whole as f32;
+                        if whole > 0 {
+                            let delta = whole;
+                            if let Some(mut selection) = self.selection {
+                                // anchor 钉在顶部行，active 跟随视口平移。
+                                selection.active.0 = selection
+                                    .active
+                                    .0
+                                    .saturating_add_signed(delta as isize)
+                                    .min(rows.saturating_sub(1));
+                                selection.anchor = (0, edge_col(pos.x));
+                                self.selection = Some(selection);
+                                self.selection_dragged = true;
+                            }
+                            drag_scroll += delta;
+                        }
+                    } else {
+                        self.drag_scroll_accum = 0.0;
+                    }
+                }
                 if self.pointer_over_terminal(ctx, pos) {
                     if let Some((row, col)) = self.cell_at_pos(pos, cell_size) {
                         if let Some(mut selection) = self.selection {
@@ -895,7 +956,11 @@ impl TerminalTab {
                         }
                     }
                 }
+            } else {
+                self.drag_scroll_accum = 0.0;
             }
+        } else {
+            self.drag_scroll_accum = 0.0;
         }
 
         if copy_requested {
@@ -903,6 +968,9 @@ impl TerminalTab {
         }
         if focus_changed {
             let _ = self.session.set_focused(self.focused);
+        }
+        if drag_scroll != 0 {
+            self.session.scroll_lines(drag_scroll);
         }
         if scroll_lines != 0 {
             self.selection = None;

@@ -571,50 +571,63 @@ fn write_and_launch_helper(
     {
         let script_path = staging.join("hapcli-update.sh");
         let script = match target {
-            InstallTarget::AppBundle(bundle) => format!(
-                "#!/bin/sh\n\
-                 PID={pid}\n\
-                 i=0\n\
-                 while kill -0 \"$PID\" 2>/dev/null; do\n\
-                 \x20 i=$((i+1))\n\
-                 \x20 [ \"$i\" -ge 120 ] && break\n\
-                 \x20 sleep 0.3\n\
-                 done\n\
-                 sleep 1\n\
-                 rm -rf {}\n\
-                 ditto {} {}\n\
-                 xattr -dr com.apple.quarantine {} 2>/dev/null || true\n\
-                 open {}\n\
-                 rm -rf {}\n",
-                sh_quote(&bundle.to_string_lossy()),
-                sh_quote(&payload.to_string_lossy()),
-                sh_quote(&bundle.to_string_lossy()),
-                sh_quote(&bundle.to_string_lossy()),
-                sh_quote(&bundle.to_string_lossy()),
-                sh_quote(&staging.to_string_lossy()),
-            ),
-            InstallTarget::Executable(exe) => format!(
-                "#!/bin/sh\n\
-                 PID={pid}\n\
-                 i=0\n\
-                 while kill -0 \"$PID\" 2>/dev/null; do\n\
-                 \x20 i=$((i+1))\n\
-                 \x20 [ \"$i\" -ge 120 ] && break\n\
-                 \x20 sleep 0.3\n\
-                 done\n\
-                 sleep 1\n\
-                 rm -f {}\n\
-                 cp {} {}\n\
-                 chmod +x {}\n\
-                 {}\n\
-                 rm -rf {}\n",
-                sh_quote(&exe.to_string_lossy()),
-                sh_quote(&payload.to_string_lossy()),
-                sh_quote(&exe.to_string_lossy()),
-                sh_quote(&exe.to_string_lossy()),
-                sh_quote(&exe.to_string_lossy()),
-                sh_quote(&staging.to_string_lossy()),
-            ),
+            InstallTarget::AppBundle(bundle) => {
+                // 整包替换必须用新的 .app 目录（payload 是可执行文件路径）。
+                let payload_bundle = macos_bundle_root(payload)
+                    .unwrap_or_else(|| payload.to_path_buf());
+                let new_bundle = PathBuf::from(format!("{}.new", bundle.display()));
+                let (bundle_q, new_bundle_q, payload_bundle_q, staging_q) = (
+                    sh_quote(&bundle.to_string_lossy()),
+                    sh_quote(&new_bundle.to_string_lossy()),
+                    sh_quote(&payload_bundle.to_string_lossy()),
+                    sh_quote(&staging.to_string_lossy()),
+                );
+                format!(
+                    "#!/bin/sh\n\
+                     PID={pid}\n\
+                     i=0\n\
+                     while kill -0 \"$PID\" 2>/dev/null; do\n\
+                     \x20 i=$((i+1))\n\
+                     \x20 [ \"$i\" -ge 120 ] && break\n\
+                     \x20 sleep 0.3\n\
+                     done\n\
+                     sleep 1\n\
+                     rm -rf {new_bundle_q}\n\
+                     ditto {payload_bundle_q} {new_bundle_q}\n\
+                     test -x {new_bundle_q}/Contents/MacOS/hapcli || {{ rm -rf {new_bundle_q}; exit 1; }}\n\
+                     rm -rf {bundle_q}\n\
+                     mv {new_bundle_q} {bundle_q}\n\
+                     xattr -dr com.apple.quarantine {bundle_q} 2>/dev/null || true\n\
+                     open {bundle_q}\n\
+                     rm -rf {staging_q}\n",
+                )
+            }
+            InstallTarget::Executable(exe) => {
+                let new_exe = PathBuf::from(format!("{}.new", exe.display()));
+                let (exe_q, new_exe_q, payload_q, staging_q) = (
+                    sh_quote(&exe.to_string_lossy()),
+                    sh_quote(&new_exe.to_string_lossy()),
+                    sh_quote(&payload.to_string_lossy()),
+                    sh_quote(&staging.to_string_lossy()),
+                );
+                format!(
+                    "#!/bin/sh\n\
+                     PID={pid}\n\
+                     i=0\n\
+                     while kill -0 \"$PID\" 2>/dev/null; do\n\
+                     \x20 i=$((i+1))\n\
+                     \x20 [ \"$i\" -ge 120 ] && break\n\
+                     \x20 sleep 0.3\n\
+                     done\n\
+                     sleep 1\n\
+                     rm -f {new_exe_q}\n\
+                     cp {payload_q} {new_exe_q}\n\
+                     chmod +x {new_exe_q}\n\
+                     mv {new_exe_q} {exe_q}\n\
+                     {exe_q}\n\
+                     rm -rf {staging_q}\n",
+                )
+            }
         };
         std::fs::write(&script_path, script).map_err(|error| format!("写入更新脚本失败: {error}"))?;
         let output = Command::new("nohup")
@@ -812,5 +825,14 @@ mod tests {
     fn shell_quote_escapes_single_quotes() {
         assert_eq!(sh_quote("/a b/c"), "'/a b/c'");
         assert_eq!(sh_quote("/it's"), "'/it'\\''s'");
+    }
+
+    #[test]
+    fn app_bundle_payload_resolves_to_bundle_dir() {
+        let payload = Path::new("/tmp/hapcli-update-123/hapcli.app/Contents/MacOS/hapcli");
+        assert_eq!(
+            macos_bundle_root(payload),
+            Some(PathBuf::from("/tmp/hapcli-update-123/hapcli.app"))
+        );
     }
 }
