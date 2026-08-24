@@ -100,6 +100,8 @@ pub struct TerminalTab {
     pub shell_integration_attempted: bool,
     pub shell_integration_rx: Option<Receiver<String>>,
     pub shell_integration_status: Option<String>,
+    /// 安装成功后等待把 hook 注入当前 shell（免重连生效）。
+    pub shell_integration_inject_pending: bool,
     /// 用户自定义标签名；None 表示自动显示（会话标题 / 连接名）。
     pub custom_label: Option<String>,
     /// Telnet / 串口配置（用于“复制标签”）。
@@ -168,6 +170,7 @@ impl TerminalTab {
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
+            shell_integration_inject_pending: false,
             custom_label: None,
             telnet_config: None,
             serial_config: None,
@@ -236,6 +239,7 @@ impl TerminalTab {
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
+            shell_integration_inject_pending: false,
             custom_label: None,
             telnet_config: None,
             serial_config: None,
@@ -310,6 +314,7 @@ impl TerminalTab {
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
+            shell_integration_inject_pending: false,
             custom_label: None,
             telnet_config: Some(stored_config),
             serial_config: None,
@@ -384,6 +389,7 @@ impl TerminalTab {
             shell_integration_attempted: false,
             shell_integration_rx: None,
             shell_integration_status: None,
+            shell_integration_inject_pending: false,
             custom_label: None,
             telnet_config: None,
             serial_config: Some(stored_config),
@@ -441,6 +447,7 @@ impl TerminalTab {
         self.shell_integration_attempted = false;
         self.shell_integration_rx = None;
         self.shell_integration_status = None;
+        self.shell_integration_inject_pending = false;
         self.sftp_prev_cwd = None;
         self.input_line.clear();
         self.input_line_unreliable = false;
@@ -524,7 +531,7 @@ impl TerminalTab {
             });
             let _ = tx.send(match result {
                 Ok(message) => message,
-                Err(error) => format!("远程彩色启用失败: {error}"),
+                Err(error) => format!("远程彩色：自动配置未生效（{error}），可在设置中关闭自动注入"),
             });
         });
     }
@@ -581,7 +588,7 @@ impl TerminalTab {
             });
             let _ = tx.send(match result {
                 Ok(message) => message,
-                Err(error) => format!("目录同步集成安装失败: {error}"),
+                Err(error) => format!("目录同步：自动配置未生效（{error}）"),
             });
         });
     }
@@ -602,6 +609,11 @@ impl TerminalTab {
     /// 会话的基础标签（连接名 / “本地”）。
     pub fn base_label(&self) -> &str {
         &self.base_label
+    }
+
+    /// 当前输入行是否为空（用于判断 shell 是否空闲可注入）。
+    pub fn input_line_empty(&self) -> bool {
+        self.input_line.is_empty()
     }
 
     fn display_label_inner(&self) -> String {
@@ -1268,6 +1280,24 @@ fn delete_last_word(line: &mut String) {
     line.truncate(after_space);
 }
 
+/// 粗略判断终端当前末行是否处于 shell 提示符（用于 SSH 免重连注入的安全判断）。
+/// SSH 会话拿不到前台进程信息，只能用“输入行为空 + 末行是提示符”近似空闲状态。
+pub(crate) fn looks_like_shell_prompt(snapshot: &TerminalSnapshot) -> bool {
+    let Some(last_row) = snapshot.lines.last() else {
+        return false;
+    };
+    let text: String = last_row.cells.iter().map(|cell| cell.ch).collect();
+    let trimmed = text.trim_end();
+    if trimmed.is_empty() {
+        return false;
+    }
+    trimmed.ends_with('$')
+        || trimmed.ends_with('#')
+        || trimmed.ends_with('%')
+        || trimmed.ends_with('>')
+        || trimmed.ends_with('❯')
+}
+
 /// 判断远程路径是否为绝对路径（Unix `/` 或 Windows 盘符 `C:/`）。
 fn looks_absolute_remote(path: &str) -> bool {
     if path.starts_with('/') {
@@ -1401,5 +1431,49 @@ mod tests {
         let mut line = "cd".to_string();
         delete_last_word(&mut line);
         assert_eq!(line, "");
+    }
+
+    #[test]
+    fn shell_prompt_heuristic_matches_common_prompts() {
+        use hapcli_terminal::{
+            TerminalAttrs, TerminalCell, TerminalColor, TerminalCursorShape, TerminalRow,
+            TerminalSnapshot,
+        };
+        let snapshot = |last_line: &str| {
+            let cell = |ch: char| TerminalCell {
+                ch,
+                zerowidth: String::new(),
+                wide: false,
+                fg: TerminalColor::rgb(0xf8, 0xf8, 0xf2),
+                bg: TerminalColor::rgb(0x28, 0x2a, 0x36),
+                attrs: TerminalAttrs::default(),
+                hyperlink: None,
+                cursor: false,
+            };
+            TerminalSnapshot {
+                generation: 1,
+                cols: last_line.len().max(1),
+                rows: 1,
+                cursor_col: 0,
+                cursor_row: 0,
+                cursor_shape: TerminalCursorShape::Block,
+                display_offset: 0,
+                scrollback_lines: 0,
+                lines: vec![TerminalRow {
+                    absolute_line: 0,
+                    cells: std::sync::Arc::new(last_line.chars().map(cell).collect()),
+                    wrapped: false,
+                    active_input: false,
+                    signature: 0,
+                }],
+                images: Vec::new(),
+            }
+        };
+        assert!(looks_like_shell_prompt(&snapshot("user@host:~$ ")));
+        assert!(looks_like_shell_prompt(&snapshot("root@box:/#")));
+        assert!(looks_like_shell_prompt(&snapshot("gnotihz@GNOTIHZs-Mac-mini %")));
+        assert!(looks_like_shell_prompt(&snapshot("❯ ")));
+        assert!(!looks_like_shell_prompt(&snapshot("total 123")));
+        assert!(!looks_like_shell_prompt(&snapshot("")));
     }
 }

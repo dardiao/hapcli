@@ -573,8 +573,11 @@ fn write_and_launch_helper(
         let script = match target {
             InstallTarget::AppBundle(bundle) => {
                 // 整包替换必须用新的 .app 目录（payload 是可执行文件路径）。
-                let payload_bundle = macos_bundle_root(payload)
-                    .unwrap_or_else(|| payload.to_path_buf());
+                // 找不到 .app 目录说明安装包结构异常：取消更新，绝不把可执行
+                // 文件当作整包源（曾因此把 .app 替换成普通文件导致应用损坏）。
+                let Some(payload_bundle) = macos_bundle_root(payload) else {
+                    return Err("安装包结构异常（未找到 .app 目录），已取消更新".to_string());
+                };
                 let new_bundle = PathBuf::from(format!("{}.new", bundle.display()));
                 let (bundle_q, new_bundle_q, payload_bundle_q, staging_q) = (
                     sh_quote(&bundle.to_string_lossy()),

@@ -241,9 +241,8 @@ pub async fn install_remote_color_environment(
     remote_env: Option<&RemoteEnvInfo>,
 ) -> Result<RemoteColorEnvStatus, String> {
     let layout = integration_layout(sftp, remote_env)?;
-    if let Some(parent) = remote_parent(&layout.startup_file) {
-        ensure_remote_directory(sftp, &parent).await?;
-    }
+    // 启动文件位于主目录下，父目录必然存在，无需（也不应）尝试创建；
+    // 部分服务器对已存在目录的 mkdir 会直接断开会话。
     let current = read_optional_text(sftp, &layout.startup_file)
         .await?
         .unwrap_or_default();
