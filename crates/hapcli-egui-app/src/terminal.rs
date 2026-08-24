@@ -1,8 +1,8 @@
 //! 单个终端会话标签页：持有内核会话、快照与交互状态。
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::{Receiver, Sender};
-use std::time::{Duration, Instant};
+use std::sync::mpsc::Receiver;
+use std::time::Instant;
 
 use eframe::egui::{self, FontId, PointerButton, Pos2, Rect, Response, Vec2};
 use hapcli_sftp::join_remote_path;
@@ -60,9 +60,7 @@ pub struct TerminalTab {
     /// SSH 连接成功后写入钥匙串的 (key, 密码)。
     pub pending_keychain_save: Option<(String, Zeroizing<String>)>,
     pub keychain_status: Option<String>,
-    /// SSH 远程颜色环境注入：是否已尝试、结果接收器、显示用状态。
-    pub color_env_attempted: bool,
-    pub color_env_rx: Option<Receiver<String>>,
+    /// SSH 远程颜色：当前会话是否已注入彩色命令、显示用状态。
     pub color_env_status: Option<String>,
     /// 是否已向当前 shell 注入彩色命令（免 SFTP、免重连，立即生效）。
     pub color_live_enabled: bool,
@@ -98,12 +96,6 @@ pub struct TerminalTab {
     pending_input_line: Option<(String, bool)>,
     /// 拖选自动滚动的累积量（跨帧，保证越过边界时平滑持续滚动）。
     drag_scroll_accum: f32,
-    /// SSH 远程 shell 集成自动安装：是否已尝试、结果接收器、显示用状态。
-    pub shell_integration_attempted: bool,
-    pub shell_integration_rx: Option<Receiver<String>>,
-    pub shell_integration_status: Option<String>,
-    /// 安装成功后等待把 hook 注入当前 shell（免重连生效）。
-    pub shell_integration_inject_pending: bool,
     /// 用户自定义标签名；None 表示自动显示（会话标题 / 连接名）。
     pub custom_label: Option<String>,
     /// Telnet / 串口配置（用于“复制标签”）。
@@ -141,8 +133,6 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
-            color_env_attempted: false,
-            color_env_rx: None,
             color_env_status: None,
             color_live_enabled: false,
             selection: None,
@@ -170,10 +160,6 @@ impl TerminalTab {
             input_line_unreliable: false,
             pending_input_line: None,
             drag_scroll_accum: 0.0,
-            shell_integration_attempted: false,
-            shell_integration_rx: None,
-            shell_integration_status: None,
-            shell_integration_inject_pending: false,
             custom_label: None,
             telnet_config: None,
             serial_config: None,
@@ -211,8 +197,6 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
-            color_env_attempted: false,
-            color_env_rx: None,
             color_env_status: None,
             color_live_enabled: false,
             selection: None,
@@ -240,10 +224,6 @@ impl TerminalTab {
             input_line_unreliable: false,
             pending_input_line: None,
             drag_scroll_accum: 0.0,
-            shell_integration_attempted: false,
-            shell_integration_rx: None,
-            shell_integration_status: None,
-            shell_integration_inject_pending: false,
             custom_label: None,
             telnet_config: None,
             serial_config: None,
@@ -287,8 +267,6 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
-            color_env_attempted: false,
-            color_env_rx: None,
             color_env_status: None,
             color_live_enabled: false,
             selection: None,
@@ -316,10 +294,6 @@ impl TerminalTab {
             input_line_unreliable: false,
             pending_input_line: None,
             drag_scroll_accum: 0.0,
-            shell_integration_attempted: false,
-            shell_integration_rx: None,
-            shell_integration_status: None,
-            shell_integration_inject_pending: false,
             custom_label: None,
             telnet_config: Some(stored_config),
             serial_config: None,
@@ -363,8 +337,6 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
-            color_env_attempted: false,
-            color_env_rx: None,
             color_env_status: None,
             color_live_enabled: false,
             selection: None,
@@ -392,10 +364,6 @@ impl TerminalTab {
             input_line_unreliable: false,
             pending_input_line: None,
             drag_scroll_accum: 0.0,
-            shell_integration_attempted: false,
-            shell_integration_rx: None,
-            shell_integration_status: None,
-            shell_integration_inject_pending: false,
             custom_label: None,
             telnet_config: None,
             serial_config: Some(stored_config),
@@ -446,15 +414,8 @@ impl TerminalTab {
         self.selection_active = false;
         self.reconnect_dismissed = false;
         // 新连接需要重新执行远程颜色环境注入。
-        self.color_env_attempted = false;
-        self.color_env_rx = None;
         self.color_env_status = None;
         self.color_live_enabled = false;
-        // 新连接需要重新安装目录同步集成，并清空输入行跟踪。
-        self.shell_integration_attempted = false;
-        self.shell_integration_rx = None;
-        self.shell_integration_status = None;
-        self.shell_integration_inject_pending = false;
         self.sftp_prev_cwd = None;
         self.input_line.clear();
         self.input_line_unreliable = false;
@@ -473,130 +434,6 @@ impl TerminalTab {
             if !alive {
                 break;
             }
-        });
-    }
-
-    /// 后台线程：等待远程环境探测完成后，通过 SFTP 把 hapcli 的颜色环境块
-    /// 写入远程启动文件（幂等）。结果通过 `tx` 回传，由 app 轮询显示。
-    pub fn spawn_color_env_worker(handle: hapcli_ssh::SshConnectionHandle, tx: Sender<String>) {
-        std::thread::spawn(move || {
-            let runtime = match tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            {
-                Ok(runtime) => runtime,
-                Err(error) => {
-                    let _ = tx.send(format!("颜色环境注入失败（运行时）: {error}"));
-                    return;
-                }
-            };
-            let deadline = Instant::now() + Duration::from_secs(12);
-            let remote_env = loop {
-                if let Some(env) = handle.remote_env() {
-                    break Some(env);
-                }
-                if Instant::now() >= deadline {
-                    break None;
-                }
-                std::thread::sleep(Duration::from_millis(400));
-            };
-            let Some(remote_env) = remote_env else {
-                let _ = tx.send("远程环境探测超时，未自动启用彩色".to_string());
-                return;
-            };
-            let session = match runtime.block_on(handle.acquire_sftp()) {
-                Ok(session) => session,
-                Err(error) => {
-                    let _ = tx.send(format!("SFTP 不可用，未自动启用彩色: {error}"));
-                    return;
-                }
-            };
-            let result = runtime.block_on(async {
-                let sftp = session.lock().await;
-                match hapcli_terminal::inspect_remote_color_environment(
-                    &sftp,
-                    Some(&remote_env),
-                )
-                .await
-                {
-                    Ok(status)
-                        if status.state == hapcli_terminal::RemoteColorEnvState::Installed =>
-                    {
-                        Ok("远程彩色已启用".to_string())
-                    }
-                    _ => {
-                        hapcli_terminal::install_remote_color_environment(
-                            &sftp,
-                            Some(&remote_env),
-                        )
-                        .await
-                        .map(|status| {
-                            format!("已写入 {}，重连后生效", status.startup_file)
-                        })
-                    }
-                }
-            });
-            let _ = tx.send(match result {
-                Ok(message) => message,
-                Err(error) => format!("远程彩色：自动配置未生效（{error}），可在设置中关闭自动注入"),
-            });
-        });
-    }
-
-    /// 后台线程：通过 SFTP 安装远程 shell 集成（OSC 7 目录上报）。
-    /// 安装后重连 SSH，终端每次提示符都会上报真实目录，SFTP 面板可精确跟随。
-    pub fn spawn_shell_integration_worker(handle: hapcli_ssh::SshConnectionHandle, tx: Sender<String>) {
-        std::thread::spawn(move || {
-            let runtime = match tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            {
-                Ok(runtime) => runtime,
-                Err(error) => {
-                    let _ = tx.send(format!("目录同步集成安装失败（运行时）: {error}"));
-                    return;
-                }
-            };
-            let deadline = Instant::now() + Duration::from_secs(12);
-            let remote_env = loop {
-                if let Some(env) = handle.remote_env() {
-                    break Some(env);
-                }
-                if Instant::now() >= deadline {
-                    break None;
-                }
-                std::thread::sleep(Duration::from_millis(400));
-            };
-            let Some(remote_env) = remote_env else {
-                let _ = tx.send("远程环境探测超时，未安装目录同步集成".to_string());
-                return;
-            };
-            let session = match runtime.block_on(handle.acquire_sftp()) {
-                Ok(session) => session,
-                Err(error) => {
-                    let _ = tx.send(format!("SFTP 不可用，未安装目录同步集成: {error}"));
-                    return;
-                }
-            };
-            let result = runtime.block_on(async {
-                let sftp = session.lock().await;
-                match hapcli_terminal::inspect_remote_shell_integration(&sftp, Some(&remote_env)).await
-                {
-                    Ok(status)
-                        if status.state
-                            == hapcli_terminal::RemoteShellIntegrationState::Installed =>
-                    {
-                        Ok("目录同步集成已就绪".to_string())
-                    }
-                    _ => hapcli_terminal::install_remote_shell_integration(&sftp, Some(&remote_env))
-                        .await
-                        .map(|_| "目录同步集成已写入，重连后精确生效".to_string()),
-                }
-            });
-            let _ = tx.send(match result {
-                Ok(message) => message,
-                Err(error) => format!("目录同步：自动配置未生效（{error}）"),
-            });
         });
     }
 

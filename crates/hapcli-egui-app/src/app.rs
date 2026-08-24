@@ -355,18 +355,13 @@ impl HapcliApp {
             .as_ref()
             .map(|status| format!(" · {status}"))
             .unwrap_or_default();
-        let shell_integration = tab
-            .shell_integration_status
-            .as_ref()
-            .map(|status| format!(" · {status}"))
-            .unwrap_or_default();
         let reconnect = tab
             .reconnect_status
             .as_ref()
             .map(|status| format!(" · {status}"))
             .unwrap_or_default();
         format!(
-            "{kind} · {title} · {lifecycle} · {}x{} · 滚动 {} · {:.0}pt{trzsz}{keychain}{color_env}{shell_integration}{reconnect}",
+            "{kind} · {title} · {lifecycle} · {}x{} · 滚动 {} · {:.0}pt{trzsz}{keychain}{color_env}{reconnect}",
             tab.snapshot.cols,
             tab.snapshot.rows,
             tab.snapshot.display_offset,
@@ -533,38 +528,9 @@ impl HapcliApp {
         }
     }
 
-    /// SSH 远程颜色环境：连接后自动在远程启动文件里启用彩色输出。
-    fn handle_color_envs(&mut self) {
-        for tab in &mut self.tabs {
-            if let Some(rx) = &tab.color_env_rx {
-                while let Ok(status) = rx.try_recv() {
-                    // 当前会话彩色已启用后，后台启动文件注入的失败不再覆盖成功状态。
-                    let is_failure = status.contains("失败") || status.contains("未生效");
-                    if !tab.color_live_enabled || !is_failure {
-                        tab.color_env_status = Some(status);
-                    }
-                }
-            }
-            if !self.settings.ssh_shell_colors || tab.color_env_attempted {
-                continue;
-            }
-            if tab.session.status().kind != TerminalSessionKind::SshPty
-                || !tab.session.lifecycle().is_running()
-            {
-                continue;
-            }
-            if let Some(handle) = tab.session.ssh_connection_handle() {
-                tab.color_env_attempted = true;
-                let (tx, rx) = std::sync::mpsc::channel();
-                tab.color_env_rx = Some(rx);
-                TerminalTab::spawn_color_env_worker(handle, tx);
-            }
-        }
-    }
-
-    /// 向当前 shell 注入彩色命令（免 SFTP / 免重连）。仅在 shell 空闲、
-    /// 末行是提示符时执行，避免打断正在运行的程序；bash/zsh/sh 支持。
-    fn inject_color_if_idle(&mut self) {
+    /// SSH 远程彩色：参考 Finalshell / XTerminal 的做法，不修改远程任何文件，
+    /// 只在当前会话启用（shell 空闲、末行是提示符时注入一行彩色命令）。
+    fn handle_remote_colors(&mut self) {
         if !self.settings.ssh_shell_colors {
             return;
         }
@@ -589,11 +555,15 @@ impl HapcliApp {
                     .and_then(|handle| handle.remote_env())
                     .and_then(|env| env.shell)
                     .map(|shell| shell.to_ascii_lowercase());
-                let supported = shell.as_deref().is_some_and(|shell| {
-                    shell.contains("bash") || shell.contains("zsh") || shell.contains("/sh")
-                        || shell == "sh"
+                // 已知非 POSIX shell（fish / nushell / powershell）不注入；未知按 POSIX 处理。
+                let unsupported = shell.as_deref().is_some_and(|shell| {
+                    shell.contains("fish")
+                        || shell.contains("nushell")
+                        || shell.contains("powershell")
+                        || shell.contains("pwsh")
+                        || shell.contains("cmd")
                 });
-                if !supported {
+                if unsupported {
                     tab.color_live_enabled = true;
                     continue;
                 }
@@ -602,88 +572,7 @@ impl HapcliApp {
             };
             if let Some(command) = command {
                 let _ = self.tabs[index].session.write_text(&command);
-                self.tabs[index].color_env_status =
-                    Some("远程彩色已启用（当前会话）".to_string());
-            }
-        }
-    }
-
-    /// SSH 远程 shell 集成（OSC 7 目录上报）：连接后自动安装到远程启动文件。
-    /// 安装后重连，终端每次提示符都会上报真实目录，SFTP 面板可精确跟随。
-    fn handle_shell_integrations(&mut self) {
-        for tab in &mut self.tabs {
-            if let Some(rx) = &tab.shell_integration_rx {
-                while let Ok(status) = rx.try_recv() {
-                    tab.shell_integration_status = Some(status.clone());
-                    if status.contains("已写入") || status.contains("已就绪") {
-                        tab.shell_integration_inject_pending = true;
-                    }
-                }
-            }
-            if !self.settings.sftp_sync_cwd || tab.shell_integration_attempted {
-                continue;
-            }
-            if tab.session.status().kind != TerminalSessionKind::SshPty
-                || !tab.session.lifecycle().is_running()
-            {
-                continue;
-            }
-            if let Some(handle) = tab.session.ssh_connection_handle() {
-                tab.shell_integration_attempted = true;
-                let (tx, rx) = std::sync::mpsc::channel();
-                tab.shell_integration_rx = Some(rx);
-                TerminalTab::spawn_shell_integration_worker(handle, tx);
-            }
-        }
-    }
-
-    /// 目录同步集成安装完成后，把 hook 注入当前 shell（免重连生效）。
-    /// 只在 shell 空闲（无前台进程）且输入行为空时注入，避免打断用户输入。
-    fn inject_shell_integration_if_idle(&mut self) {
-        for index in 0..self.tabs.len() {
-            let inject = {
-                let tab = &mut self.tabs[index];
-                if !tab.shell_integration_inject_pending {
-                    continue;
-                }
-                if tab.session.status().kind != TerminalSessionKind::SshPty
-                    || !tab.session.lifecycle().is_running()
-                {
-                    continue;
-                }
-                // SSH 会话拿不到前台进程信息：用“输入行为空 + 末行是 shell 提示符”
-                // 近似判断空闲，避免把 source 命令注入到正在运行的程序里。
-                if !tab.input_line_empty() || !crate::terminal::looks_like_shell_prompt(&tab.snapshot)
-                {
-                    // 正在输入或当前不在提示符：稍后再试。
-                    continue;
-                }
-                let script = tab
-                    .session
-                    .ssh_connection_handle()
-                    .and_then(|handle| handle.remote_env())
-                    .and_then(|env| env.shell)
-                    .map(|shell| shell.to_ascii_lowercase())
-                    .and_then(|shell| {
-                        if shell.contains("zsh") {
-                            Some("zsh.zsh")
-                        } else if shell.contains("bash") {
-                            Some("bash.sh")
-                        } else {
-                            None
-                        }
-                    });
-                let Some(script) = script else {
-                    tab.shell_integration_inject_pending = false;
-                    continue;
-                };
-                tab.shell_integration_inject_pending = false;
-                Some(format!("source ~/.hapcli/shell-integration/{script}\r"))
-            };
-            if let Some(command) = inject {
-                let _ = self.tabs[index].session.write_text(&command);
-                self.tabs[index].shell_integration_status =
-                    Some("目录同步集成已注入当前会话".to_string());
+                self.tabs[index].color_env_status = Some("远程彩色已启用".to_string());
             }
         }
     }
@@ -853,11 +742,11 @@ impl HapcliApp {
                 );
                 ui.checkbox(
                     &mut self.settings.ssh_shell_colors,
-                    "SSH 远程终端彩色输出（连接时自动设置 CLICOLOR / LS_COLORS 环境变量，多数服务器无需重连即生效）",
+                    "SSH 远程终端彩色输出（连接后在当前会话自动启用 ls 彩色，不修改远程文件）",
                 );
                 ui.checkbox(
                     &mut self.settings.sftp_sync_cwd,
-                    "SSH 终端 cd 自动同步到 SFTP 面板（输入 cd 后立即跟随；自动安装并注入 shell 集成，精确同步无需重连）",
+                    "SSH 终端 cd 自动同步到 SFTP 面板（输入 cd 后立即跟随，无需远程配置）",
                 );
                 ui.horizontal(|ui| {
                     ui.checkbox(
@@ -1512,15 +1401,8 @@ impl eframe::App for HapcliApp {
         // 4.6 SSH 断线自动重连。
         self.handle_reconnects(ctx);
 
-        // 4.6.5 SSH 远程颜色环境自动注入（后台线程，结果轮询显示）。
-        self.handle_color_envs();
-        // 4.6.5.1 当前会话彩色命令注入（免 SFTP / 免重连）。
-        self.inject_color_if_idle();
-
-        // 4.6.6 SSH 远程 shell 集成自动安装（OSC 7 目录上报，SFTP 精确跟随）。
-        self.handle_shell_integrations();
-        // 4.6.7 安装成功后把 hook 注入当前 shell（空闲时），免重连生效。
-        self.inject_shell_integration_if_idle();
+        // 4.6.5 SSH 远程彩色：仅在当前会话启用（免 SFTP / 免重连）。
+        self.handle_remote_colors();
 
         // 4.7 长命令完成通知。
         self.poll_notifications();
