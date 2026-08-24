@@ -6,9 +6,44 @@ const CLICOLOR_ENV_VALUE: &str = "1";
 const LSCOLORS_ENV_VALUE: &str = "exfxcxdxcxegedabagacad";
 const LS_COLORS_ENV_VALUE: &str =
     "di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37";
-// 以 exec 方式启动交互式登录 shell，并注入 ls 彩色环境变量，立即生效、无需重连。
-// 仅对 Unix 远程使用（Windows 保持 request_shell）；`-l` 只对已知支持的 shell 添加。
-const SHELL_COLOR_WRAPPER_COMMAND: &str = r#"sh -c 'case "${SHELL##*/}" in zsh|bash|ksh|tcsh|csh|fish) exec env CLICOLOR=1 LSCOLORS=exfxcxdxcxegedabagacad LS_COLORS="di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37" "${SHELL:-/bin/sh}" -l;; *) exec env CLICOLOR=1 LSCOLORS=exfxcxdxcxegedabagacad LS_COLORS="di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37" "${SHELL:-/bin/sh}";; esac'"#;
+// 以 exec 方式启动交互式 shell，并保证 ls 彩色输出：
+// - bash：用临时 --rcfile（先加载 /etc/profile 与用户启动文件，再定义 ls/ll 别名）
+// - zsh：用临时 ZDOTDIR 里的 .zshrc（同样先加载用户文件再定义别名）
+// - 其他 shell：仅注入颜色环境变量
+// 该机制在连接建立时即生效（无需重连、无需修改远程文件），是确保远端
+// GNU ls 出彩色的唯一可靠位置：仅设环境变量时，远端若没有 ls 别名仍不会着色。
+const SHELL_COLOR_WRAPPER_COMMAND: &str = r#"sh -c 'case "${SHELL##*/}" in
+  bash)
+    f="${TMPDIR:-/tmp}/hapcli-rc.$$"
+    printf "%s\n" \
+      "[ -r /etc/profile ] && . /etc/profile 2>/dev/null" \
+      "[ -f ~/.bash_profile ] && . ~/.bash_profile 2>/dev/null" \
+      "[ -f ~/.bash_login ] && . ~/.bash_login 2>/dev/null" \
+      "[ -f ~/.profile ] && . ~/.profile 2>/dev/null" \
+      "[ -f ~/.bashrc ] && . ~/.bashrc 2>/dev/null" \
+      "alias ls=\"ls --color=auto\"" \
+      "alias ll=\"ls -alF --color=auto\"" \
+      "export CLICOLOR=1 LSCOLORS=exfxcxdxcxegedabagacad LS_COLORS=\"di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37\"" \
+      > "$f"
+    exec bash --rcfile "$f" -i
+    ;;
+  zsh)
+    d="${TMPDIR:-/tmp}/hapcli-zdot.$$"
+    mkdir -p "$d"
+    printf "%s\n" \
+      "[ -f ~/.zshenv ] && . ~/.zshenv 2>/dev/null" \
+      "[ -f ~/.zprofile ] && . ~/.zprofile 2>/dev/null" \
+      "[ -f ~/.zshrc ] && . ~/.zshrc 2>/dev/null" \
+      "alias ls=\"ls --color=auto\"" \
+      "alias ll=\"ls -alF --color=auto\"" \
+      "export CLICOLOR=1 LSCOLORS=exfxcxdxcxegedabagacad LS_COLORS=\"di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37\"" \
+      > "$d/.zshrc"
+    exec env ZDOTDIR="$d" zsh -i
+    ;;
+  *)
+    exec env CLICOLOR=1 LSCOLORS=exfxcxdxcxegedabagacad LS_COLORS="di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37" "${SHELL:-/bin/sh}"
+    ;;
+esac'"#;
 const CHILD_CONNECTION_RETIRED_DURING_CONNECT: &str =
     "child connection was retired while its SSH transport was connecting";
 

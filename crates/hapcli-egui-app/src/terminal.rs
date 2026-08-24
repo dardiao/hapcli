@@ -60,10 +60,6 @@ pub struct TerminalTab {
     /// SSH 连接成功后写入钥匙串的 (key, 密码)。
     pub pending_keychain_save: Option<(String, Zeroizing<String>)>,
     pub keychain_status: Option<String>,
-    /// SSH 远程颜色：当前会话是否已注入彩色命令、显示用状态。
-    pub color_env_status: Option<String>,
-    /// 是否已向当前 shell 注入彩色命令（免 SFTP、免重连，立即生效）。
-    pub color_live_enabled: bool,
     pub selection: Option<TextSelection>,
     selection_active: bool,
     selection_dragged: bool,
@@ -133,8 +129,6 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
-            color_env_status: None,
-            color_live_enabled: false,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -197,8 +191,6 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
-            color_env_status: None,
-            color_live_enabled: false,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -267,8 +259,6 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
-            color_env_status: None,
-            color_live_enabled: false,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -337,8 +327,6 @@ impl TerminalTab {
             trzsz_owner_id: new_trzsz_owner_id(),
             pending_keychain_save: None,
             keychain_status: None,
-            color_env_status: None,
-            color_live_enabled: false,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -414,8 +402,6 @@ impl TerminalTab {
         self.selection_active = false;
         self.reconnect_dismissed = false;
         // 新连接需要重新执行远程颜色环境注入。
-        self.color_env_status = None;
-        self.color_live_enabled = false;
         self.sftp_prev_cwd = None;
         self.input_line.clear();
         self.input_line_unreliable = false;
@@ -453,11 +439,6 @@ impl TerminalTab {
     /// 会话的基础标签（连接名 / “本地”）。
     pub fn base_label(&self) -> &str {
         &self.base_label
-    }
-
-    /// 当前输入行是否为空（用于判断 shell 是否空闲可注入）。
-    pub fn input_line_empty(&self) -> bool {
-        self.input_line.is_empty()
     }
 
     fn display_label_inner(&self) -> String {
@@ -1124,24 +1105,6 @@ fn delete_last_word(line: &mut String) {
     line.truncate(after_space);
 }
 
-/// 粗略判断终端当前末行是否处于 shell 提示符（用于 SSH 免重连注入的安全判断）。
-/// SSH 会话拿不到前台进程信息，只能用“输入行为空 + 末行是提示符”近似空闲状态。
-pub(crate) fn looks_like_shell_prompt(snapshot: &TerminalSnapshot) -> bool {
-    let Some(last_row) = snapshot.lines.last() else {
-        return false;
-    };
-    let text: String = last_row.cells.iter().map(|cell| cell.ch).collect();
-    let trimmed = text.trim_end();
-    if trimmed.is_empty() {
-        return false;
-    }
-    trimmed.ends_with('$')
-        || trimmed.ends_with('#')
-        || trimmed.ends_with('%')
-        || trimmed.ends_with('>')
-        || trimmed.ends_with('❯')
-}
-
 /// 判断远程路径是否为绝对路径（Unix `/` 或 Windows 盘符 `C:/`）。
 fn looks_absolute_remote(path: &str) -> bool {
     if path.starts_with('/') {
@@ -1277,47 +1240,4 @@ mod tests {
         assert_eq!(line, "");
     }
 
-    #[test]
-    fn shell_prompt_heuristic_matches_common_prompts() {
-        use hapcli_terminal::{
-            TerminalAttrs, TerminalCell, TerminalColor, TerminalCursorShape, TerminalRow,
-            TerminalSnapshot,
-        };
-        let snapshot = |last_line: &str| {
-            let cell = |ch: char| TerminalCell {
-                ch,
-                zerowidth: String::new(),
-                wide: false,
-                fg: TerminalColor::rgb(0xf8, 0xf8, 0xf2),
-                bg: TerminalColor::rgb(0x28, 0x2a, 0x36),
-                attrs: TerminalAttrs::default(),
-                hyperlink: None,
-                cursor: false,
-            };
-            TerminalSnapshot {
-                generation: 1,
-                cols: last_line.len().max(1),
-                rows: 1,
-                cursor_col: 0,
-                cursor_row: 0,
-                cursor_shape: TerminalCursorShape::Block,
-                display_offset: 0,
-                scrollback_lines: 0,
-                lines: vec![TerminalRow {
-                    absolute_line: 0,
-                    cells: std::sync::Arc::new(last_line.chars().map(cell).collect()),
-                    wrapped: false,
-                    active_input: false,
-                    signature: 0,
-                }],
-                images: Vec::new(),
-            }
-        };
-        assert!(looks_like_shell_prompt(&snapshot("user@host:~$ ")));
-        assert!(looks_like_shell_prompt(&snapshot("root@box:/#")));
-        assert!(looks_like_shell_prompt(&snapshot("gnotihz@GNOTIHZs-Mac-mini %")));
-        assert!(looks_like_shell_prompt(&snapshot("❯ ")));
-        assert!(!looks_like_shell_prompt(&snapshot("total 123")));
-        assert!(!looks_like_shell_prompt(&snapshot("")));
-    }
 }

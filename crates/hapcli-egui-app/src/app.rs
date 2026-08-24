@@ -20,10 +20,6 @@ const MIN_FONT_SIZE: f32 = 9.0;
 const MAX_FONT_SIZE: f32 = 24.0;
 const MAX_RECONNECT_ATTEMPTS: u32 = 3;
 const RECONNECT_DELAY: Duration = Duration::from_millis(2500);
-/// 注入到当前 shell 的彩色启用命令（免 SFTP / 免重连，立即生效）。
-const LIVE_COLOR_COMMAND: &str = "alias ls='ls --color=auto' 2>/dev/null; \
-    export CLICOLOR=1 LSCOLORS=exfxcxdxcxegedabagacad \
-    LS_COLORS='di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37'";
 
 /// 释放当前焦点（弹窗关闭后调用，避免键盘焦点滞留导致终端无法输入）。
 fn surrender_focus(ctx: &egui::Context) {
@@ -350,18 +346,13 @@ impl HapcliApp {
             .as_ref()
             .map(|status| format!(" · {status}"))
             .unwrap_or_default();
-        let color_env = tab
-            .color_env_status
-            .as_ref()
-            .map(|status| format!(" · {status}"))
-            .unwrap_or_default();
         let reconnect = tab
             .reconnect_status
             .as_ref()
             .map(|status| format!(" · {status}"))
             .unwrap_or_default();
         format!(
-            "{kind} · {title} · {lifecycle} · {}x{} · 滚动 {} · {:.0}pt{trzsz}{keychain}{color_env}{reconnect}",
+            "{kind} · {title} · {lifecycle} · {}x{} · 滚动 {} · {:.0}pt{trzsz}{keychain}{reconnect}",
             tab.snapshot.cols,
             tab.snapshot.rows,
             tab.snapshot.display_offset,
@@ -524,55 +515,6 @@ impl HapcliApp {
                     Err(std::sync::mpsc::TryRecvError::Empty) => break,
                     Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
                 }
-            }
-        }
-    }
-
-    /// SSH 远程彩色：参考 Finalshell / XTerminal 的做法，不修改远程任何文件，
-    /// 只在当前会话启用（shell 空闲、末行是提示符时注入一行彩色命令）。
-    fn handle_remote_colors(&mut self) {
-        if !self.settings.ssh_shell_colors {
-            return;
-        }
-        for index in 0..self.tabs.len() {
-            let command = {
-                let tab = &mut self.tabs[index];
-                if tab.color_live_enabled {
-                    continue;
-                }
-                if tab.session.status().kind != TerminalSessionKind::SshPty
-                    || !tab.session.lifecycle().is_running()
-                {
-                    continue;
-                }
-                if !tab.input_line_empty() || !crate::terminal::looks_like_shell_prompt(&tab.snapshot)
-                {
-                    continue;
-                }
-                let shell = tab
-                    .session
-                    .ssh_connection_handle()
-                    .and_then(|handle| handle.remote_env())
-                    .and_then(|env| env.shell)
-                    .map(|shell| shell.to_ascii_lowercase());
-                // 已知非 POSIX shell（fish / nushell / powershell）不注入；未知按 POSIX 处理。
-                let unsupported = shell.as_deref().is_some_and(|shell| {
-                    shell.contains("fish")
-                        || shell.contains("nushell")
-                        || shell.contains("powershell")
-                        || shell.contains("pwsh")
-                        || shell.contains("cmd")
-                });
-                if unsupported {
-                    tab.color_live_enabled = true;
-                    continue;
-                }
-                tab.color_live_enabled = true;
-                Some(format!("{LIVE_COLOR_COMMAND}\r"))
-            };
-            if let Some(command) = command {
-                let _ = self.tabs[index].session.write_text(&command);
-                self.tabs[index].color_env_status = Some("远程彩色已启用".to_string());
             }
         }
     }
@@ -742,7 +684,7 @@ impl HapcliApp {
                 );
                 ui.checkbox(
                     &mut self.settings.ssh_shell_colors,
-                    "SSH 远程终端彩色输出（连接后在当前会话自动启用 ls 彩色，不修改远程文件）",
+                    "SSH 远程终端彩色输出（连接时自动让 ls 显示彩色，保证生效，无需修改远程文件）",
                 );
                 ui.checkbox(
                     &mut self.settings.sftp_sync_cwd,
@@ -1400,9 +1342,6 @@ impl eframe::App for HapcliApp {
 
         // 4.6 SSH 断线自动重连。
         self.handle_reconnects(ctx);
-
-        // 4.6.5 SSH 远程彩色：仅在当前会话启用（免 SFTP / 免重连）。
-        self.handle_remote_colors();
 
         // 4.7 长命令完成通知。
         self.poll_notifications();
