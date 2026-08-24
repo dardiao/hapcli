@@ -64,6 +64,8 @@ pub struct TerminalTab {
     pub color_env_attempted: bool,
     pub color_env_rx: Option<Receiver<String>>,
     pub color_env_status: Option<String>,
+    /// 是否已向当前 shell 注入彩色命令（免 SFTP、免重连，立即生效）。
+    pub color_live_enabled: bool,
     pub selection: Option<TextSelection>,
     selection_active: bool,
     selection_dragged: bool,
@@ -142,6 +144,7 @@ impl TerminalTab {
             color_env_attempted: false,
             color_env_rx: None,
             color_env_status: None,
+            color_live_enabled: false,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -211,6 +214,7 @@ impl TerminalTab {
             color_env_attempted: false,
             color_env_rx: None,
             color_env_status: None,
+            color_live_enabled: false,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -286,6 +290,7 @@ impl TerminalTab {
             color_env_attempted: false,
             color_env_rx: None,
             color_env_status: None,
+            color_live_enabled: false,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -361,6 +366,7 @@ impl TerminalTab {
             color_env_attempted: false,
             color_env_rx: None,
             color_env_status: None,
+            color_live_enabled: false,
             selection: None,
             selection_active: false,
             selection_dragged: false,
@@ -443,6 +449,7 @@ impl TerminalTab {
         self.color_env_attempted = false;
         self.color_env_rx = None;
         self.color_env_status = None;
+        self.color_live_enabled = false;
         // 新连接需要重新安装目录同步集成，并清空输入行跟踪。
         self.shell_integration_attempted = false;
         self.shell_integration_rx = None;

@@ -20,6 +20,10 @@ const MIN_FONT_SIZE: f32 = 9.0;
 const MAX_FONT_SIZE: f32 = 24.0;
 const MAX_RECONNECT_ATTEMPTS: u32 = 3;
 const RECONNECT_DELAY: Duration = Duration::from_millis(2500);
+/// 注入到当前 shell 的彩色启用命令（免 SFTP / 免重连，立即生效）。
+const LIVE_COLOR_COMMAND: &str = "alias ls='ls --color=auto' 2>/dev/null; \
+    export CLICOLOR=1 LSCOLORS=exfxcxdxcxegedabagacad \
+    LS_COLORS='di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.py=01;33:*.c=01;31:*.rs=01;31:*.md=00;37'";
 
 /// 释放当前焦点（弹窗关闭后调用，避免键盘焦点滞留导致终端无法输入）。
 fn surrender_focus(ctx: &egui::Context) {
@@ -534,7 +538,11 @@ impl HapcliApp {
         for tab in &mut self.tabs {
             if let Some(rx) = &tab.color_env_rx {
                 while let Ok(status) = rx.try_recv() {
-                    tab.color_env_status = Some(status);
+                    // 当前会话彩色已启用后，后台启动文件注入的失败不再覆盖成功状态。
+                    let is_failure = status.contains("失败") || status.contains("未生效");
+                    if !tab.color_live_enabled || !is_failure {
+                        tab.color_env_status = Some(status);
+                    }
                 }
             }
             if !self.settings.ssh_shell_colors || tab.color_env_attempted {
@@ -550,6 +558,52 @@ impl HapcliApp {
                 let (tx, rx) = std::sync::mpsc::channel();
                 tab.color_env_rx = Some(rx);
                 TerminalTab::spawn_color_env_worker(handle, tx);
+            }
+        }
+    }
+
+    /// 向当前 shell 注入彩色命令（免 SFTP / 免重连）。仅在 shell 空闲、
+    /// 末行是提示符时执行，避免打断正在运行的程序；bash/zsh/sh 支持。
+    fn inject_color_if_idle(&mut self) {
+        if !self.settings.ssh_shell_colors {
+            return;
+        }
+        for index in 0..self.tabs.len() {
+            let command = {
+                let tab = &mut self.tabs[index];
+                if tab.color_live_enabled {
+                    continue;
+                }
+                if tab.session.status().kind != TerminalSessionKind::SshPty
+                    || !tab.session.lifecycle().is_running()
+                {
+                    continue;
+                }
+                if !tab.input_line_empty() || !crate::terminal::looks_like_shell_prompt(&tab.snapshot)
+                {
+                    continue;
+                }
+                let shell = tab
+                    .session
+                    .ssh_connection_handle()
+                    .and_then(|handle| handle.remote_env())
+                    .and_then(|env| env.shell)
+                    .map(|shell| shell.to_ascii_lowercase());
+                let supported = shell.as_deref().is_some_and(|shell| {
+                    shell.contains("bash") || shell.contains("zsh") || shell.contains("/sh")
+                        || shell == "sh"
+                });
+                if !supported {
+                    tab.color_live_enabled = true;
+                    continue;
+                }
+                tab.color_live_enabled = true;
+                Some(format!("{LIVE_COLOR_COMMAND}\r"))
+            };
+            if let Some(command) = command {
+                let _ = self.tabs[index].session.write_text(&command);
+                self.tabs[index].color_env_status =
+                    Some("远程彩色已启用（当前会话）".to_string());
             }
         }
     }
@@ -1460,6 +1514,8 @@ impl eframe::App for HapcliApp {
 
         // 4.6.5 SSH 远程颜色环境自动注入（后台线程，结果轮询显示）。
         self.handle_color_envs();
+        // 4.6.5.1 当前会话彩色命令注入（免 SFTP / 免重连）。
+        self.inject_color_if_idle();
 
         // 4.6.6 SSH 远程 shell 集成自动安装（OSC 7 目录上报，SFTP 精确跟随）。
         self.handle_shell_integrations();
