@@ -88,6 +88,8 @@ pub struct UpdateCheckState {
     /// 最近一次可更新的版本与资产（下载失败后“重试”用）。
     last_version: Option<String>,
     last_assets: Vec<UpdateAsset>,
+    /// GitHub 代理前缀列表（更新被墙时自动回退 / 测速选择最快节点）。
+    proxies: Vec<String>,
 }
 
 impl Default for UpdateCheckState {
@@ -103,11 +105,17 @@ impl Default for UpdateCheckState {
             cancel_download: Arc::new(AtomicBool::new(false)),
             last_version: None,
             last_assets: Vec::new(),
+            proxies: Vec::new(),
         }
     }
 }
 
 impl UpdateCheckState {
+    /// 设置代理前缀列表（来自设置里的“GitHub 代理”）。
+    pub fn set_proxies(&mut self, proxies: &[String]) {
+        self.proxies = proxies.to_vec();
+    }
+
     /// 启动后台线程检查一次；delay 用于启动时等窗口先出现。
     pub fn check_now(&mut self, current_version: &str, delay: Duration) {
         if matches!(self.status, UpdateStatus::Checking) {
@@ -118,11 +126,12 @@ impl UpdateCheckState {
         self.show_notes = false;
         let tx = self.tx.clone();
         let current_version = current_version.to_string();
+        let proxies = self.proxies.clone();
         thread::spawn(move || {
             if !delay.is_zero() {
                 thread::sleep(delay);
             }
-            let status = fetch_latest_release(&current_version);
+            let status = fetch_latest_release(&current_version, &proxies);
             let _ = tx.send(UpdateCheckEvent::Result(status));
         });
     }
@@ -148,8 +157,9 @@ impl UpdateCheckState {
         };
         let tx = self.tx.clone();
         let cancel = self.cancel_download.clone();
+        let proxies = self.proxies.clone();
         thread::spawn(move || {
-            match download_and_stage(&asset, &cancel, &tx) {
+            match download_and_stage(&asset, &cancel, &tx, &proxies) {
                 Ok(()) => {
                     let _ = tx.send(UpdateCheckEvent::Download(DownloadEvent::Finished));
                 }
@@ -249,7 +259,7 @@ struct GithubAsset {
     browser_download_url: String,
 }
 
-fn fetch_latest_release(current_version: &str) -> UpdateStatus {
+fn fetch_latest_release(current_version: &str, proxies: &[String]) -> UpdateStatus {
     let client = match reqwest::blocking::Client::builder()
         .user_agent(format!("hapcli-updater/{current_version}"))
         .timeout(Duration::from_secs(20))
@@ -258,33 +268,49 @@ fn fetch_latest_release(current_version: &str) -> UpdateStatus {
         Ok(client) => client,
         Err(error) => return UpdateStatus::Error(format!("HTTP 客户端创建失败: {error}")),
     };
-    let response = match client
-        .get(UPDATE_API_URL)
+    let mut last_error = String::new();
+    // 直连优先；失败时依次尝试代理。
+    let mut candidates = vec![UPDATE_API_URL.to_string()];
+    candidates.extend(proxies.iter().map(|prefix| proxied(UPDATE_API_URL, prefix)));
+    for url in candidates {
+        match fetch_release_once(&client, &url, current_version) {
+            Ok(Some(status)) => return status,
+            Ok(None) => return UpdateStatus::UpToDate,
+            Err(error) => last_error = error,
+        }
+    }
+    UpdateStatus::Error(format!("无法连接更新服务器（直连与代理均失败）: {last_error}"))
+}
+
+/// 请求单个 release 端点；Ok(None) 表示“无新版本”，Err 表示该端点不可用。
+fn fetch_release_once(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    current_version: &str,
+) -> Result<Option<UpdateStatus>, String> {
+    let response = client
+        .get(url)
         .header("Accept", "application/vnd.github+json")
         .send()
-    {
-        Ok(response) => response,
-        Err(error) => return UpdateStatus::Error(format!("无法连接更新服务器: {error}")),
-    };
+        .map_err(|error| error.to_string())?;
     if response.status() == reqwest::StatusCode::NOT_FOUND {
         // 仓库还没有任何 Release。
-        return UpdateStatus::UpToDate;
+        return Ok(None);
     }
     if !response.status().is_success() {
-        return UpdateStatus::Error(format!("更新服务器返回 {}", response.status()));
+        return Err(format!("HTTP {}", response.status()));
     }
-    let release: GithubRelease = match response.json() {
-        Ok(release) => release,
-        Err(error) => return UpdateStatus::Error(format!("更新信息解析失败: {error}")),
-    };
+    let release: GithubRelease = response
+        .json()
+        .map_err(|error| format!("解析失败: {error}"))?;
     if release.draft || release.prerelease {
-        return UpdateStatus::UpToDate;
+        return Ok(None);
     }
     let version = release.tag_name.trim_start_matches('v').to_string();
     if !is_update_newer(&version, current_version) {
-        return UpdateStatus::UpToDate;
+        return Ok(None);
     }
-    UpdateStatus::UpdateAvailable {
+    Ok(Some(UpdateStatus::UpdateAvailable {
         name: release.name.unwrap_or_else(|| release.tag_name.clone()),
         version,
         notes: release.body.unwrap_or_default(),
@@ -296,7 +322,7 @@ fn fetch_latest_release(current_version: &str) -> UpdateStatus {
                 browser_download_url: asset.browser_download_url,
             })
             .collect(),
-    }
+    }))
 }
 
 /// 当前平台对应的安装包文件名。
@@ -363,6 +389,7 @@ fn download_and_stage(
     asset: &UpdateAsset,
     cancel: &AtomicBool,
     tx: &Sender<UpdateCheckEvent>,
+    proxies: &[String],
 ) -> Result<(), String> {
     let current_exe = std::env::current_exe().map_err(|error| format!("无法定位当前程序: {error}"))?;
     let target = detect_install_target(&current_exe);
@@ -389,22 +416,55 @@ fn download_and_stage(
         .timeout(DOWNLOAD_TIMEOUT)
         .build()
         .map_err(|error| format!("HTTP 客户端创建失败: {error}"))?;
+    // 直连下载；失败时自动挑选最快的代理重试（国内网络常见 github.com 被墙）。
+    let download_result =
+        download_to(&client, &asset.browser_download_url, &zip_path, cancel, tx);
+    if download_result.is_err() && !proxies.is_empty() {
+        if let Some(prefix) = fastest_proxy(&client, &asset.browser_download_url, proxies) {
+            let proxied_url = proxied(&asset.browser_download_url, &prefix);
+            download_to(&client, &proxied_url, &zip_path, cancel, tx)?;
+        } else {
+            download_result?;
+        }
+    } else {
+        download_result?;
+    }
+
+    // 2. 解压。
+    extract_archive(&zip_path, &staging)?;
+
+    // 3. 定位新程序。
+    let payload = locate_payload(&staging)?;
+
+    // 4. 生成并启动替换脚本（脱离本进程，等本应用退出后替换并重启）。
+    write_and_launch_helper(&staging, &target, &payload, std::process::id())?;
+    Ok(())
+}
+
+/// 把安装包下载到指定路径（带进度与取消支持）。
+fn download_to(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    zip_path: &Path,
+    cancel: &AtomicBool,
+    tx: &Sender<UpdateCheckEvent>,
+) -> Result<(), String> {
     let mut response = client
-        .get(&asset.browser_download_url)
+        .get(url)
         .send()
         .map_err(|error| format!("下载失败: {error}"))?;
     if !response.status().is_success() {
         return Err(format!("下载失败：服务器返回 {}", response.status()));
     }
     let total = response.content_length().unwrap_or(0);
-    let mut file = std::fs::File::create(&zip_path).map_err(|error| format!("无法写入临时文件: {error}"))?;
+    let mut file = std::fs::File::create(zip_path)
+        .map_err(|error| format!("无法写入临时文件: {error}"))?;
     let mut transferred: u64 = 0;
     let mut buffer = vec![0u8; DOWNLOAD_CHUNK];
     let started = Instant::now();
     let mut last_send = Instant::now();
     loop {
         if cancel.load(AtomicOrdering::Relaxed) {
-            let _ = std::fs::remove_dir_all(&staging);
             return Err("下载已取消".to_string());
         }
         let read = response
@@ -429,23 +489,51 @@ fn download_and_stage(
     file.flush().map_err(|error| format!("写入临时文件失败: {error}"))?;
     drop(file);
     if total > 0 && transferred != total {
-        let _ = std::fs::remove_dir_all(&staging);
         return Err(format!("下载不完整（{transferred}/{total} 字节）"));
     }
     if cancel.load(AtomicOrdering::Relaxed) {
-        let _ = std::fs::remove_dir_all(&staging);
         return Err("下载已取消".to_string());
     }
-
-    // 2. 解压。
-    extract_archive(&zip_path, &staging)?;
-
-    // 3. 定位新程序。
-    let payload = locate_payload(&staging)?;
-
-    // 4. 生成并启动替换脚本（脱离本进程，等本应用退出后替换并重启）。
-    write_and_launch_helper(&staging, &target, &payload, std::process::id())?;
     Ok(())
+}
+
+/// 解析设置里的代理前缀列表（逗号分隔）。
+pub fn parse_proxy_prefixes(list: &str) -> Vec<String> {
+    list.split(',')
+        .map(|item| item.trim().trim_end_matches('/'))
+        .filter(|item| item.starts_with("http://") || item.starts_with("https://"))
+        .map(|item| format!("{item}/"))
+        .collect()
+}
+
+/// 通过代理前缀访问原始 GitHub 链接（格式：代理域名 + / + 完整 URL）。
+fn proxied(url: &str, prefix: &str) -> String {
+    format!("{prefix}{url}")
+}
+
+/// 对候选代理做 HEAD 测速，返回最快的前缀（全部失败返回 None）。
+fn fastest_proxy(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    prefixes: &[String],
+) -> Option<String> {
+    let mut best: Option<(Duration, String)> = None;
+    for prefix in prefixes {
+        let started = Instant::now();
+        let ok = client
+            .head(proxied(url, prefix))
+            .timeout(Duration::from_secs(5))
+            .send()
+            .map(|response| response.status().is_success())
+            .unwrap_or(false);
+        if ok {
+            let elapsed = started.elapsed();
+            if best.as_ref().is_none_or(|(best_elapsed, _)| elapsed < *best_elapsed) {
+                best = Some((elapsed, prefix.clone()));
+            }
+        }
+    }
+    best.map(|(_, prefix)| prefix)
 }
 
 /// 临时目录：系统临时目录下的固定命名目录（脚本结束后自行清理）。
@@ -845,6 +933,29 @@ mod tests {
         assert_eq!(
             macos_bundle_root(payload),
             Some(PathBuf::from("/tmp/hapcli-update-123/hapcli.app"))
+        );
+    }
+
+    #[test]
+    fn proxy_prefixes_are_parsed_and_normalized() {
+        let list = "https://gh.dpik.top/, https://ghfast.top , ,http://localhost:8080,not-a-url";
+        let proxies = parse_proxy_prefixes(list);
+        assert_eq!(
+            proxies,
+            vec![
+                "https://gh.dpik.top/".to_string(),
+                "https://ghfast.top/".to_string(),
+                "http://localhost:8080/".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn proxied_url_keeps_full_github_url() {
+        let url = "https://github.com/dardiao/hapcli/releases/download/v3.0.0/hapcli-macos-arm64.zip";
+        assert_eq!(
+            proxied(url, "https://gh.dpik.top/"),
+            "https://gh.dpik.top/https://github.com/dardiao/hapcli/releases/download/v3.0.0/hapcli-macos-arm64.zip"
         );
     }
 }

@@ -14,7 +14,7 @@ use crate::settings::{AppSettings, ThemeChoice, load_settings, save_settings};
 use crate::sftp;
 use crate::terminal::{TerminalPrefs, TerminalTab};
 use crate::trzsz::{TrzszPromptRequest, TrzszPromptSelection, TrzszWorkerEvent, spawn_trzsz_worker};
-use crate::update::{UpdateCheckState, UpdateStatus, open_url};
+use crate::update::{UpdateCheckState, UpdateStatus, open_url, parse_proxy_prefixes};
 
 const MIN_FONT_SIZE: f32 = 9.0;
 const MAX_FONT_SIZE: f32 = 24.0;
@@ -726,6 +726,22 @@ impl HapcliApp {
                         _ => {}
                     }
                 });
+                ui.horizontal(|ui| {
+                    ui.label("GitHub 代理");
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.settings.github_proxies)
+                            .desired_width(360.0)
+                            .hint_text("逗号分隔的代理前缀，留空禁用代理回退"),
+                    );
+                    if ui
+                        .small_button("恢复默认")
+                        .on_hover_text("来自 github.akams.cn 收集的加速源")
+                        .clicked()
+                    {
+                        self.settings.github_proxies = crate::settings::default_github_proxies();
+                    }
+                });
+                ui.weak("直连 GitHub 失败时自动测速选择最快的代理下载更新包，适用于国内网络被墙的情况。");
                 if self.settings.ignored_update_version.is_some() {
                     ui.horizontal(|ui| {
                         ui.weak(format!(
@@ -1482,6 +1498,8 @@ impl eframe::App for HapcliApp {
         }
 
         // 9. 更新检查：轮询后台结果、按计划检查、有新版本时弹窗。
+        let proxy_list = parse_proxy_prefixes(&self.settings.github_proxies);
+        self.update_state.set_proxies(&proxy_list);
         self.update_state.poll();
         self.update_state
             .maybe_periodic_check(env!("CARGO_PKG_VERSION"), self.settings.check_updates);

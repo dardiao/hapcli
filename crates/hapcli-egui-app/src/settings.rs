@@ -39,10 +39,29 @@ pub struct AppSettings {
     /// 用户选择“忽略此版本”的版本号；再次提示会跳过它。
     #[serde(default)]
     pub ignored_update_version: Option<String>,
+    /// GitHub 代理前缀列表（逗号分隔，用于更新下载被墙时自动回退 / 测速选择最快节点）。
+    /// 留空表示禁用代理回退。默认来自 github.akams.cn 收集的加速源。
+    #[serde(default = "default_github_proxies")]
+    pub github_proxies: String,
 }
 
 fn default_true() -> bool {
     true
+}
+
+/// 默认 GitHub 代理前缀（来自 github.akams.cn 站点前端收集的加速源）。
+pub fn default_github_proxies() -> String {
+    [
+        "https://gh.dpik.top/",
+        "https://ghfast.top/",
+        "https://gh-proxy.com/",
+        "https://ghproxy.net/",
+        "https://gh-proxy.net/",
+        "https://github.tbap.top/",
+        "https://gh.ddlc.top/",
+        "https://gitproxy.click/",
+    ]
+    .join(",")
 }
 
 impl Default for AppSettings {
@@ -61,6 +80,7 @@ impl Default for AppSettings {
             sftp_sync_cwd: true,
             check_updates: true,
             ignored_update_version: None,
+            github_proxies: default_github_proxies(),
         }
     }
 }
@@ -119,6 +139,7 @@ mod tests {
             sftp_sync_cwd: true,
             check_updates: true,
             ignored_update_version: None,
+            github_proxies: default_github_proxies(),
         };
         save_settings_to(&path, &settings).unwrap();
         let loaded: AppSettings =
