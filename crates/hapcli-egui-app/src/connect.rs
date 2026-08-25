@@ -257,7 +257,7 @@ impl ConnectForm {
                 ui.label("");
                 ui.checkbox(
                     &mut self.save_password,
-                    "保存密码到 macOS 钥匙串（连接成功后自动填入）",
+                    "保存密码到系统钥匙串（连接成功后自动填入）",
                 );
                 ui.end_row();
             }
@@ -320,7 +320,7 @@ impl ConnectForm {
         });
         ui.end_row();
 
-        ui.label("端口路径（手动）");
+        ui.label("设备路径（手动）");
         ui.add(
             egui::TextEdit::singleline(&mut self.serial_port)
                 .hint_text("/dev/cu.usbserial-…")

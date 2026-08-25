@@ -49,7 +49,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             font_size: 13.0,
-            theme: ThemeChoice::Dark,
+            theme: ThemeChoice::Light,
             background_alpha: 1.0,
             transparent_window: false,
             terminal_font_path: None,

@@ -30,6 +30,15 @@ fn surrender_focus(ctx: &egui::Context) {
     });
 }
 
+/// 应用 egui 界面主题（深/浅色），让面板、弹窗等跟随设置。
+fn apply_egui_theme(ctx: &egui::Context, choice: ThemeChoice) {
+    let visuals = match choice {
+        ThemeChoice::Dark => egui::Visuals::dark(),
+        ThemeChoice::Light => egui::Visuals::light(),
+    };
+    ctx.set_visuals(visuals);
+}
+
 pub struct HapcliApp {
     tabs: Vec<TerminalTab>,
     active_tab: usize,
@@ -47,12 +56,16 @@ pub struct HapcliApp {
     update_state: UpdateCheckState,
     rename_tab_index: Option<usize>,
     rename_draft: String,
+    /// 当前已应用的 egui 界面主题（用于检测切换后重绘）。
+    applied_ui_theme: Option<ThemeChoice>,
 }
 
 impl HapcliApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> anyhow::Result<Self> {
         let settings = load_settings();
         let custom_font_loaded = install_fonts(&cc.egui_ctx, &settings);
+        let initial_theme = settings.theme;
+        apply_egui_theme(&cc.egui_ctx, initial_theme);
 
         let local = TerminalTab::new_local(&cc.egui_ctx, 100, 30)?;
         Ok(Self {
@@ -74,6 +87,7 @@ impl HapcliApp {
             update_state: UpdateCheckState::default(),
             rename_tab_index: None,
             rename_draft: String::new(),
+            applied_ui_theme: Some(initial_theme),
         })
     }
 
@@ -329,7 +343,7 @@ impl HapcliApp {
         let lifecycle = match &status.lifecycle {
             hapcli_terminal::TerminalLifecycle::Running => "运行中".to_string(),
             hapcli_terminal::TerminalLifecycle::Exited(code) => {
-                format!("已退出 (code {})", code.unwrap_or(-1))
+                format!("已退出（代码 {}）", code.unwrap_or(-1))
             }
             hapcli_terminal::TerminalLifecycle::Closed => "已关闭".to_string(),
         };
@@ -1015,7 +1029,7 @@ impl HapcliApp {
         if finished {
             tab.finish_trzsz();
         } else if disconnected && tab.trzsz_active {
-            tab.trzsz_status = Some("Trzsz worker 意外退出".to_string());
+            tab.trzsz_status = Some("Trzsz 传输进程意外退出".to_string());
             tab.finish_trzsz();
         } else {
             tab.trzsz_rx = rx;
@@ -1035,6 +1049,11 @@ impl eframe::App for HapcliApp {
 
         // 1. 全局事件：缩放、窗口焦点、SSH 弹窗开关。
         self.process_global_input(ctx);
+        // 1.1 主题切换时实时应用 egui 界面配色。
+        if self.applied_ui_theme != Some(self.settings.theme) {
+            self.applied_ui_theme = Some(self.settings.theme);
+            apply_egui_theme(ctx, self.settings.theme);
+        }
 
         // 2. 顶部标签栏。
         let mut clicked_tab: Option<usize> = None;
@@ -1067,7 +1086,14 @@ impl eframe::App for HapcliApp {
                         let selected = index == self.active_tab;
                         let label = self.tabs[index].display_label();
                         let (clicked, close_clicked, menu) =
-                            draw_tab(ui, index, &label, selected, self.tabs.len() > 1);
+                            draw_tab(
+                                ui,
+                                index,
+                                &label,
+                                selected,
+                                self.tabs.len() > 1,
+                                self.settings.theme == ThemeChoice::Light,
+                            );
                         if clicked {
                             clicked_tab = Some(index);
                         }
@@ -1376,7 +1402,11 @@ impl eframe::App for HapcliApp {
                         RichText::new(self.status_line())
                             .monospace()
                             .size(11.0)
-                            .color(egui::Color32::from_rgb(0x8a, 0x8f, 0x98)),
+                            .color(if self.settings.theme == ThemeChoice::Light {
+                                egui::Color32::from_rgb(0x4a, 0x50, 0x58)
+                            } else {
+                                egui::Color32::from_rgb(0x8a, 0x8f, 0x98)
+                            }),
                     );
                 });
             });
@@ -1700,6 +1730,7 @@ fn draw_tab(
     label: &str,
     selected: bool,
     can_close: bool,
+    light: bool,
 ) -> (bool, bool, Option<TabMenuAction>) {
     const TAB_HEIGHT: f32 = 26.0;
     const PADDING_X: f32 = 12.0;
@@ -1707,10 +1738,18 @@ fn draw_tab(
     const GAP: f32 = 6.0;
 
     let font_id = egui::FontId::proportional(13.5);
-    let text_color = if selected {
-        egui::Color32::from_rgb(0xec, 0xf0, 0xf4)
+    let text_color = if light {
+        if selected {
+            egui::Color32::from_rgb(0x1c, 0x1e, 0x21)
+        } else {
+            egui::Color32::from_rgb(0x55, 0x5c, 0x66)
+        }
     } else {
-        egui::Color32::from_rgb(0x9a, 0xa2, 0xab)
+        if selected {
+            egui::Color32::from_rgb(0xec, 0xf0, 0xf4)
+        } else {
+            egui::Color32::from_rgb(0x9a, 0xa2, 0xab)
+        }
     };
     let text_width = ui
         .fonts(|fonts| fonts.layout_no_wrap(label.to_owned(), font_id.clone(), egui::Color32::WHITE))
@@ -1722,17 +1761,32 @@ fn draw_tab(
         ui.allocate_exact_size(egui::vec2(width, TAB_HEIGHT), egui::Sense::click());
 
     let painter = ui.painter();
-    let background = if selected {
-        egui::Color32::from_rgb(0x2a, 0x3b, 0x4f)
+    let background = if light {
+        if selected {
+            egui::Color32::from_rgb(0xd6, 0xe2, 0xee)
+        } else {
+            egui::Color32::from_rgb(0xf2, 0xf4, 0xf7)
+        }
     } else {
-        egui::Color32::from_rgb(0x16, 0x1b, 0x22)
+        if selected {
+            egui::Color32::from_rgb(0x2a, 0x3b, 0x4f)
+        } else {
+            egui::Color32::from_rgb(0x16, 0x1b, 0x22)
+        }
     };
     painter.rect_filled(rect, 7.0, background);
     if selected {
         painter.rect_stroke(
             rect,
             7.0,
-            egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(0x3f, 0x5f, 0x7f)),
+            egui::Stroke::new(
+                1.0_f32,
+                if light {
+                    egui::Color32::from_rgb(0x9f, 0xb4, 0xc8)
+                } else {
+                    egui::Color32::from_rgb(0x3f, 0x5f, 0x7f)
+                },
+            ),
         );
     }
 
@@ -1766,7 +1820,11 @@ fn draw_tab(
         painter.rect_filled(
             close_rect,
             4.0,
-            egui::Color32::from_rgba_unmultiplied(255, 255, 255, 30),
+            if light {
+                egui::Color32::from_rgba_unmultiplied(0, 0, 0, 18)
+            } else {
+                egui::Color32::from_rgba_unmultiplied(255, 255, 255, 30)
+            },
         );
     }
     painter.text(
@@ -1774,10 +1832,14 @@ fn draw_tab(
         egui::Align2::CENTER_CENTER,
         "×",
         font_id,
-        if close_response.hovered() {
-            egui::Color32::WHITE
+        if light {
+            egui::Color32::from_rgb(0x3a, 0x40, 0x48)
         } else {
-            egui::Color32::from_rgb(0x8a, 0x92, 0x9a)
+            if close_response.hovered() {
+                egui::Color32::WHITE
+            } else {
+                egui::Color32::from_rgb(0x8a, 0x92, 0x9a)
+            }
         },
     );
 
