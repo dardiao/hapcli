@@ -1068,7 +1068,9 @@ impl TerminalTab {
                 self.refresh_search();
             }
             Some(TerminalMenuAction::Clear) => {
-                // 发送 Ctrl+L：shell 会清屏并重绘当前提示符（不丢失输入行）。
+                // 标准清屏：先清空本地缓冲（屏幕 + 滚动历史），
+                // 再发 Ctrl+L 让 shell 把提示符（含未提交的输入）重绘到顶部。
+                self.session.clear_buffer();
                 let _ = self.session.write_input(&[0x0c]);
                 self.selection = None;
                 self.search_matches.clear();

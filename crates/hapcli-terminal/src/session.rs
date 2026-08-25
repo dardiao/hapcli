@@ -292,6 +292,131 @@ mod tests {
     }
 
     #[test]
+    fn clear_screen_via_ctrl_l_clears_viewport_and_keeps_prompt() {
+        use std::time::{Duration, Instant};
+
+        let mut session = TerminalSession::local_default(100, 30).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            session.read_pending();
+            let snapshot = session.snapshot();
+            let has_prompt = snapshot.lines.iter().any(|row| {
+                row.cells
+                    .iter()
+                    .any(|cell| matches!(cell.ch, '%' | '$' | '#'))
+            });
+            if has_prompt {
+                break;
+            }
+            assert!(Instant::now() < deadline, "shell 未就绪");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+
+        // 打印 40 行，填满屏幕与滚动历史。
+        session.write_text("i=0; while [ $i -lt 40 ]; do echo clear-test-line-$i; i=$((i+1)); done\r").unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            session.read_pending();
+            let snapshot = session.snapshot();
+            let has_line = snapshot.lines.iter().any(|row| {
+                row.cells
+                    .iter()
+                    .any(|cell| cell.ch == '4' )
+            });
+            if has_line {
+                break;
+            }
+            assert!(Instant::now() < deadline, "输出未出现");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+
+        // 发送 Ctrl+L（当前右键“清屏”的实现）。
+        session.write_input(&[0x0c]).unwrap();
+        std::thread::sleep(Duration::from_millis(500));
+        session.read_pending();
+        let snapshot = session.snapshot();
+        let rows_with_content = snapshot
+            .lines
+            .iter()
+            .filter(|row| row.cells.iter().any(|cell| cell.ch != ' '))
+            .count();
+        let text: String = snapshot
+            .lines
+            .iter()
+            .flat_map(|row| row.cells.iter().map(|cell| cell.ch))
+            .collect();
+        println!("clear-test rows_with_content={rows_with_content} text={text:?}");
+        // 视口应基本清空（只保留提示符一行）。
+        assert!(
+            rows_with_content <= 2,
+            "Ctrl+L 后视口仍有 {rows_with_content} 行内容"
+        );
+    }
+
+    #[test]
+    fn clear_buffer_then_ctrl_l_clears_scrollback_and_redraws_prompt() {
+        use std::time::{Duration, Instant};
+
+        let mut session = TerminalSession::local_default(100, 30).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            session.read_pending();
+            let snapshot = session.snapshot();
+            let has_prompt = snapshot.lines.iter().any(|row| {
+                row.cells
+                    .iter()
+                    .any(|cell| matches!(cell.ch, '%' | '$' | '#'))
+            });
+            if has_prompt {
+                break;
+            }
+            assert!(Instant::now() < deadline, "shell 未就绪");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+
+        session.write_text("i=0; while [ $i -lt 40 ]; do echo buf-line-$i; i=$((i+1)); done\r").unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            session.read_pending();
+            let snapshot = session.snapshot();
+            let has_line = snapshot.lines.iter().any(|row| {
+                row.cells.iter().any(|cell| cell.ch == '4')
+            });
+            if has_line {
+                break;
+            }
+            assert!(Instant::now() < deadline, "输出未出现");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+
+        // 标准清屏：清空本地缓冲（含滚动历史），再发 Ctrl+L 让 shell 重绘提示符。
+        session.clear_buffer();
+        session.write_input(&[0x0c]).unwrap();
+        std::thread::sleep(Duration::from_millis(600));
+        session.read_pending();
+        let snapshot = session.snapshot();
+        let rows_with_content = snapshot
+            .lines
+            .iter()
+            .filter(|row| row.cells.iter().any(|cell| cell.ch != ' '))
+            .count();
+        let text: String = snapshot
+            .lines
+            .iter()
+            .flat_map(|row| row.cells.iter().map(|cell| cell.ch))
+            .collect();
+        println!("clear-combo rows_with_content={rows_with_content} text={text:?}");
+        assert!(
+            rows_with_content <= 2,
+            "清屏后视口仍有 {rows_with_content} 行内容"
+        );
+        assert!(
+            !text.contains("buf-line"),
+            "清屏后视口不应残留旧输出"
+        );
+    }
+
+    #[test]
     fn interactive_terminal_config_emits_osc52_clipboard_queries() {
         let size = TerminalSize {
             cols: 12,
