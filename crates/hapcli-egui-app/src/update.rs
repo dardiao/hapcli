@@ -501,8 +501,15 @@ fn download_to(
 pub fn parse_proxy_prefixes(list: &str) -> Vec<String> {
     list.split(',')
         .map(|item| item.trim().trim_end_matches('/'))
-        .filter(|item| item.starts_with("http://") || item.starts_with("https://"))
-        .map(|item| format!("{item}/"))
+        .filter(|item| !item.is_empty())
+        .map(|item| {
+            if item.starts_with("http://") || item.starts_with("https://") {
+                format!("{item}/")
+            } else {
+                // 只填域名时自动补 https://。
+                format!("https://{item}/")
+            }
+        })
         .collect()
 }
 
@@ -938,7 +945,7 @@ mod tests {
 
     #[test]
     fn proxy_prefixes_are_parsed_and_normalized() {
-        let list = "https://gh.dpik.top/, https://ghfast.top , ,http://localhost:8080,not-a-url";
+        let list = "https://gh.dpik.top/, ghfast.top , ,http://localhost:8080,not-a-url";
         let proxies = parse_proxy_prefixes(list);
         assert_eq!(
             proxies,
@@ -946,6 +953,7 @@ mod tests {
                 "https://gh.dpik.top/".to_string(),
                 "https://ghfast.top/".to_string(),
                 "http://localhost:8080/".to_string(),
+                "https://not-a-url/".to_string(),
             ]
         );
     }

@@ -731,7 +731,7 @@ impl HapcliApp {
                     ui.add(
                         egui::TextEdit::singleline(&mut self.settings.github_proxies)
                             .desired_width(360.0)
-                            .hint_text("逗号分隔的代理前缀，留空禁用代理回退"),
+                            .hint_text("例如 gh.dpik.top, gh-proxy.com（逗号分隔，可只填域名）"),
                     );
                     if ui
                         .small_button("恢复默认")
@@ -741,7 +741,7 @@ impl HapcliApp {
                         self.settings.github_proxies = crate::settings::default_github_proxies();
                     }
                 });
-                ui.weak("直连 GitHub 失败时自动测速选择最快的代理下载更新包，适用于国内网络被墙的情况。");
+                ui.weak("用法：代理前缀 + GitHub 完整链接，如 https://gh.dpik.top/https://github.com/…；直连失败时自动测速选最快节点。留空即禁用。");
                 if self.settings.ignored_update_version.is_some() {
                     ui.horizontal(|ui| {
                         ui.weak(format!(
