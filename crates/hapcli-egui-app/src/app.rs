@@ -1117,10 +1117,10 @@ impl eframe::App for HapcliApp {
                         ui,
                         egui::Button::new(
                             egui::RichText::new("＋")
-                                .color(egui::Color32::from_rgb(0x28, 0x2a, 0x36))
+                                .color(egui::Color32::from_rgb(0xff, 0xff, 0xff))
                                 .strong(),
                         )
-                        .fill(egui::Color32::from_rgb(0xbd, 0x93, 0xf9))
+                        .fill(egui::Color32::from_rgb(0x2f, 0x5a, 0x8f))
                         .rounding(6.0),
                         |ui| {
                             if ui.button("SSH 连接…").clicked() {
@@ -1134,7 +1134,7 @@ impl eframe::App for HapcliApp {
                         },
                     );
                     add_menu.response.on_hover_text("添加 SSH 或本地会话");
-                    if ui.button("⚙").on_hover_text("设置").clicked() {
+                    if ui.button(egui::RichText::new("⚙").size(15.0)).on_hover_text("设置").clicked() {
                         want_settings = true;
                     }
                     if active_is_ssh
@@ -1747,7 +1747,7 @@ fn draw_tab(
     const CLOSE_SIZE: f32 = 16.0;
     const GAP: f32 = 6.0;
 
-    let font_id = egui::FontId::proportional(13.5);
+    let font_id = egui::FontId::proportional(14.5);
     let text_color = if light {
         if selected {
             egui::Color32::from_rgb(0x1c, 0x1e, 0x21)
@@ -1779,7 +1779,7 @@ fn draw_tab(
         }
     } else {
         if selected {
-            egui::Color32::from_rgb(0x2a, 0x3b, 0x4f)
+            egui::Color32::from_rgb(0x2e, 0x4a, 0x6e)
         } else {
             egui::Color32::from_rgb(0x16, 0x1b, 0x22)
         }
@@ -1794,7 +1794,7 @@ fn draw_tab(
                 if light {
                     egui::Color32::from_rgb(0x9f, 0xb4, 0xc8)
                 } else {
-                    egui::Color32::from_rgb(0x3f, 0x5f, 0x7f)
+                    egui::Color32::from_rgb(0x4f, 0x86, 0xc6)
                 },
             ),
         );
