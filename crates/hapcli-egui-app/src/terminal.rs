@@ -92,6 +92,8 @@ pub struct TerminalTab {
     pending_input_line: Option<(String, bool)>,
     /// 拖选自动滚动的累积量（跨帧，保证越过边界时平滑持续滚动）。
     drag_scroll_accum: f32,
+    /// 是否有本地文件正拖拽悬停在终端上（用于识别拖放落点）。
+    drop_hovering: bool,
     /// 用户自定义标签名；None 表示自动显示（会话标题 / 连接名）。
     pub custom_label: Option<String>,
     /// Telnet / 串口配置（用于“复制标签”）。
@@ -154,6 +156,7 @@ impl TerminalTab {
             input_line_unreliable: false,
             pending_input_line: None,
             drag_scroll_accum: 0.0,
+            drop_hovering: false,
             custom_label: None,
             telnet_config: None,
             serial_config: None,
@@ -216,6 +219,7 @@ impl TerminalTab {
             input_line_unreliable: false,
             pending_input_line: None,
             drag_scroll_accum: 0.0,
+            drop_hovering: false,
             custom_label: None,
             telnet_config: None,
             serial_config: None,
@@ -284,6 +288,7 @@ impl TerminalTab {
             input_line_unreliable: false,
             pending_input_line: None,
             drag_scroll_accum: 0.0,
+            drop_hovering: false,
             custom_label: None,
             telnet_config: Some(stored_config),
             serial_config: None,
@@ -352,6 +357,7 @@ impl TerminalTab {
             input_line_unreliable: false,
             pending_input_line: None,
             drag_scroll_accum: 0.0,
+            drop_hovering: false,
             custom_label: None,
             telnet_config: None,
             serial_config: Some(stored_config),
@@ -407,6 +413,7 @@ impl TerminalTab {
         self.input_line_unreliable = false;
         self.pending_input_line = None;
         self.drag_scroll_accum = 0.0;
+        self.drop_hovering = false;
         self.search_enter_consumed = false;
     }
 
@@ -502,7 +509,29 @@ impl TerminalTab {
         let mut double_clicked = false;
         let mut triple_clicked = false;
         let mut pointer_events: Vec<(Pos2, bool)> = Vec::new();
+        // 拖到终端区域内的本地文件路径（写入 shell 输入行）。
+        let mut terminal_drop_paths: Vec<String> = Vec::new();
         ctx.input(|i| {
+            if !i.raw.dropped_files.is_empty() {
+                let over_terminal = i.pointer.hover_pos().is_some_and(|pos| {
+                    self.last_rect
+                        .is_some_and(|rect| rect.contains(pos))
+                });
+                if over_terminal || self.drop_hovering {
+                    terminal_drop_paths = i
+                        .raw
+                        .dropped_files
+                        .iter()
+                        .filter_map(|file| file.path.clone())
+                        .map(|path| path.display().to_string())
+                        .collect();
+                }
+            }
+            let over_terminal = i.pointer.hover_pos().is_some_and(|pos| {
+                self.last_rect
+                    .is_some_and(|rect| rect.contains(pos))
+            });
+            self.drop_hovering = over_terminal && !i.raw.hovered_files.is_empty();
             latest_pos = i.pointer.latest_pos();
             primary_down = i.pointer.primary_down();
             double_clicked = i.pointer.button_double_clicked(PointerButton::Primary);
@@ -680,7 +709,19 @@ impl TerminalTab {
             }
         });
 
-        // 阶段二：退出输入锁后处理指针事件与剪贴板。
+        // 阶段二：退出输入锁后处理拖放、指针事件与剪贴板。
+        if !terminal_drop_paths.is_empty() {
+            let inserted: String = terminal_drop_paths
+                .iter()
+                .map(|path| shell_quote_path(path))
+                .collect::<Vec<_>>()
+                .join(" ")
+                + " ";
+            let _ = self.session.write_text(&inserted);
+            // 同步更新输入行跟踪（保证后续 `cd` 路径解析仍准确）。
+            self.input_line.push_str(&inserted);
+        }
+
         for (pos, pressed) in pointer_events {
             if pressed {
                 if self.pointer_over_terminal(ctx, pos) {
@@ -1107,6 +1148,19 @@ fn delete_last_word(line: &mut String) {
     line.truncate(after_space);
 }
 
+/// 把本地路径转成 shell 可用的引号形式（拖拽插入用）：
+/// Unix 用单引号（空格/特殊字符安全），Windows 用双引号。
+fn shell_quote_path(path: &str) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        format!("\"{}\"", path.replace('"', "\"\""))
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        format!("'{}'", path.replace('\'', "'\\''"))
+    }
+}
+
 /// 判断远程路径是否为绝对路径（Unix `/` 或 Windows 盘符 `C:/`）。
 fn looks_absolute_remote(path: &str) -> bool {
     if path.starts_with('/') {
@@ -1240,6 +1294,14 @@ mod tests {
         let mut line = "cd".to_string();
         delete_last_word(&mut line);
         assert_eq!(line, "");
+    }
+
+    #[test]
+    fn shell_quote_path_handles_spaces_and_quotes() {
+        let quoted = shell_quote_path("/Users/me/My Documents/a.txt");
+        assert_eq!(quoted, "'/Users/me/My Documents/a.txt'");
+        let quoted = shell_quote_path("/it's/a/path");
+        assert_eq!(quoted, "'/it'\\''s/a/path'");
     }
 
 }
