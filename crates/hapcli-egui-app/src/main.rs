@@ -10,6 +10,7 @@ mod quick;
 mod settings;
 mod sftp;
 mod terminal;
+mod theme;
 mod trzsz;
 mod update;
 
