@@ -13,6 +13,7 @@ use crate::quick::QuickCommandsPanel;
 use crate::settings::{AppSettings, ThemeChoice, load_settings, save_settings};
 use crate::sftp;
 use crate::terminal::{TerminalPrefs, TerminalTab};
+use crate::theme::apply_egui_theme;
 use crate::trzsz::{TrzszPromptRequest, TrzszPromptSelection, TrzszWorkerEvent, spawn_trzsz_worker};
 use crate::update::{UpdateCheckState, UpdateStatus, open_url, parse_proxy_prefixes};
 
@@ -28,15 +29,6 @@ fn surrender_focus(ctx: &egui::Context) {
             memory.surrender_focus(id);
         }
     });
-}
-
-/// 应用 egui 界面主题（深/浅色），让面板、弹窗等跟随设置。
-fn apply_egui_theme(ctx: &egui::Context, choice: ThemeChoice) {
-    let visuals = match choice {
-        ThemeChoice::Dark => egui::Visuals::dark(),
-        ThemeChoice::Light => egui::Visuals::light(),
-    };
-    ctx.set_visuals(visuals);
 }
 
 pub struct HapcliApp {
@@ -2000,6 +1992,7 @@ fn install_fonts(ctx: &egui::Context, settings: &AppSettings) -> bool {
     // 平台默认等宽字体：比内置 Hack 有更好的符号与本地化字形覆盖
     // （macOS Monaco / Windows Consolas / Linux DejaVu Sans Mono）。
     const SYSTEM_MONO_CANDIDATES: &[&str] = &[
+        "/System/Library/Fonts/SFNSMono.ttf",
         "/System/Library/Fonts/Monaco.ttf",
         "C:\\Windows\\Fonts\\consola.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
@@ -2014,6 +2007,27 @@ fn install_fonts(ctx: &egui::Context, settings: &AppSettings) -> bool {
             );
             if let Some(mono) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
                 mono.insert(0, "hapcli-system-mono".to_owned());
+            }
+            break;
+        }
+    }
+
+    // 平台界面字体：让按钮、面板文字接近原生观感（macOS SF Pro / Windows Segoe UI）。
+    const UI_FONT_CANDIDATES: &[&str] = &[
+        "/System/Library/Fonts/SFNS.ttf",
+        "C:\\Windows\\Fonts\\segoeui.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ];
+    for path in UI_FONT_CANDIDATES {
+        if let Ok(bytes) = std::fs::read(path)
+            && ab_glyph::FontArc::try_from_vec(bytes.clone()).is_ok()
+        {
+            fonts.font_data.insert(
+                "hapcli-ui-font".to_owned(),
+                egui::FontData::from_owned(bytes),
+            );
+            if let Some(proportional) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
+                proportional.insert(0, "hapcli-ui-font".to_owned());
             }
             break;
         }
