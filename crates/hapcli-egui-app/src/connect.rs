@@ -378,6 +378,16 @@ impl ConnectForm {
         }
     }
 
+    /// 从收藏配置直接构造连接请求（供左侧会话栏点击收藏使用）；
+    /// 密码若已保存在系统钥匙串会自动读取回填。
+    pub(crate) fn request_from_profile(
+        profile: ConnectionProfile,
+    ) -> Result<ConnectRequest, String> {
+        let mut form = Self::default();
+        form.apply_profile(profile);
+        form.build_request()
+    }
+
     fn apply_profile(&mut self, profile: ConnectionProfile) {
         // 在移动字段前先从钥匙串读取密码（若已保存过）。
         let keychain_secret = if profile.kind == ConnectionKind::Ssh
