@@ -53,6 +53,8 @@ pub struct HapcliApp {
     session_search: String,
     sidebar_profiles: Vec<ConnectionProfile>,
     sidebar_profiles_at: Option<Instant>,
+    /// 会话栏默认隐藏（FinalShell 风格：按需展开的会话树）。
+    show_sidebar: bool,
     /// 当前已应用的 egui 界面主题（用于检测切换后重绘）。
     applied_ui_theme: Option<ThemeChoice>,
 }
@@ -87,6 +89,7 @@ impl HapcliApp {
             session_search: String::new(),
             sidebar_profiles: load_profiles(),
             sidebar_profiles_at: None,
+            show_sidebar: false,
             applied_ui_theme: Some(initial_theme),
         })
     }
@@ -139,7 +142,7 @@ impl HapcliApp {
             self.sidebar_profiles_at = Some(now);
         }
 
-        let accent = egui::Color32::from_rgb(0x2f, 0x7b, 0xfd);
+        let accent = crate::theme::accent();
         egui::SidePanel::left("session_sidebar")
             .resizable(true)
             .default_width(220.0)
@@ -1227,6 +1230,14 @@ impl eframe::App for HapcliApp {
             egui::ScrollArea::horizontal().show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 4.0;
+                    if ui
+                        .button(if self.show_sidebar { "☰ ◀" } else { "☰" })
+                        .on_hover_text("会话栏（收藏的连接）")
+                        .clicked()
+                    {
+                        self.show_sidebar = !self.show_sidebar;
+                    }
+                    ui.separator();
                     for index in 0..self.tabs.len() {
                         let selected = index == self.active_tab;
                         let label = self.tabs[index].display_label();
@@ -1322,15 +1333,17 @@ impl eframe::App for HapcliApp {
             self.handle_tab_menu(ctx, index, action);
         }
 
-        // 2.3 左侧会话栏（XTerminal 风格）。
-        let sidebar_actions = self.session_sidebar(ctx);
-        for action in sidebar_actions {
-            match action {
-                SidebarAction::Connect => want_connect = true,
-                SidebarAction::Local => want_local = true,
-                SidebarAction::Settings => want_settings = true,
-                SidebarAction::OpenProfile(profile) => {
-                    self.open_profile_tab(ctx, profile);
+        // 2.3 左侧会话栏（FinalShell 风格：默认隐藏，点 ☰ 展开）。
+        if self.show_sidebar {
+            let sidebar_actions = self.session_sidebar(ctx);
+            for action in sidebar_actions {
+                match action {
+                    SidebarAction::Connect => want_connect = true,
+                    SidebarAction::Local => want_local = true,
+                    SidebarAction::Settings => want_settings = true,
+                    SidebarAction::OpenProfile(profile) => {
+                        self.open_profile_tab(ctx, profile);
+                    }
                 }
             }
         }
@@ -1908,7 +1921,7 @@ fn draw_tab(
 
     let font_id = egui::FontId::proportional(14.5);
     // XTerminal 风格：未选中标签透明，选中标签蓝色调背景 + 底部蓝色指示条。
-    let accent = egui::Color32::from_rgb(0x2f, 0x7b, 0xfd);
+    let accent = crate::theme::accent();
     let text_color = if light {
         if selected {
             egui::Color32::from_rgb(0x1c, 0x1e, 0x21)

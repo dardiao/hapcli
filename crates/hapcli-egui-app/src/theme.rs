@@ -9,6 +9,11 @@ fn hex(h: u32) -> Color32 {
     Color32::from_rgb((h >> 16) as u8, (h >> 8) as u8, h as u8)
 }
 
+/// FinalShell 风格强调蓝（标签指示条、选中态、按钮主色等共用）。
+pub fn accent() -> Color32 {
+    hex(0x1e8fff)
+}
+
 fn widget(bg: u32, weak: u32, fg: u32, border: u32, rounding: f32) -> egui::style::WidgetVisuals {
     egui::style::WidgetVisuals {
         bg_fill: hex(bg),
@@ -22,12 +27,12 @@ fn widget(bg: u32, weak: u32, fg: u32, border: u32, rounding: f32) -> egui::styl
 
 fn dark_visuals() -> egui::Visuals {
     let mut v = egui::Visuals::dark();
-    // XTerminal 风格：深色面板 + 亮蓝强调。
-    v.panel_fill = hex(0x161b22);
-    v.window_fill = hex(0x1b212a);
-    v.extreme_bg_color = hex(0x0d1117);
-    v.faint_bg_color = hex(0x21262d);
-    v.code_bg_color = hex(0x232a33);
+    // FinalShell 风格：深蓝黑面板 + 亮蓝强调。
+    v.panel_fill = hex(0x151a21);
+    v.window_fill = hex(0x1a2029);
+    v.extreme_bg_color = hex(0x0d1116);
+    v.faint_bg_color = hex(0x20262f);
+    v.code_bg_color = hex(0x222934);
     v.hyperlink_color = hex(0x82b4ff);
     v.warn_fg_color = hex(0xe0b05c);
     v.error_fg_color = hex(0xe06c75);
@@ -35,15 +40,15 @@ fn dark_visuals() -> egui::Visuals {
     v.window_stroke = Stroke::new(1.0_f32, hex(0x2a323c));
     v.menu_rounding = Rounding::same(8.0);
     v.selection = egui::style::Selection {
-        bg_fill: hex(0x2f7bfd),
+        bg_fill: accent(),
         stroke: Stroke::new(1.0_f32, hex(0x6ea8ff)),
     };
     v.widgets = egui::style::Widgets {
-        noninteractive: widget(0x1c2129, 0x1c2129, 0xb9c0ca, 0x262d36, 8.0),
-        inactive: widget(0x232a33, 0x232a33, 0xd5dae1, 0x313a45, 8.0),
-        hovered: widget(0x3d5f94, 0x3d5f94, 0xffffff, 0x5b83c8, 8.0),
-        active: widget(0x2f7bfd, 0x2f7bfd, 0xffffff, 0x4f8cff, 8.0),
-        open: widget(0x29313c, 0x29313c, 0xffffff, 0x3a4552, 8.0),
+        noninteractive: widget(0x1b2129, 0x1b2129, 0xb9c0ca, 0x252c36, 6.0),
+        inactive: widget(0x222933, 0x222933, 0xd5dae1, 0x303945, 6.0),
+        hovered: widget(0x2f6fb0, 0x2f6fb0, 0xffffff, 0x4d8bd6, 6.0),
+        active: widget(0x1e8fff, 0x1e8fff, 0xffffff, 0x46a2ff, 6.0),
+        open: widget(0x28313c, 0x28313c, 0xffffff, 0x39434f, 6.0),
     };
     v
 }
@@ -55,7 +60,7 @@ fn light_visuals() -> egui::Visuals {
     v.extreme_bg_color = hex(0xe9ecf0);
     v.faint_bg_color = hex(0xebeef2);
     v.code_bg_color = hex(0xf0f2f5);
-    v.hyperlink_color = hex(0x2f7bfd);
+    v.hyperlink_color = accent();
     v.warn_fg_color = hex(0xb7791f);
     v.error_fg_color = hex(0xc0392b);
     v.window_rounding = Rounding::same(8.0);
@@ -63,14 +68,14 @@ fn light_visuals() -> egui::Visuals {
     v.menu_rounding = Rounding::same(8.0);
     v.selection = egui::style::Selection {
         bg_fill: hex(0xa8cdff),
-        stroke: Stroke::new(1.0_f32, hex(0x2f7bfd)),
+        stroke: Stroke::new(1.0_f32, accent()),
     };
     v.widgets = egui::style::Widgets {
-        noninteractive: widget(0xffffff, 0xffffff, 0x3c4149, 0xe2e5ea, 8.0),
-        inactive: widget(0xeef1f5, 0xeef1f5, 0x1c1e21, 0xd8dce2, 8.0),
-        hovered: widget(0xdbe6f5, 0xdbe6f5, 0x111111, 0xb9cdea, 8.0),
-        active: widget(0xc3d9f7, 0xc3d9f7, 0x111111, 0x9bbce8, 8.0),
-        open: widget(0xe9edf2, 0xe9edf2, 0x1c1e21, 0xccd3dc, 8.0),
+        noninteractive: widget(0xffffff, 0xffffff, 0x3c4149, 0xe2e5ea, 6.0),
+        inactive: widget(0xeef1f5, 0xeef1f5, 0x1c1e21, 0xd8dce2, 6.0),
+        hovered: widget(0xdce8f8, 0xdce8f8, 0x111111, 0xb9cdea, 6.0),
+        active: widget(0xc3d9f7, 0xc3d9f7, 0x111111, 0x9bbce8, 6.0),
+        open: widget(0xe9edf2, 0xe9edf2, 0x1c1e21, 0xccd3dc, 6.0),
     };
     v
 }
