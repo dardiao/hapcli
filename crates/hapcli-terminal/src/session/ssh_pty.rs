@@ -39,6 +39,7 @@ impl SshPtySession {
         graphics_options: GraphicsOptions,
         encoding: TerminalEncoding,
         scrollback_lines: usize,
+        cursor_style: crate::TerminalCursorStyle,
     ) -> Self {
         let resize = TerminalResize::new(cols, rows, 0, 0);
         let size = TerminalSize {
@@ -50,7 +51,7 @@ impl SshPtySession {
         let (listener, event_rx) = local_event_channel();
         let activity = listener.activity_sender();
 
-        let term_config = interactive_terminal_config(scrollback_lines);
+        let term_config = interactive_terminal_config(scrollback_lines, cursor_style);
         let term = Arc::new(FairMutex::new(Term::new(term_config, &size, listener)));
 
         // GPUI owns a backend runtime for SSH-adjacent work; standalone

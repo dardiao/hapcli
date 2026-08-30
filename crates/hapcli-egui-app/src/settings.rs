@@ -13,10 +13,40 @@ pub enum ThemeChoice {
 /// 设置窗口左侧的分类页面。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SettingsPage {
-    /// 常规设置：主题与通用行为（复制粘贴、重连、通知、更新等）。
+    /// 常规设置：通用行为（复制粘贴、重连、通知、更新、代理等）。
     General,
-    /// 终端设置：终端仿真器的外观与行为（字体、透明度、光标等）。
+    /// 外观设置：应用界面 UI（深浅色主题、透明窗口等）。
+    Appearance,
+    /// 终端设置：终端仿真器内容的外观与行为（字体、字号、光标、滚动等），
+    /// 只作用于连上 SSH / zsh 之后的终端画面，与 app 界面 UI 无关。
     Terminal,
+}
+
+/// 终端默认光标样式（Oxideterm 终端设置里的 CursorStyle）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CursorStyleChoice {
+    #[default]
+    Block,
+    Underline,
+    Beam,
+}
+
+impl CursorStyleChoice {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Block => "方块 ▮",
+            Self::Underline => "下划线 _",
+            Self::Beam => "竖线 |",
+        }
+    }
+
+    pub fn to_kernel(self) -> hapcli_terminal::TerminalCursorStyle {
+        match self {
+            Self::Block => hapcli_terminal::TerminalCursorStyle::Block,
+            Self::Underline => hapcli_terminal::TerminalCursorStyle::Underline,
+            Self::Beam => hapcli_terminal::TerminalCursorStyle::Beam,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -28,6 +58,15 @@ pub struct AppSettings {
     pub transparent_window: bool,
     /// 自定义终端字体文件路径；None 表示使用默认等宽字体。
     pub terminal_font_path: Option<String>,
+    /// 终端滚动历史行数（新会话生效）。
+    #[serde(default = "default_scrollback")]
+    pub scrollback_lines: usize,
+    /// 终端行高倍率（1.0 = 默认）。
+    #[serde(default = "default_line_height")]
+    pub line_height: f32,
+    /// 终端默认光标样式（新会话生效）。
+    #[serde(default)]
+    pub cursor_style: CursorStyleChoice,
     /// 选中完成（松开鼠标 / 双击 / 三击）后自动复制到剪贴板。
     pub copy_on_select: bool,
     /// 鼠标中键点击粘贴剪贴板内容。
@@ -55,6 +94,14 @@ fn default_true() -> bool {
     true
 }
 
+fn default_scrollback() -> usize {
+    1000
+}
+
+fn default_line_height() -> f32 {
+    1.0
+}
+
 /// 默认 GitHub 代理前缀（来自 github.akams.cn 站点前端收集的加速源）。
 pub fn default_github_proxies() -> String {
     [
@@ -78,6 +125,9 @@ impl Default for AppSettings {
             background_alpha: 1.0,
             transparent_window: false,
             terminal_font_path: None,
+            scrollback_lines: default_scrollback(),
+            line_height: default_line_height(),
+            cursor_style: CursorStyleChoice::default(),
             copy_on_select: false,
             middle_click_paste: true,
             ssh_auto_reconnect: true,
@@ -136,6 +186,9 @@ mod tests {
             background_alpha: 0.7,
             transparent_window: true,
             terminal_font_path: Some("/tmp/myfont.ttf".to_string()),
+            scrollback_lines: 5000,
+            line_height: 1.2,
+            cursor_style: CursorStyleChoice::Beam,
             copy_on_select: true,
             middle_click_paste: true,
             ssh_auto_reconnect: true,
@@ -155,6 +208,9 @@ mod tests {
         assert_eq!(loaded.background_alpha, 0.7);
         assert!(loaded.transparent_window);
         assert_eq!(loaded.terminal_font_path.as_deref(), Some("/tmp/myfont.ttf"));
+        assert_eq!(loaded.scrollback_lines, 5000);
+        assert_eq!(loaded.line_height, 1.2);
+        assert_eq!(loaded.cursor_style, CursorStyleChoice::Beam);
         assert!(loaded.copy_on_select);
         assert!(loaded.middle_click_paste);
         assert!(loaded.ssh_auto_reconnect);

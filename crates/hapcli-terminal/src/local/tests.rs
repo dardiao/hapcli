@@ -73,6 +73,7 @@ mod tests {
             GraphicsOptions::default(),
             TerminalEncoding::Utf8,
             1000,
+        crate::TerminalCursorStyle::default(),
         );
 
         assert!(session.lifecycle().is_running());
@@ -88,6 +89,7 @@ mod tests {
             GraphicsOptions::default(),
             TerminalEncoding::Utf8,
             1000,
+        crate::TerminalCursorStyle::default(),
         );
 
         session
@@ -164,6 +166,7 @@ wait
             GraphicsOptions::default(),
             TerminalEncoding::Utf8,
             100,
+        crate::TerminalCursorStyle::default(),
         )
         .expect("spawn local PTY");
 
@@ -228,6 +231,7 @@ wait
             GraphicsOptions::default(),
             TerminalEncoding::Utf8,
             100,
+        crate::TerminalCursorStyle::default(),
         )
         .expect("spawn integrated Zsh PTY");
 
@@ -292,6 +296,7 @@ wait
             GraphicsOptions::default(),
             TerminalEncoding::Utf8,
             100,
+        crate::TerminalCursorStyle::default(),
         )
         .unwrap_or_else(|error| panic!("spawn integrated local {shell_id} PTY: {error}"));
         assert_eq!(

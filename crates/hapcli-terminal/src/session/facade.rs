@@ -30,6 +30,7 @@ impl TerminalSession {
             graphics_options,
             TerminalEncoding::Utf8,
             1000,
+            crate::TerminalCursorStyle::default(),
         )
     }
 
@@ -39,6 +40,7 @@ impl TerminalSession {
         graphics_options: GraphicsOptions,
         encoding: TerminalEncoding,
         scrollback_lines: usize,
+        cursor_style: crate::TerminalCursorStyle,
     ) -> Result<Self> {
         Ok(Self {
             backend: Box::new(LocalPtySession::spawn_with_graphics_and_encoding(
@@ -47,6 +49,7 @@ impl TerminalSession {
                 graphics_options,
                 encoding,
                 scrollback_lines,
+                cursor_style,
             )?),
         })
     }
@@ -58,6 +61,7 @@ impl TerminalSession {
         graphics_options: GraphicsOptions,
         encoding: TerminalEncoding,
         scrollback_lines: usize,
+        cursor_style: crate::TerminalCursorStyle,
     ) -> Result<Self> {
         Ok(Self {
             backend: Box::new(LocalPtySession::spawn_with_config_graphics_and_encoding(
@@ -67,6 +71,7 @@ impl TerminalSession {
                 graphics_options,
                 encoding,
                 scrollback_lines,
+                cursor_style,
             )?),
         })
     }
@@ -104,6 +109,7 @@ impl TerminalSession {
             graphics_options,
             TerminalEncoding::Utf8,
             1000,
+            crate::TerminalCursorStyle::default(),
         )
     }
 
@@ -114,6 +120,7 @@ impl TerminalSession {
         graphics_options: GraphicsOptions,
         encoding: TerminalEncoding,
         scrollback_lines: usize,
+        cursor_style: crate::TerminalCursorStyle,
     ) -> Self {
         Self {
             backend: Box::new(SshPtySession::new(
@@ -123,6 +130,7 @@ impl TerminalSession {
                 graphics_options,
                 encoding,
                 scrollback_lines,
+                cursor_style,
             )),
         }
     }
@@ -134,6 +142,7 @@ impl TerminalSession {
         graphics_options: GraphicsOptions,
         encoding: TerminalEncoding,
         scrollback_lines: usize,
+        cursor_style: crate::TerminalCursorStyle,
     ) -> Self {
         Self {
             backend: Box::new(TelnetSession::new(
@@ -143,6 +152,7 @@ impl TerminalSession {
                 graphics_options,
                 encoding,
                 scrollback_lines,
+                cursor_style,
             )),
         }
     }
@@ -154,6 +164,7 @@ impl TerminalSession {
         graphics_options: GraphicsOptions,
         encoding: TerminalEncoding,
         scrollback_lines: usize,
+        cursor_style: crate::TerminalCursorStyle,
     ) -> std::result::Result<Self, SerialError> {
         Ok(Self {
             backend: Box::new(SerialSession::new(
@@ -163,6 +174,7 @@ impl TerminalSession {
                 graphics_options,
                 encoding,
                 scrollback_lines,
+                cursor_style,
             )?),
         })
     }

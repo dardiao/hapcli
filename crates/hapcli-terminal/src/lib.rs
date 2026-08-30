@@ -49,9 +49,9 @@ pub use command_sender::{
 };
 pub use data::{
     GraphicsOptions, TerminalAttrs, TerminalCell, TerminalColor, TerminalCursorShape,
-    TerminalImageAnimationState, TerminalImageData, TerminalImageFrame, TerminalImageId,
-    TerminalImageProtocol, TerminalImageSnapshot, TerminalRow, TerminalSearchMatch,
-    TerminalSearchRange, TerminalSnapshot,
+    TerminalCursorStyle, TerminalImageAnimationState, TerminalImageData, TerminalImageFrame,
+    TerminalImageId, TerminalImageProtocol, TerminalImageSnapshot, TerminalRow,
+    TerminalSearchMatch, TerminalSearchRange, TerminalSnapshot,
 };
 pub use editor_integration::{
     EMACS_FREE_TYPE_INTEGRATION_SOURCE, TerminalEditorApplication, TerminalEditorCapabilities,
@@ -122,9 +122,13 @@ use search::search_logical_line_matches;
 pub(crate) use search::search_matches_from_term;
 use search::{append_grid_line_text, viewport_row_for_grid_line};
 
-fn interactive_terminal_config(scrollback_lines: usize) -> Config {
+fn interactive_terminal_config(
+    scrollback_lines: usize,
+    cursor_style: TerminalCursorStyle,
+) -> Config {
     let mut config = Config::default();
     config.scrolling_history = scrollback_lines;
+    config.default_cursor_style = cursor_style.to_alacritty();
     config.kitty_keyboard = true;
     // Parse OSC 52 queries for interactive sessions; the GPUI permission gate decides whether
     // local clipboard contents are returned to the requesting process.

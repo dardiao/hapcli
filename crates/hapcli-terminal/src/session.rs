@@ -425,7 +425,11 @@ mod tests {
             cell_height: 17,
         };
         let (listener, event_rx) = local_event_channel();
-        let mut term = Term::new(interactive_terminal_config(16), &size, listener);
+        let mut term = Term::new(
+            interactive_terminal_config(16, crate::TerminalCursorStyle::default()),
+            &size,
+            listener,
+        );
         let mut parser = Processor::<StdSyncHandler>::new();
 
         parser.advance(&mut term, b"\x1b]52;c;?\x07");
@@ -516,6 +520,7 @@ mod tests {
             GraphicsOptions::default(),
             TerminalEncoding::Utf8,
             1000,
+        crate::TerminalCursorStyle::default(),
         );
 
         // TerminalEvent::Output duplicates decoded display bytes for recording,

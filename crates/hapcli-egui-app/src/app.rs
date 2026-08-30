@@ -63,7 +63,13 @@ impl HapcliApp {
         let initial_theme = settings.theme;
         apply_egui_theme(&cc.egui_ctx, initial_theme);
 
-        let local = TerminalTab::new_local(&cc.egui_ctx, 100, 30)?;
+        let local = TerminalTab::new_local(
+            &cc.egui_ctx,
+            100,
+            30,
+            settings.scrollback_lines,
+            settings.cursor_style.to_kernel(),
+        )?;
         Ok(Self {
             tabs: vec![local],
             active_tab: 0,
@@ -180,6 +186,8 @@ impl HapcliApp {
                     label,
                     cols,
                     rows,
+                    self.settings.scrollback_lines,
+                    self.settings.cursor_style.to_kernel(),
                 );
                 self.tabs.push(tab);
                 self.active_tab = self.tabs.len() - 1;
@@ -188,7 +196,15 @@ impl HapcliApp {
                 let Some(config) = source.telnet_config.clone() else {
                     return;
                 };
-                let tab = TerminalTab::new_telnet(ctx, config, label, cols, rows);
+                let tab = TerminalTab::new_telnet(
+                    ctx,
+                    config,
+                    label,
+                    cols,
+                    rows,
+                    self.settings.scrollback_lines,
+                    self.settings.cursor_style.to_kernel(),
+                );
                 self.tabs.push(tab);
                 self.active_tab = self.tabs.len() - 1;
             }
@@ -196,7 +212,15 @@ impl HapcliApp {
                 let Some(config) = source.serial_config.clone() else {
                     return;
                 };
-                match TerminalTab::new_serial(ctx, config, label, cols, rows) {
+                match TerminalTab::new_serial(
+                    ctx,
+                    config,
+                    label,
+                    cols,
+                    rows,
+                    self.settings.scrollback_lines,
+                    self.settings.cursor_style.to_kernel(),
+                ) {
                     Ok(tab) => {
                         self.tabs.push(tab);
                         self.active_tab = self.tabs.len() - 1;
@@ -278,7 +302,13 @@ impl HapcliApp {
     }
 
     fn add_local_tab(&mut self, ctx: &egui::Context, cols: usize, rows: usize) {
-        if let Ok(tab) = TerminalTab::new_local(ctx, cols, rows) {
+        if let Ok(tab) = TerminalTab::new_local(
+            ctx,
+            cols,
+            rows,
+            self.settings.scrollback_lines,
+            self.settings.cursor_style.to_kernel(),
+        ) {
             self.tabs.push(tab);
             self.active_tab = self.tabs.len() - 1;
         }
@@ -307,13 +337,29 @@ impl HapcliApp {
                     label,
                     cols,
                     rows,
+                    self.settings.scrollback_lines,
+                    self.settings.cursor_style.to_kernel(),
                 )
             }
             ConnectTarget::Telnet(config) => {
-                TerminalTab::new_telnet(ctx, config, label, cols, rows)
+                TerminalTab::new_telnet(
+                    ctx,
+                    config,
+                    label,
+                    cols,
+                    rows,
+                    self.settings.scrollback_lines,
+                    self.settings.cursor_style.to_kernel(),
+                )
             }
             ConnectTarget::Serial(config) => match TerminalTab::new_serial(
-                ctx, config, label, cols, rows,
+                ctx,
+                config,
+                label,
+                cols,
+                rows,
+                self.settings.scrollback_lines,
+                self.settings.cursor_style.to_kernel(),
             ) {
                 Ok(tab) => tab,
                 Err(error) => {
@@ -618,6 +664,7 @@ impl HapcliApp {
                         ui.add_space(8.0);
                         let pages = [
                             (SettingsPage::General, "常规设置"),
+                            (SettingsPage::Appearance, "外观设置"),
                             (SettingsPage::Terminal, "终端设置"),
                         ];
                         for (page, label) in pages {
@@ -641,11 +688,14 @@ impl HapcliApp {
                             ui.add_space(4.0);
                             match self.settings_page {
                                 SettingsPage::General => self.settings_page_general(ui),
+                                SettingsPage::Appearance => self.settings_page_appearance(
+                                    ui,
+                                    &mut toggle_transparent,
+                                ),
                                 SettingsPage::Terminal => self.settings_page_terminal(
                                     ui,
                                     &mut pick_font,
                                     &mut clear_font,
-                                    &mut toggle_transparent,
                                 ),
                             }
                             if let Some(path) = &self.settings.terminal_font_path {
@@ -715,27 +765,6 @@ impl HapcliApp {
 
     /// 常规设置页：主题与通用行为。
     fn settings_page_general(&mut self, ui: &mut egui::Ui) {
-        ui.label(egui::RichText::new("外观").strong());
-        ui.add_space(4.0);
-        egui::Grid::new("settings_general_grid")
-            .num_columns(2)
-            .spacing([10.0, 8.0])
-            .show(ui, |ui| {
-                ui.label("主题");
-                let theme_label = match self.settings.theme {
-                    ThemeChoice::Dark => "深色",
-                    ThemeChoice::Light => "浅色",
-                };
-                egui::ComboBox::from_id_salt("theme_choice")
-                    .selected_text(theme_label)
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.settings.theme, ThemeChoice::Dark, "深色");
-                        ui.selectable_value(&mut self.settings.theme, ThemeChoice::Light, "浅色");
-                    });
-                ui.end_row();
-            });
-
-        ui.add_space(10.0);
         ui.label(egui::RichText::new("行为").strong());
         ui.add_space(2.0);
         ui.checkbox(
@@ -809,15 +838,51 @@ impl HapcliApp {
         }
     }
 
-    /// 终端设置页：终端仿真器的外观与行为。
+    /// 外观设置页：应用界面 UI（深浅色主题、透明窗口）。
+    fn settings_page_appearance(
+        &mut self,
+        ui: &mut egui::Ui,
+        toggle_transparent: &mut Option<bool>,
+    ) {
+        ui.label(egui::RichText::new("界面外观").strong());
+        ui.add_space(4.0);
+        egui::Grid::new("settings_appearance_grid")
+            .num_columns(2)
+            .spacing([10.0, 8.0])
+            .show(ui, |ui| {
+                ui.label("界面主题");
+                let theme_label = match self.settings.theme {
+                    ThemeChoice::Dark => "深色",
+                    ThemeChoice::Light => "浅色",
+                };
+                egui::ComboBox::from_id_salt("theme_choice")
+                    .selected_text(theme_label)
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut self.settings.theme, ThemeChoice::Dark, "深色");
+                        ui.selectable_value(&mut self.settings.theme, ThemeChoice::Light, "浅色");
+                    });
+                ui.end_row();
+
+                ui.label("透明窗口");
+                let before = self.settings.transparent_window;
+                ui.checkbox(&mut self.settings.transparent_window, "启用");
+                if before != self.settings.transparent_window {
+                    *toggle_transparent = Some(self.settings.transparent_window);
+                }
+                ui.end_row();
+            });
+        ui.add_space(8.0);
+        ui.weak("这里只影响 hapcli 应用本身的界面 UI；终端内容的外观在“终端设置”里配置。");
+    }
+
+    /// 终端设置页：只针对连上 SSH / zsh 之后的终端画面（字体、颜色、光标、滚动等）。
     fn settings_page_terminal(
         &mut self,
         ui: &mut egui::Ui,
         pick_font: &mut bool,
         clear_font: &mut bool,
-        toggle_transparent: &mut Option<bool>,
     ) {
-        ui.label(egui::RichText::new("终端外观").strong());
+        ui.label(egui::RichText::new("显示").strong());
         ui.add_space(4.0);
         egui::Grid::new("settings_terminal_grid")
             .num_columns(2)
@@ -839,14 +904,6 @@ impl HapcliApp {
                 );
                 ui.end_row();
 
-                ui.label("透明窗口");
-                let before = self.settings.transparent_window;
-                ui.checkbox(&mut self.settings.transparent_window, "启用");
-                if before != self.settings.transparent_window {
-                    *toggle_transparent = Some(self.settings.transparent_window);
-                }
-                ui.end_row();
-
                 ui.label("终端字体");
                 ui.horizontal(|ui| {
                     let font_label = if self.custom_font_loaded {
@@ -863,10 +920,43 @@ impl HapcliApp {
                     }
                 });
                 ui.end_row();
+
+                ui.label("行高");
+                ui.add(
+                    egui::Slider::new(&mut self.settings.line_height, 0.8..=1.8)
+                        .fixed_decimals(2)
+                        .suffix("×"),
+                );
+                ui.end_row();
+
+                ui.label("滚动历史");
+                ui.add(
+                    egui::Slider::new(&mut self.settings.scrollback_lines, 100..=100_000)
+                        .suffix(" 行"),
+                );
+                ui.end_row();
+
+                ui.label("光标样式");
+                egui::ComboBox::from_id_salt("cursor_style")
+                    .selected_text(self.settings.cursor_style.label())
+                    .show_ui(ui, |ui| {
+                        for choice in [
+                            crate::settings::CursorStyleChoice::Block,
+                            crate::settings::CursorStyleChoice::Underline,
+                            crate::settings::CursorStyleChoice::Beam,
+                        ] {
+                            ui.selectable_value(
+                                &mut self.settings.cursor_style,
+                                choice,
+                                choice.label(),
+                            );
+                        }
+                    });
+                ui.end_row();
             });
 
         ui.add_space(10.0);
-        ui.weak("更多终端仿真选项（光标样式、终端配色、滚动行为等）将陆续加入。");
+        ui.weak("字体、字号、光标样式与滚动历史只作用于终端内容（SSH / zsh 会话画面）；滚动行数与光标样式在新会话或重连后生效。终端配色方案即将加入。");
     }
 
     /// 处理终端事件：Trzsz 提示 / 目录变化（SFTP 跟随）→ 提示窗 → worker 轮询。
@@ -1115,9 +1205,10 @@ impl eframe::App for HapcliApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let font_id = self.terminal_font_id();
         let cell_size = ctx.fonts(|fonts| {
+            let row_height = fonts.row_height(&font_id).ceil().max(1.0);
             Vec2::new(
                 fonts.glyph_width(&font_id, 'W').ceil().max(1.0),
-                fonts.row_height(&font_id).ceil().max(1.0),
+                row_height * self.settings.line_height.clamp(0.8, 1.8),
             )
         });
 

@@ -224,6 +224,7 @@ impl TelnetSession {
         graphics_options: GraphicsOptions,
         encoding: TerminalEncoding,
         scrollback_lines: usize,
+        cursor_style: crate::TerminalCursorStyle,
     ) -> Self {
         let resize = TerminalResize::new(cols, rows, 0, 0);
         let size = TerminalSize {
@@ -238,7 +239,7 @@ impl TelnetSession {
             listener.activity_sender(),
         );
         let (command_tx, command_rx) = tokio::sync::mpsc::channel(256);
-        let term_config = interactive_terminal_config(scrollback_lines);
+        let term_config = interactive_terminal_config(scrollback_lines, cursor_style);
         let term = Arc::new(FairMutex::new(Term::new(term_config, &size, listener)));
 
         let runtime = Runtime::new().ok();

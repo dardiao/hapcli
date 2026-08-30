@@ -31,6 +31,7 @@ impl LocalPtySession {
             GraphicsOptions::default(),
             TerminalEncoding::Utf8,
             1000,
+            crate::TerminalCursorStyle::default(),
         )
     }
 
@@ -45,6 +46,7 @@ impl LocalPtySession {
             graphics_options,
             TerminalEncoding::Utf8,
             1000,
+            crate::TerminalCursorStyle::default(),
         )
     }
 
@@ -54,6 +56,7 @@ impl LocalPtySession {
         graphics_options: GraphicsOptions,
         encoding: TerminalEncoding,
         scrollback_lines: usize,
+        cursor_style: crate::TerminalCursorStyle,
     ) -> Result<Self> {
         Self::spawn_with_config_graphics_and_encoding(
             cols,
@@ -62,6 +65,7 @@ impl LocalPtySession {
             graphics_options,
             encoding,
             scrollback_lines,
+            cursor_style,
         )
     }
 
@@ -72,6 +76,7 @@ impl LocalPtySession {
         graphics_options: GraphicsOptions,
         encoding: TerminalEncoding,
         scrollback_lines: usize,
+        cursor_style: crate::TerminalCursorStyle,
     ) -> Result<Self> {
         let size = TerminalSize {
             cols: cols.max(2),
@@ -98,7 +103,7 @@ impl LocalPtySession {
         let (terminal_event_tx, terminal_event_rx) = unbounded();
         let (stats_tx, stats_rx) = unbounded();
 
-        let terminal_config = interactive_terminal_config(scrollback_lines);
+        let terminal_config = interactive_terminal_config(scrollback_lines, cursor_style);
 
         let term = Arc::new(FairMutex::new(Term::new(
             terminal_config,

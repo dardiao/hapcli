@@ -7,8 +7,9 @@ use std::time::Instant;
 use eframe::egui::{self, FontId, PointerButton, Pos2, Rect, Response, Vec2};
 use hapcli_sftp::join_remote_path;
 use hapcli_terminal::{
-    GraphicsOptions, SerialSessionConfig, TerminalEncoding, TerminalSession, TerminalSessionKind,
-    TerminalSearchMatch, TerminalSnapshot, TelnetSessionConfig, TrzszTransferPolicy,
+    GraphicsOptions, SerialSessionConfig, TerminalCursorStyle, TerminalEncoding, TerminalSession,
+    TerminalSessionKind, TerminalSearchMatch, TerminalSnapshot, TelnetSessionConfig,
+    TrzszTransferPolicy,
 };
 
 use crate::keys;
@@ -58,6 +59,10 @@ pub struct TerminalTab {
     pub session: TerminalSession,
     pub snapshot: TerminalSnapshot,
     pub last_terminal_size: (usize, usize),
+    /// 会话滚动历史行数（新建 / 重连时传给内核）。
+    scrollback_lines: usize,
+    /// 会话默认光标样式（新建 / 重连时传给内核）。
+    cursor_style: TerminalCursorStyle,
     pub scroll_accum: f32,
     pub focused: bool,
     pub trzsz_prompt: Option<TrzszPromptRequest>,
@@ -126,14 +131,25 @@ impl TerminalTab {
         ctx: &egui::Context,
         cols: usize,
         rows: usize,
+        scrollback_lines: usize,
+        cursor_style: TerminalCursorStyle,
     ) -> anyhow::Result<Self> {
-        let session = enable_trzsz(TerminalSession::local_default(cols, rows)?);
+        let session = enable_trzsz(TerminalSession::local_with_graphics_and_encoding(
+            cols,
+            rows,
+            GraphicsOptions::default(),
+            TerminalEncoding::Utf8,
+            scrollback_lines,
+            cursor_style,
+        )?);
         let snapshot = session.snapshot();
         Self::spawn_activity_thread(&session, ctx);
         Ok(Self {
             session,
             snapshot,
             last_terminal_size: (cols, rows),
+            scrollback_lines,
+            cursor_style,
             scroll_accum: 0.0,
             focused: false,
             trzsz_prompt: None,
@@ -191,14 +207,26 @@ impl TerminalTab {
         base_label: String,
         cols: usize,
         rows: usize,
+        scrollback_lines: usize,
+        cursor_style: TerminalCursorStyle,
     ) -> Self {
-        let session = enable_trzsz(TerminalSession::ssh(config, cols, rows));
+        let session = enable_trzsz(TerminalSession::ssh_with_graphics_and_encoding(
+            config,
+            cols,
+            rows,
+            GraphicsOptions::default(),
+            TerminalEncoding::Utf8,
+            scrollback_lines,
+            cursor_style,
+        ));
         let snapshot = session.snapshot();
         Self::spawn_activity_thread(&session, ctx);
         Self {
             session,
             snapshot,
             last_terminal_size: (cols, rows),
+            scrollback_lines,
+            cursor_style,
             scroll_accum: 0.0,
             focused: false,
             trzsz_prompt: None,
@@ -254,6 +282,8 @@ impl TerminalTab {
         base_label: String,
         cols: usize,
         rows: usize,
+        scrollback_lines: usize,
+        cursor_style: TerminalCursorStyle,
     ) -> Self {
         let stored_config = config.clone();
         let session = enable_trzsz(TerminalSession::telnet_with_graphics_and_encoding(
@@ -262,7 +292,8 @@ impl TerminalTab {
             rows,
             GraphicsOptions::default(),
             TerminalEncoding::Utf8,
-            1000,
+            scrollback_lines,
+            cursor_style,
         ));
         let snapshot = session.snapshot();
         Self::spawn_activity_thread(&session, ctx);
@@ -270,6 +301,8 @@ impl TerminalTab {
             session,
             snapshot,
             last_terminal_size: (cols, rows),
+            scrollback_lines,
+            cursor_style,
             scroll_accum: 0.0,
             focused: false,
             trzsz_prompt: None,
@@ -325,6 +358,8 @@ impl TerminalTab {
         base_label: String,
         cols: usize,
         rows: usize,
+        scrollback_lines: usize,
+        cursor_style: TerminalCursorStyle,
     ) -> Result<Self, hapcli_terminal::SerialError> {
         let stored_config = config.clone();
         let session = TerminalSession::serial_with_graphics_and_encoding(
@@ -333,7 +368,8 @@ impl TerminalTab {
             rows,
             GraphicsOptions::default(),
             TerminalEncoding::Utf8,
-            1000,
+            scrollback_lines,
+            cursor_style,
         )?;
         let snapshot = session.snapshot();
         Self::spawn_activity_thread(&session, ctx);
@@ -341,6 +377,8 @@ impl TerminalTab {
             session,
             snapshot,
             last_terminal_size: (cols, rows),
+            scrollback_lines,
+            cursor_style,
             scroll_accum: 0.0,
             focused: false,
             trzsz_prompt: None,
@@ -414,7 +452,15 @@ impl TerminalTab {
         } else {
             session_config
         };
-        let mut session = TerminalSession::ssh(session_config, cols, rows);
+        let mut session = TerminalSession::ssh_with_graphics_and_encoding(
+            session_config,
+            cols,
+            rows,
+            GraphicsOptions::default(),
+            TerminalEncoding::Utf8,
+            self.scrollback_lines,
+            self.cursor_style,
+        );
         session.set_trzsz_policy(Some(TrzszTransferPolicy::default()));
         Self::spawn_activity_thread(&session, ctx);
 

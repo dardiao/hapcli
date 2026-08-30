@@ -93,6 +93,31 @@ pub enum TerminalCursorShape {
     Hidden,
 }
 
+/// 终端默认光标样式（会话创建时写入内核；应用仍可用 DECSCUSR 临时覆盖）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TerminalCursorStyle {
+    #[default]
+    Block,
+    Underline,
+    Beam,
+}
+
+impl TerminalCursorStyle {
+    /// 转换为 alacritty_terminal 的光标样式配置。
+    pub(crate) fn to_alacritty(self) -> alacritty_terminal::vte::ansi::CursorStyle {
+        use alacritty_terminal::vte::ansi::{CursorShape, CursorStyle};
+        let shape = match self {
+            Self::Block => CursorShape::Block,
+            Self::Underline => CursorShape::Underline,
+            Self::Beam => CursorShape::Beam,
+        };
+        CursorStyle {
+            shape,
+            blinking: false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

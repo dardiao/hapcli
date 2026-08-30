@@ -280,6 +280,7 @@ impl SerialSession {
         graphics_options: GraphicsOptions,
         encoding: TerminalEncoding,
         scrollback_lines: usize,
+        cursor_style: crate::TerminalCursorStyle,
     ) -> Result<Self, SerialError> {
         config.validate()?;
         ensure_serial_port_exists(&config.port_path)?;
@@ -298,7 +299,7 @@ impl SerialSession {
             listener.activity_sender(),
         );
         let (command_tx, command_rx) = crossbeam_channel::bounded(256);
-        let term_config = interactive_terminal_config(scrollback_lines);
+        let term_config = interactive_terminal_config(scrollback_lines, cursor_style);
         let term = Arc::new(FairMutex::new(Term::new(term_config, &size, listener)));
 
         // Tauri owns serial handles in a registry; native mirrors that by
