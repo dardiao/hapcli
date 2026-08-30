@@ -1097,7 +1097,7 @@ impl eframe::App for HapcliApp {
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 4.0;
-                    // 标签行：标签 + 新建按钮（＋ 紧贴标签右侧，随标签一起滚动）。
+                    // 标签行：只放标签，可横向滚动（新建会话在齿轮菜单里）。
                     egui::ScrollArea::horizontal()
                         .id_salt("tab_scroll")
                         .show(ui, |ui| {
@@ -1125,30 +1125,6 @@ impl eframe::App for HapcliApp {
                                         tab_menu = Some((index, action));
                                     }
                                 }
-                                // ＋：新建 SSH 或本地会话，贴着最后一个标签走。
-                                let add_menu = egui::menu::menu_custom_button(
-                                    ui,
-                                    egui::Button::new(
-                                        egui::RichText::new("＋")
-                                            .color(egui::Color32::from_rgb(0xff, 0xff, 0xff))
-                                            .size(16.0)
-                                            .strong(),
-                                    )
-                                    .fill(egui::Color32::from_rgb(0x2f, 0x5a, 0x8f))
-                                    .min_size(egui::vec2(28.0, 28.0))
-                                    .rounding(6.0),
-                                    |ui| {
-                                        if ui.button("SSH 连接…").clicked() {
-                                            want_connect = true;
-                                            ui.close_menu();
-                                        }
-                                        if ui.button("本地终端").clicked() {
-                                            want_local = true;
-                                            ui.close_menu();
-                                        }
-                                    },
-                                );
-                                add_menu.response.on_hover_text("新建 SSH 或本地会话");
                             });
                         });
                     ui.separator();
@@ -1181,11 +1157,11 @@ impl eframe::App for HapcliApp {
                                     toggle_quick = true;
                                     ui.close_menu();
                                 }
-                                // 文件：SSH 会话浏览远程 SFTP，本地会话浏览本地目录。
+                                // 文件管理器：SSH 会话浏览远程 SFTP，本地会话浏览本地目录。
                                 let files_label = if files_open {
-                                    "文件 ✓"
+                                    "文件管理器 ✓"
                                 } else {
-                                    "文件"
+                                    "文件管理器"
                                 };
                                 let can_browse = if active_is_ssh {
                                     sftp_connected
@@ -1472,7 +1448,7 @@ impl eframe::App for HapcliApp {
                         if ui
                             .selectable_label(
                                 self.tabs[index].right_panel == Some(RightPanelTab::Files),
-                                "文件",
+                                "文件管理器",
                             )
                             .clicked()
                         {
