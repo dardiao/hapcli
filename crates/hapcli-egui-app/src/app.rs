@@ -680,40 +680,44 @@ impl HapcliApp {
                     });
                     ui.separator();
                     // 右侧：当前页面内容（可滚动）。
-                    egui::ScrollArea::vertical()
-                        .id_salt("settings_content_scroll")
-                        .auto_shrink([false, false])
-                        .show(ui, |ui| {
-                            ui.set_width(ui.available_width());
-                            ui.add_space(4.0);
-                            match self.settings_page {
-                                SettingsPage::General => self.settings_page_general(ui),
-                                SettingsPage::Appearance => self.settings_page_appearance(
-                                    ui,
-                                    &mut toggle_transparent,
-                                ),
-                                SettingsPage::Terminal => self.settings_page_terminal(
-                                    ui,
-                                    &mut pick_font,
-                                    &mut clear_font,
-                                ),
-                            }
-                            if let Some(path) = &self.settings.terminal_font_path {
-                                ui.add_space(6.0);
-                                ui.label(
-                                    egui::RichText::new(format!("字体: {path}"))
-                                        .size(10.0)
-                                        .weak(),
-                                );
-                            }
-                            if let Some(error) = &self.settings_error {
-                                ui.add_space(6.0);
-                                ui.colored_label(
-                                    egui::Color32::from_rgb(0xff, 0x77, 0x77),
-                                    error,
-                                );
-                            }
-                        });
+                    // 注意：ScrollArea 会继承父级横向布局，必须显式包一层纵向布局，
+                    // 否则内容（勾选项等）会被排成一行、把窗口撑破。
+                    ui.vertical(|ui| {
+                        egui::ScrollArea::vertical()
+                            .id_salt("settings_content_scroll")
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                ui.set_width(ui.available_width());
+                                ui.add_space(4.0);
+                                match self.settings_page {
+                                    SettingsPage::General => self.settings_page_general(ui),
+                                    SettingsPage::Appearance => self.settings_page_appearance(
+                                        ui,
+                                        &mut toggle_transparent,
+                                    ),
+                                    SettingsPage::Terminal => self.settings_page_terminal(
+                                        ui,
+                                        &mut pick_font,
+                                        &mut clear_font,
+                                    ),
+                                }
+                                if let Some(path) = &self.settings.terminal_font_path {
+                                    ui.add_space(6.0);
+                                    ui.label(
+                                        egui::RichText::new(format!("字体: {path}"))
+                                            .size(10.0)
+                                            .weak(),
+                                    );
+                                }
+                                if let Some(error) = &self.settings_error {
+                                    ui.add_space(6.0);
+                                    ui.colored_label(
+                                        egui::Color32::from_rgb(0xff, 0x77, 0x77),
+                                        error,
+                                    );
+                                }
+                            });
+                    });
                 });
                 ui.add_space(6.0);
                 ui.separator();
