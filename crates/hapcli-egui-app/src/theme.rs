@@ -76,21 +76,53 @@ fn light_visuals() -> egui::Visuals {
 }
 
 /// 应用界面主题（颜色 + 排版间距），供启动与设置切换时调用。
+///
+/// egui 0.29 把深/浅两套视觉分别存放在独立的主题槽位里，
+/// 当前用哪套由 `set_theme` 的主题偏好决定，且 `set_visuals` 只改“当前槽位”。
+/// 这里必须同时写入两个槽位并显式设置偏好，否则首次启动（系统主题与设置主题
+/// 不一致时）浅色槽位仍是 egui 默认样式——只有切换过一次主题后才会被覆盖。
 pub fn apply_egui_theme(ctx: &egui::Context, choice: ThemeChoice) {
-    let visuals = match choice {
-        ThemeChoice::Dark => dark_visuals(),
-        ThemeChoice::Light => light_visuals(),
-    };
-    ctx.set_visuals(visuals);
+    ctx.set_visuals_of(egui::Theme::Dark, dark_visuals());
+    ctx.set_visuals_of(egui::Theme::Light, light_visuals());
+    ctx.set_theme(match choice {
+        ThemeChoice::Dark => egui::Theme::Dark,
+        ThemeChoice::Light => egui::Theme::Light,
+    });
 
-    let mut style: egui::Style = (*ctx.style()).clone();
-    style.spacing.item_spacing = Vec2::new(8.0, 6.0);
-    style.spacing.button_padding = Vec2::new(12.0, 6.0);
-    style.spacing.menu_margin = Margin::same(8.0);
-    style.spacing.window_margin = Margin::same(10.0);
-    style.spacing.interact_size = Vec2::new(40.0, 26.0);
-    style.spacing.combo_width = 180.0;
-    style.spacing.text_edit_width = 240.0;
-    style.spacing.icon_width = 20.0;
-    ctx.set_style(style);
+    // 排版间距对深/浅两个槽位统一生效。
+    ctx.all_styles_mut(|style| {
+        style.spacing.item_spacing = Vec2::new(8.0, 6.0);
+        style.spacing.button_padding = Vec2::new(12.0, 6.0);
+        style.spacing.menu_margin = Margin::same(8.0);
+        style.spacing.window_margin = Margin::same(10.0);
+        style.spacing.interact_size = Vec2::new(40.0, 26.0);
+        style.spacing.combo_width = 180.0;
+        style.spacing.text_edit_width = 240.0;
+        style.spacing.icon_width = 20.0;
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 回归测试：启动时（系统主题未知/默认深色槽）应用浅色主题后，
+    /// 实际生效的必须是自定义浅色视觉；深/浅来回切换后两套都保持自定义样式。
+    #[test]
+    fn theme_applies_to_active_slot_from_startup() {
+        let ctx = egui::Context::default();
+
+        apply_egui_theme(&ctx, ThemeChoice::Light);
+        assert_eq!(ctx.theme(), egui::Theme::Light);
+        assert_eq!(ctx.style().visuals.panel_fill, hex(0xe4ecf7));
+        assert_eq!(ctx.style().visuals.widgets.inactive.rounding, Rounding::same(10.0));
+
+        apply_egui_theme(&ctx, ThemeChoice::Dark);
+        assert_eq!(ctx.theme(), egui::Theme::Dark);
+        assert_eq!(ctx.style().visuals.panel_fill, hex(0x1a1f26));
+
+        apply_egui_theme(&ctx, ThemeChoice::Light);
+        assert_eq!(ctx.theme(), egui::Theme::Light);
+        assert_eq!(ctx.style().visuals.panel_fill, hex(0xe4ecf7));
+    }
 }
