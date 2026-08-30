@@ -705,7 +705,6 @@ impl HapcliApp {
                             (SettingsPage::General, "常规设置"),
                             (SettingsPage::Appearance, "外观设置"),
                             (SettingsPage::Terminal, "终端设置"),
-                            (SettingsPage::Help, "帮助与关于"),
                         ];
                         ui.scope(|ui| {
                             // 高亮底色只比文字左右多一点点（≈3px）。
@@ -770,9 +769,6 @@ impl HapcliApp {
                                 SettingsPage::Appearance => {
                                     ("外观设置", "应用界面 UI 的深浅主题、透明窗口等。")
                                 }
-                                SettingsPage::Help => {
-                                    ("帮助与关于", "应用程序信息、更新与诊断。")
-                                }
                                 SettingsPage::Terminal => unreachable!(),
                             };
                             ui.label(egui::RichText::new(title).strong().size(14.0));
@@ -797,7 +793,6 @@ impl HapcliApp {
                                         ui,
                                         &mut toggle_transparent,
                                     ),
-                                    SettingsPage::Help => self.settings_page_help(ui),
                                     SettingsPage::Terminal => match self.terminal_sub {
                                         TerminalSub::Display => self.settings_page_terminal(
                                             ui,
@@ -882,6 +877,98 @@ impl HapcliApp {
             &mut self.settings.check_updates,
             "启动时及每 6 小时自动检查新版本（发现新版可在应用内直接升级）",
         );
+
+        ui.add_space(12.0);
+        ui.label(egui::RichText::new("版本信息").strong());
+        ui.add_space(4.0);
+        egui::Grid::new("settings_general_version_grid")
+            .num_columns(2)
+            .spacing([10.0, 8.0])
+            .show(ui, |ui| {
+                ui.label("应用程序");
+                ui.label("HapCLI");
+                ui.end_row();
+                ui.label("版本");
+                ui.label(env!("CARGO_PKG_VERSION"));
+                ui.end_row();
+                ui.label("更新通道");
+                ui.weak("稳定版");
+                ui.end_row();
+            });
+
+        ui.add_space(12.0);
+        ui.label(egui::RichText::new("更新").strong());
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            if ui.button("检查更新").clicked() {
+                self.update_state
+                    .check_now(env!("CARGO_PKG_VERSION"), Duration::ZERO);
+            }
+            match &self.update_state.status {
+                UpdateStatus::Checking => {
+                    ui.weak("正在检查…");
+                }
+                UpdateStatus::UpToDate => {
+                    ui.weak("已是最新版本");
+                }
+                UpdateStatus::Error(message) => {
+                    ui.weak(format!("检查失败：{message}"));
+                }
+                _ => {}
+            }
+        });
+
+        ui.add_space(12.0);
+        ui.label(egui::RichText::new("GitHub 代理").strong());
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            let edit_width = (ui.available_width() - 96.0).max(160.0);
+            ui.add(
+                egui::TextEdit::singleline(&mut self.settings.github_proxies)
+                    .desired_width(edit_width)
+                    .hint_text("例如 gh.dpik.top, gh-proxy.com（逗号分隔，可只填域名）"),
+            );
+            if ui
+                .small_button("恢复默认")
+                .on_hover_text("来自 github.akams.cn 收集的加速源")
+                .clicked()
+            {
+                self.settings.github_proxies = crate::settings::default_github_proxies();
+            }
+        });
+        ui.weak("用法：代理前缀 + GitHub 完整链接，如 https://gh.dpik.top/https://github.com/…；直连失败时自动测速选最快节点。留空即禁用。");
+        if self.settings.ignored_update_version.is_some() {
+            ui.horizontal_wrapped(|ui| {
+                ui.weak(format!(
+                    "已忽略版本：{}",
+                    self.settings.ignored_update_version.as_deref().unwrap_or("")
+                ));
+                if ui.small_button("恢复提示").clicked() {
+                    self.settings.ignored_update_version = None;
+                }
+            });
+        }
+
+        ui.add_space(12.0);
+        ui.label(egui::RichText::new("诊断").strong());
+        ui.add_space(4.0);
+        egui::Grid::new("settings_general_diag_grid")
+            .num_columns(2)
+            .spacing([10.0, 8.0])
+            .show(ui, |ui| {
+                ui.label("应用数据目录");
+                ui.horizontal(|ui| {
+                    ui.weak("在文件管理器中打开 hapcli 数据目录");
+                    if ui.button("打开").clicked() {
+                        if let Some(dir) = crate::settings::settings_path().parent() {
+                            let _ = open_dir(dir);
+                        }
+                    }
+                });
+                ui.end_row();
+            });
+        ui.add_space(8.0);
+        ui.weak("调试日志、崩溃报告等诊断项后续加入。");
     }
 
     /// 外观设置页：应用界面 UI（深浅色主题、透明窗口）。
@@ -1138,81 +1225,6 @@ impl HapcliApp {
     }
 
     /// 帮助与关于：版本信息、更新检查、诊断。
-    fn settings_page_help(&mut self, ui: &mut egui::Ui) {
-        ui.label(egui::RichText::new("更新").strong());
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            if ui.button("检查更新").clicked() {
-                self.update_state
-                    .check_now(env!("CARGO_PKG_VERSION"), Duration::ZERO);
-            }
-            match &self.update_state.status {
-                UpdateStatus::Checking => {
-                    ui.weak("正在检查…");
-                }
-                UpdateStatus::UpToDate => {
-                    ui.weak("已是最新版本");
-                }
-                UpdateStatus::Error(message) => {
-                    ui.weak(format!("检查失败：{message}"));
-                }
-                _ => {}
-            }
-        });
-
-        ui.add_space(12.0);
-        ui.label(egui::RichText::new("GitHub 代理").strong());
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            let edit_width = (ui.available_width() - 96.0).max(160.0);
-            ui.add(
-                egui::TextEdit::singleline(&mut self.settings.github_proxies)
-                    .desired_width(edit_width)
-                    .hint_text("例如 gh.dpik.top, gh-proxy.com（逗号分隔，可只填域名）"),
-            );
-            if ui
-                .small_button("恢复默认")
-                .on_hover_text("来自 github.akams.cn 收集的加速源")
-                .clicked()
-            {
-                self.settings.github_proxies = crate::settings::default_github_proxies();
-            }
-        });
-        ui.weak("用法：代理前缀 + GitHub 完整链接，如 https://gh.dpik.top/https://github.com/…；直连失败时自动测速选最快节点。留空即禁用。");
-        if self.settings.ignored_update_version.is_some() {
-            ui.horizontal_wrapped(|ui| {
-                ui.weak(format!(
-                    "已忽略版本：{}",
-                    self.settings.ignored_update_version.as_deref().unwrap_or("")
-                ));
-                if ui.small_button("恢复提示").clicked() {
-                    self.settings.ignored_update_version = None;
-                }
-            });
-        }
-
-        ui.add_space(12.0);
-        ui.label(egui::RichText::new("诊断").strong());
-        ui.add_space(4.0);
-        egui::Grid::new("settings_help_diag_grid")
-            .num_columns(2)
-            .spacing([10.0, 8.0])
-            .show(ui, |ui| {
-                ui.label("应用数据目录");
-                ui.horizontal(|ui| {
-                    ui.weak("在文件管理器中打开 hapcli 数据目录");
-                    if ui.button("打开").clicked() {
-                        if let Some(dir) = crate::settings::settings_path().parent() {
-                            let _ = open_dir(dir);
-                        }
-                    }
-                });
-                ui.end_row();
-            });
-        ui.add_space(8.0);
-        ui.weak("调试日志、崩溃报告等诊断项后续加入。");
-    }
-
     /// 处理终端事件：Trzsz 提示 / 目录变化（SFTP 跟随）→ 提示窗 → worker 轮询。
     fn handle_terminal_events(&mut self, ctx: &egui::Context) {
         let index = self.active_tab;
