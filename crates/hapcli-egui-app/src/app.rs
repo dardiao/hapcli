@@ -787,11 +787,11 @@ impl HapcliApp {
             &mut self.settings.sftp_sync_cwd,
             "SSH 终端 cd 自动同步到 SFTP 面板（输入 cd 后立即跟随，无需远程配置）",
         );
+        ui.checkbox(
+            &mut self.settings.check_updates,
+            "启动时及每 6 小时自动检查新版本（发现新版可在应用内直接升级）",
+        );
         ui.horizontal(|ui| {
-            ui.checkbox(
-                &mut self.settings.check_updates,
-                "启动时及每 6 小时自动检查新版本（发现新版可在应用内直接升级）",
-            );
             if ui.small_button("立即检查").clicked() {
                 self.update_state
                     .check_now(env!("CARGO_PKG_VERSION"), Duration::ZERO);
@@ -809,11 +809,13 @@ impl HapcliApp {
                 _ => {}
             }
         });
+        ui.add_space(2.0);
+        ui.label("GitHub 代理");
         ui.horizontal(|ui| {
-            ui.label("GitHub 代理");
+            let edit_width = (ui.available_width() - 96.0).max(160.0);
             ui.add(
                 egui::TextEdit::singleline(&mut self.settings.github_proxies)
-                    .desired_width(360.0)
+                    .desired_width(edit_width)
                     .hint_text("例如 gh.dpik.top, gh-proxy.com（逗号分隔，可只填域名）"),
             );
             if ui
@@ -826,7 +828,7 @@ impl HapcliApp {
         });
         ui.weak("用法：代理前缀 + GitHub 完整链接，如 https://gh.dpik.top/https://github.com/…；直连失败时自动测速选最快节点。留空即禁用。");
         if self.settings.ignored_update_version.is_some() {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.weak(format!(
                     "已忽略版本：{}",
                     self.settings.ignored_update_version.as_deref().unwrap_or("")
@@ -905,19 +907,21 @@ impl HapcliApp {
                 ui.end_row();
 
                 ui.label("终端字体");
-                ui.horizontal(|ui| {
+                ui.vertical(|ui| {
                     let font_label = if self.custom_font_loaded {
                         "自定义字体已加载".to_string()
                     } else {
                         format!("默认 ({})", platform_default_font_label())
                     };
                     ui.label(font_label);
-                    if ui.small_button("选择字体文件…").clicked() {
-                        *pick_font = true;
-                    }
-                    if self.custom_font_loaded && ui.small_button("恢复默认").clicked() {
-                        *clear_font = true;
-                    }
+                    ui.horizontal(|ui| {
+                        if ui.small_button("选择字体文件…").clicked() {
+                            *pick_font = true;
+                        }
+                        if self.custom_font_loaded && ui.small_button("恢复默认").clicked() {
+                            *clear_font = true;
+                        }
+                    });
                 });
                 ui.end_row();
 
