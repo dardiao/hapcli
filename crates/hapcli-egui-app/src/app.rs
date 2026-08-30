@@ -8,7 +8,6 @@ use hapcli_trzsz::{TrzszState, TrzszTransferPolicy};
 
 use crate::connect::{ConnectForm, ConnectTarget, DialogOutcome};
 use crate::forward;
-use crate::profiles::{ConnectionProfile, load_profiles};
 use crate::render::build_theme;
 use crate::quick::QuickCommandsPanel;
 use crate::settings::{AppSettings, ThemeChoice, load_settings, save_settings};
@@ -49,12 +48,6 @@ pub struct HapcliApp {
     update_state: UpdateCheckState,
     rename_tab_index: Option<usize>,
     rename_draft: String,
-    /// 会话栏：搜索词、收藏列表缓存（定时刷新）。
-    session_search: String,
-    sidebar_profiles: Vec<ConnectionProfile>,
-    sidebar_profiles_at: Option<Instant>,
-    /// 会话栏默认隐藏（FinalShell 风格：按需展开的会话树）。
-    show_sidebar: bool,
     /// 当前已应用的 egui 界面主题（用于检测切换后重绘）。
     applied_ui_theme: Option<ThemeChoice>,
 }
@@ -86,10 +79,6 @@ impl HapcliApp {
             update_state: UpdateCheckState::default(),
             rename_tab_index: None,
             rename_draft: String::new(),
-            session_search: String::new(),
-            sidebar_profiles: load_profiles(),
-            sidebar_profiles_at: None,
-            show_sidebar: false,
             applied_ui_theme: Some(initial_theme),
         })
     }
@@ -126,135 +115,6 @@ impl HapcliApp {
             self.active_tab = self.tabs.len() - 1;
         } else if self.active_tab > index {
             self.active_tab -= 1;
-        }
-    }
-
-    /// 左侧会话栏（XTerminal 风格）：本地终端 + 收藏的 SSH/Telnet/串口配置。
-    fn session_sidebar(&mut self, ctx: &egui::Context) -> Vec<SidebarAction> {
-        let mut actions = Vec::new();
-        // 定时刷新收藏列表（1 秒），保证新增/删除收藏后能同步。
-        let now = Instant::now();
-        let due = self
-            .sidebar_profiles_at
-            .is_none_or(|at| now.duration_since(at) >= Duration::from_secs(1));
-        if due {
-            self.sidebar_profiles = load_profiles();
-            self.sidebar_profiles_at = Some(now);
-        }
-
-        let accent = crate::theme::accent();
-        egui::SidePanel::left("session_sidebar")
-            .resizable(true)
-            .default_width(220.0)
-            .min_width(150.0)
-            .show(ctx, |ui| {
-                ui.add_space(6.0);
-                // 标题栏：hapcli + ＋新建 + ⚙设置。
-                ui.horizontal(|ui| {
-                    ui.label(
-                        egui::RichText::new("hapcli")
-                            .strong()
-                            .size(15.0)
-                            .color(accent),
-                    );
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .button("⚙")
-                            .on_hover_text("设置")
-                            .clicked()
-                        {
-                            actions.push(SidebarAction::Settings);
-                        }
-                        if ui
-                            .button("＋")
-                            .on_hover_text("新建连接")
-                            .clicked()
-                        {
-                            actions.push(SidebarAction::Connect);
-                        }
-                    });
-                });
-                ui.add_space(6.0);
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.session_search)
-                        .hint_text("搜索会话…")
-                        .desired_width(f32::INFINITY),
-                );
-                ui.add_space(8.0);
-
-                let keyword = self.session_search.trim().to_lowercase();
-                // 本地终端。
-                let local_active = self.tabs[self.active_tab].session.status().kind
-                    == TerminalSessionKind::LocalPty;
-                if ui
-                    .selectable_label(local_active, "本地终端")
-                    .on_hover_text("新建本地终端")
-                    .clicked()
-                {
-                    actions.push(SidebarAction::Local);
-                }
-                ui.add_space(8.0);
-
-                // 已保存的会话。
-                ui.label(
-                    egui::RichText::new("已保存")
-                        .weak()
-                        .size(11.0),
-                );
-                ui.add_space(2.0);
-                let filtered = self
-                    .sidebar_profiles
-                    .iter()
-                    .filter(|profile| {
-                        keyword.is_empty()
-                            || profile.name.to_lowercase().contains(&keyword)
-                            || profile.host.to_lowercase().contains(&keyword)
-                    })
-                    .cloned()
-                    .collect::<Vec<_>>();
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false, true])
-                    .show(ui, |ui| {
-                        if filtered.is_empty() {
-                            ui.weak(if self.sidebar_profiles.is_empty() {
-                                "暂无收藏，点 ＋ 新建并保存"
-                            } else {
-                                "无匹配会话"
-                            });
-                        }
-                        for profile in filtered {
-                            let label = format!(
-                                "{}  ·  {}",
-                                profile.name,
-                                profile.kind.label()
-                            );
-                            if ui
-                                .selectable_label(false, label)
-                                .on_hover_text(format!(
-                                    "{}@{}:{}",
-                                    profile.username, profile.host, profile.port
-                                ))
-                                .clicked()
-                            {
-                                actions.push(SidebarAction::OpenProfile(profile));
-                            }
-                        }
-                    });
-            });
-        actions
-    }
-
-    /// 点击会话栏里的收藏：直接按其配置新建一个连接标签。
-    fn open_profile_tab(&mut self, ctx: &egui::Context, profile: ConnectionProfile) {
-        let (cols, rows) = self.tabs[self.active_tab].last_terminal_size;
-        match ConnectForm::request_from_profile(profile) {
-            Ok(request) => {
-                self.add_connect_tab(ctx, request, cols, rows);
-            }
-            Err(error) => {
-                self.connect_form.show_error(error);
-                self.show_connect_dialog = true;
-            }
         }
     }
 
@@ -1227,99 +1087,110 @@ impl eframe::App for HapcliApp {
             .as_ref()
             .is_some_and(|panel| panel.show);
         egui::TopBottomPanel::top("tab_bar").show(ctx, |ui| {
-            egui::ScrollArea::horizontal().show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 4.0;
-                    if ui
-                        .button(if self.show_sidebar { "☰ ◀" } else { "☰" })
-                        .on_hover_text("会话栏（收藏的连接）")
-                        .clicked()
-                    {
-                        self.show_sidebar = !self.show_sidebar;
-                    }
-                    ui.separator();
-                    for index in 0..self.tabs.len() {
-                        let selected = index == self.active_tab;
-                        let label = self.tabs[index].display_label();
-                        let (clicked, close_clicked, menu) =
-                            draw_tab(
-                                ui,
-                                index,
-                                &label,
-                                selected,
-                                self.tabs.len() > 1,
-                                self.settings.theme == ThemeChoice::Light,
-                            );
-                        if clicked {
-                            clicked_tab = Some(index);
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 4.0;
+                // 标签行：只放标签，可横向滚动。
+                egui::ScrollArea::horizontal()
+                    .id_salt("tab_scroll")
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 4.0;
+                            for index in 0..self.tabs.len() {
+                                let selected = index == self.active_tab;
+                                let label = self.tabs[index].display_label();
+                                let (clicked, close_clicked, menu) =
+                                    draw_tab(
+                                        ui,
+                                        index,
+                                        &label,
+                                        selected,
+                                        self.tabs.len() > 1,
+                                        self.settings.theme == ThemeChoice::Light,
+                                    );
+                                if clicked {
+                                    clicked_tab = Some(index);
+                                }
+                                if close_clicked {
+                                    close_tab = Some(index);
+                                }
+                                if let Some(action) = menu {
+                                    tab_menu = Some((index, action));
+                                }
+                            }
+                        });
+                    });
+                ui.separator();
+                // ＋：新建会话。
+                let add_menu = egui::menu::menu_custom_button(
+                    ui,
+                    egui::Button::new(
+                        egui::RichText::new("＋")
+                            .color(egui::Color32::from_rgb(0xff, 0xff, 0xff))
+                            .strong(),
+                    )
+                    .fill(egui::Color32::from_rgb(0x2f, 0x5a, 0x8f))
+                    .rounding(6.0),
+                    |ui| {
+                        if ui.button("SSH 连接…").clicked() {
+                            want_connect = true;
+                            ui.close_menu();
                         }
-                        if close_clicked {
-                            close_tab = Some(index);
+                        if ui.button("本地终端").clicked() {
+                            want_local = true;
+                            ui.close_menu();
                         }
-                        if let Some(action) = menu {
-                            tab_menu = Some((index, action));
+                    },
+                );
+                add_menu.response.on_hover_text("新建 SSH 或本地会话");
+                // ⋯：设置 / 快捷命令 / SSH 会话操作（平时收起，需要时找得到）。
+                let more_menu = egui::menu::menu_custom_button(
+                    ui,
+                    egui::Button::new(egui::RichText::new("⋯").size(16.0)),
+                    |ui| {
+                        if ui.button("设置…").clicked() {
+                            want_settings = true;
+                            ui.close_menu();
                         }
-                    }
-                    ui.separator();
-                    let add_menu = egui::menu::menu_custom_button(
-                        ui,
-                        egui::Button::new(
-                            egui::RichText::new("＋")
-                                .color(egui::Color32::from_rgb(0xff, 0xff, 0xff))
-                                .strong(),
-                        )
-                        .fill(egui::Color32::from_rgb(0x2f, 0x5a, 0x8f))
-                        .rounding(6.0),
-                        |ui| {
-                            if ui.button("SSH 连接…").clicked() {
-                                want_connect = true;
+                        if ui.button("快捷命令").clicked() {
+                            toggle_quick = true;
+                            ui.close_menu();
+                        }
+                        if active_is_ssh {
+                            ui.separator();
+                            if !self.tabs[self.active_tab].session.lifecycle().is_running()
+                                && ui.button("重连").clicked()
+                            {
+                                want_reconnect = true;
                                 ui.close_menu();
                             }
-                            if ui.button("本地终端").clicked() {
-                                want_local = true;
+                            if ui
+                                .add_enabled(
+                                    sftp_connected,
+                                    egui::Button::new(if sftp_open { "SFTP 已开 ✓" } else { "SFTP" }),
+                                )
+                                .clicked()
+                            {
+                                toggle_sftp = true;
                                 ui.close_menu();
                             }
-                        },
-                    );
-                    add_menu.response.on_hover_text("添加 SSH 或本地会话");
-                    if ui.button(egui::RichText::new("⚙").size(15.0)).on_hover_text("设置").clicked() {
-                        want_settings = true;
-                    }
-                    if active_is_ssh
-                        && !self.tabs[self.active_tab].session.lifecycle().is_running()
-                        && ui
-                            .button("↻ 重连")
-                            .on_hover_text("重新连接当前 SSH 会话")
-                            .clicked()
-                    {
-                        want_reconnect = true;
-                    }
-                    if active_is_ssh
-                        && ui
-                            .add_enabled(
-                                sftp_connected,
-                                egui::Button::new(if sftp_open { "SFTP ×" } else { "SFTP" }),
-                            )
-                            .on_hover_text("SFTP 文件传输（需已连接）")
-                            .clicked()
-                    {
-                        toggle_sftp = true;
-                    }
-                    if active_is_ssh
-                        && ui
-                            .add_enabled(
-                                sftp_connected,
-                                egui::Button::new(if forward_open { "转发 ×" } else { "转发" }),
-                            )
-                            .on_hover_text("SSH 端口转发（需已连接）")
-                            .clicked()
-                    {
-                        toggle_forward = true;
-                    }
-                    if ui.button("⚡").on_hover_text("快捷命令").clicked() {
-                        toggle_quick = true;
-                    }
-                });
+                            if ui
+                                .add_enabled(
+                                    sftp_connected,
+                                    egui::Button::new(if forward_open {
+                                        "端口转发已开 ✓"
+                                    } else {
+                                        "端口转发"
+                                    }),
+                                )
+                                .clicked()
+                            {
+                                toggle_forward = true;
+                                ui.close_menu();
+                            }
+                        }
+                    },
+                );
+                more_menu.response.on_hover_text("设置 / 快捷命令 / 会话操作");
             });
         });
 
@@ -1331,21 +1202,6 @@ impl eframe::App for HapcliApp {
         }
         if let Some((index, action)) = tab_menu {
             self.handle_tab_menu(ctx, index, action);
-        }
-
-        // 2.3 左侧会话栏（FinalShell 风格：默认隐藏，点 ☰ 展开）。
-        if self.show_sidebar {
-            let sidebar_actions = self.session_sidebar(ctx);
-            for action in sidebar_actions {
-                match action {
-                    SidebarAction::Connect => want_connect = true,
-                    SidebarAction::Local => want_local = true,
-                    SidebarAction::Settings => want_settings = true,
-                    SidebarAction::OpenProfile(profile) => {
-                        self.open_profile_tab(ctx, profile);
-                    }
-                }
-            }
         }
 
         if want_connect {
@@ -1896,14 +1752,6 @@ enum TabMenuAction {
     CloseOthers,
 }
 
-/// 左侧会话栏的交互动作。
-enum SidebarAction {
-    Connect,
-    Local,
-    Settings,
-    OpenProfile(ConnectionProfile),
-}
-
 /// 自绘标签页：圆角胶囊 + 当前标签绿色指示灯 + 内嵌关闭按钮（×）+ 右键菜单。
 /// 返回 (是否点击标签, 是否点击关闭, 右键菜单动作)。
 fn draw_tab(
@@ -1920,8 +1768,6 @@ fn draw_tab(
     const GAP: f32 = 6.0;
 
     let font_id = egui::FontId::proportional(14.5);
-    // XTerminal 风格：未选中标签透明，选中标签蓝色调背景 + 底部蓝色指示条。
-    let accent = crate::theme::accent();
     let text_color = if light {
         if selected {
             egui::Color32::from_rgb(0x1c, 0x1e, 0x21)
@@ -1945,25 +1791,32 @@ fn draw_tab(
         ui.allocate_exact_size(egui::vec2(width, TAB_HEIGHT), egui::Sense::click());
 
     let painter = ui.painter();
-    let background = if selected {
-        if light {
-            egui::Color32::from_rgb(0xd9, 0xe8, 0xff)
+    let background = if light {
+        if selected {
+            egui::Color32::from_rgb(0xd6, 0xe2, 0xee)
         } else {
-            egui::Color32::from_rgba_unmultiplied(47, 123, 253, 42)
+            egui::Color32::from_rgb(0xf2, 0xf4, 0xf7)
         }
     } else {
-        egui::Color32::TRANSPARENT
+        if selected {
+            egui::Color32::from_rgb(0x2e, 0x4a, 0x6e)
+        } else {
+            egui::Color32::from_rgb(0x16, 0x1b, 0x22)
+        }
     };
-    painter.rect_filled(rect, 8.0, background);
+    painter.rect_filled(rect, 7.0, background);
     if selected {
-        // 底部蓝色指示条。
-        painter.rect_filled(
-            egui::Rect::from_min_max(
-                egui::pos2(rect.left(), rect.bottom() - 2.5),
-                egui::pos2(rect.right(), rect.bottom()),
+        painter.rect_stroke(
+            rect,
+            7.0,
+            egui::Stroke::new(
+                1.0_f32,
+                if light {
+                    egui::Color32::from_rgb(0x9f, 0xb4, 0xc8)
+                } else {
+                    egui::Color32::from_rgb(0x4f, 0x86, 0xc6)
+                },
             ),
-            0.0,
-            accent,
         );
     }
 
