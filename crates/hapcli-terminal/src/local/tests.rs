@@ -14,9 +14,8 @@ mod tests {
 
     use crate::{
         color::{
-            DEFAULT_MINIMUM_CONTRAST_SCORE, HAPCLI_DARK_THEME,
-            color_for_alacritty_request_with_override, indexed_color_to_rgb,
-            perceptual_contrast_score, style_colors_for_cell,
+            HAPCLI_DARK_THEME, color_for_alacritty_request_with_override,
+            indexed_color_to_rgb, style_colors_for_cell,
         },
         process::{parse_lsof_cwd, parse_process_table_for_group},
         search::search_line_matches,
@@ -1709,7 +1708,7 @@ wait
     }
 
     #[test]
-    fn minimum_contrast_adjusts_theme_defined_ansi_colors() {
+    fn named_colors_render_as_preset_exempt_from_contrast_rewrite() {
         let (fg, bg) = style_colors_for_cell(
             Color::Named(NamedColor::White),
             Color::Indexed(15),
@@ -1718,9 +1717,9 @@ wait
             &HAPCLI_DARK_THEME,
         );
 
-        assert_ne!(fg, HAPCLI_DARK_THEME.ansi[7]);
+        // 16 色命名色按配色预设原样渲染：不被统一提亮，保证预设之间可见差异。
+        assert_eq!(fg, HAPCLI_DARK_THEME.ansi[7]);
         assert_eq!(bg, HAPCLI_DARK_THEME.ansi[15]);
-        assert!(perceptual_contrast_score(fg, bg).abs() >= DEFAULT_MINIMUM_CONTRAST_SCORE);
     }
 
     #[test]

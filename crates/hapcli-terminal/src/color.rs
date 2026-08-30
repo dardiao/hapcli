@@ -333,7 +333,10 @@ pub(crate) fn style_colors_for_cell(
     let mut fg = color_to_rgb(fg_color, theme);
     let bg = color_to_rgb(bg_color, theme);
 
-    if !is_app_chosen_exact_color(&fg_color) && !is_terminal_decoration_glyph(ch) {
+    // 16 色命名色直接按配色预设渲染：不做 APCA 对比度改写，
+    // 否则红/蓝等低亮颜色会被统一提亮、在三个预设下趋同，无法体现预设差异。
+    let fg_is_named = matches!(fg_color, Color::Named(_));
+    if !fg_is_named && !is_app_chosen_exact_color(&fg_color) && !is_terminal_decoration_glyph(ch) {
         fg = ensure_minimum_contrast(fg, bg, DEFAULT_MINIMUM_CONTRAST_SCORE);
     }
 
