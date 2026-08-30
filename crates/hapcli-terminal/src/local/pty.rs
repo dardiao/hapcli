@@ -19,6 +19,7 @@ pub struct LocalPtySession {
     graphics: TerminalGraphicsState,
     encoding: TerminalEncoding,
     input_encoder: TerminalInputEncoder,
+    theme: HapcliTheme,
 }
 
 pub type LocalTerminal = LocalPtySession;
@@ -187,6 +188,7 @@ impl LocalPtySession {
             graphics: TerminalGraphicsState::default(),
             encoding,
             input_encoder: TerminalInputEncoder::new(encoding),
+            theme: HAPCLI_DARK_THEME,
         })
     }
 
@@ -287,6 +289,10 @@ impl LocalPtySession {
             .notifier
             .0
             .send(LocalGraphicsMsg::SetEncoding(encoding));
+    }
+
+    pub fn set_theme(&mut self, preset: TerminalThemePreset) {
+        self.theme = preset.theme();
     }
 
     pub fn set_output_processor(&mut self, processor: Option<TerminalOutputProcessor>) {
@@ -449,7 +455,8 @@ impl LocalPtySession {
                 let override_color = (index <= 268)
                     .then(|| self.term.lock().colors()[index])
                     .flatten();
-                let color = color_for_alacritty_request_with_override(index, override_color);
+                let color =
+                    color_for_alacritty_request_with_override(index, override_color, &self.theme);
                 let _ = self.write_protocol_bytes(formatter(color).as_bytes());
                 false
             }
@@ -603,12 +610,12 @@ impl LocalPtySession {
 
     pub fn snapshot(&self) -> TerminalSnapshot {
         let term = self.term.lock();
-        snapshot_from_term(&term, self.size, &self.graphics)
+        snapshot_from_term(&term, self.size, &self.graphics, &self.theme)
     }
 
     pub fn snapshot_incremental(&self, previous: &TerminalSnapshot) -> TerminalSnapshot {
         let mut term = self.term.lock();
-        incremental_snapshot_from_term(&mut term, self.size, &self.graphics, previous)
+        incremental_snapshot_from_term(&mut term, self.size, &self.graphics, previous, &self.theme)
     }
 
     pub fn snapshot_with_display_offset(
@@ -623,6 +630,7 @@ impl LocalPtySession {
             &self.graphics,
             display_offset,
             rows,
+            &self.theme,
         )
     }
 }
@@ -638,6 +646,7 @@ pub(crate) fn snapshot_from_term<T: EventListener>(
     term: &Term<T>,
     size: TerminalSize,
     graphics: &TerminalGraphicsState,
+    theme: &HapcliTheme,
 ) -> TerminalSnapshot {
     snapshot_from_term_with_display_offset(
         term,
@@ -645,6 +654,7 @@ pub(crate) fn snapshot_from_term<T: EventListener>(
         graphics,
         term.grid().display_offset(),
         size.rows,
+        theme,
     )
 }
 
@@ -653,6 +663,7 @@ pub(crate) fn incremental_snapshot_from_term<T: EventListener>(
     size: TerminalSize,
     graphics: &TerminalGraphicsState,
     previous: &TerminalSnapshot,
+    theme: &HapcliTheme,
 ) -> TerminalSnapshot {
     let scrollback_lines = term.total_lines().saturating_sub(term.screen_lines());
     let display_offset = term.grid().display_offset().min(scrollback_lines);
@@ -680,12 +691,13 @@ pub(crate) fn incremental_snapshot_from_term<T: EventListener>(
             graphics,
             display_offset,
             size.rows,
+            theme,
         );
     }
 
     let mut snapshot = previous.clone();
     for row in dirty_rows.expect("partial terminal damage must contain row indexes") {
-        snapshot.lines[row] = snapshot_row_from_term(term, size, display_offset, row);
+        snapshot.lines[row] = snapshot_row_from_term(term, size, display_offset, row, theme);
     }
     refresh_snapshot_metadata(&mut snapshot, term, size, graphics, display_offset);
     snapshot
@@ -697,13 +709,14 @@ pub(crate) fn snapshot_from_term_with_display_offset<T: EventListener>(
     graphics: &TerminalGraphicsState,
     display_offset: usize,
     rows: usize,
+    theme: &HapcliTheme,
 ) -> TerminalSnapshot {
     let content = term.renderable_content();
     let scrollback_lines = term.total_lines().saturating_sub(term.screen_lines());
     let display_offset = display_offset.min(scrollback_lines);
     let requested_rows = rows.max(1);
     let mut rows = (0..requested_rows)
-        .map(|row| snapshot_row_from_term(term, size, display_offset, row))
+        .map(|row| snapshot_row_from_term(term, size, display_offset, row, theme))
         .collect::<Vec<_>>();
 
     let cursor_row = (content.cursor.point.line.0 + display_offset as i32).max(0) as usize;
@@ -737,6 +750,7 @@ fn snapshot_row_from_term<T: EventListener>(
     size: TerminalSize,
     display_offset: usize,
     row: usize,
+    theme: &HapcliTheme,
 ) -> TerminalRow {
     let grid_line = row as i32 - display_offset as i32;
     let mut snapshot_row = TerminalRow {
@@ -749,8 +763,8 @@ fn snapshot_row_from_term<T: EventListener>(
                 ch: ' ',
                 zerowidth: String::new(),
                 wide: false,
-                fg: HAPCLI_DARK_THEME.foreground,
-                bg: HAPCLI_DARK_THEME.ansi_background,
+                fg: theme.foreground,
+                bg: theme.ansi_background,
                 attrs: TerminalAttrs::default(),
                 hyperlink: None,
                 cursor: false,
@@ -776,7 +790,7 @@ fn snapshot_row_from_term<T: EventListener>(
         }
         let ch = if cell.c == '\0' { ' ' } else { cell.c };
         let attrs = attrs_from_flags(cell.flags);
-        let (fg, bg) = style_colors_for_cell(cell.fg, cell.bg, ch, attrs);
+        let (fg, bg) = style_colors_for_cell(cell.fg, cell.bg, ch, attrs, theme);
         snapshot_row.cells_mut()[col] = TerminalCell {
             ch,
             zerowidth: cell.zerowidth().into_iter().flatten().copied().collect(),
@@ -859,13 +873,13 @@ mod incremental_snapshot_tests {
         let (listener, _events) = local_event_channel();
         let mut term = Term::new(Config::default(), &size, listener);
         let graphics = TerminalGraphicsState::default();
-        let previous = snapshot_from_term(&term, size, &graphics);
+        let previous = snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME);
         term.reset_damage();
 
         let mut parser = Processor::<StdSyncHandler>::new();
         parser.advance(&mut term, b"changed");
-        let next = incremental_snapshot_from_term(&mut term, size, &graphics, &previous);
-        let full = snapshot_from_term(&term, size, &graphics);
+        let next = incremental_snapshot_from_term(&mut term, size, &graphics, &previous, &HAPCLI_DARK_THEME);
+        let full = snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME);
 
         assert!(!Arc::ptr_eq(
             &previous.lines[0].cells,
@@ -889,16 +903,19 @@ mod incremental_snapshot_tests {
         let (listener, _events) = local_event_channel();
         let mut term = Term::new(Config::default(), &size, listener);
         let graphics = TerminalGraphicsState::default();
-        let previous = snapshot_from_term(&term, size, &graphics);
+        let previous = snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME);
         term.reset_damage();
 
         let mut parser = Processor::<StdSyncHandler>::new();
         parser.advance(&mut term, b"\r\n");
-        let next = incremental_snapshot_from_term(&mut term, size, &graphics, &previous);
+        let next = incremental_snapshot_from_term(&mut term, size, &graphics, &previous, &HAPCLI_DARK_THEME);
 
         assert!(!next.lines[0].cells[0].cursor);
         assert!(next.lines[1].cells[0].cursor);
-        assert_snapshot_content_eq(&next, &snapshot_from_term(&term, size, &graphics));
+        assert_snapshot_content_eq(
+            &next,
+            &snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME),
+        );
     }
 
     #[test]

@@ -853,6 +853,36 @@ pub fn open_url(url: &str) -> bool {
     }
 }
 
+/// 在系统文件管理器中打开一个本地目录。
+pub fn open_dir(path: &std::path::Path) -> bool {
+    let display = path.to_string_lossy();
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(display.as_ref())
+            .spawn()
+            .is_ok()
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(display.as_ref())
+            .spawn()
+            .is_ok()
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(display.as_ref())
+            .spawn()
+            .is_ok()
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows", unix)))]
+    {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

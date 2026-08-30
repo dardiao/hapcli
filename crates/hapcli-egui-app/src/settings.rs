@@ -20,6 +20,46 @@ pub enum SettingsPage {
     /// 终端设置：终端仿真器内容的外观与行为（字体、字号、光标、滚动等），
     /// 只作用于连上 SSH / zsh 之后的终端画面，与 app 界面 UI 无关。
     Terminal,
+    /// 帮助与关于：版本信息、更新检查、诊断等。
+    Help,
+}
+
+/// 终端设置页顶部的子标签（对应 Oxideterm 终端设置里的子页）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TerminalSub {
+    #[default]
+    Display,
+    Input,
+    Local,
+    CommandBar,
+    Awareness,
+    Transfer,
+    Highlight,
+}
+
+impl TerminalSub {
+    pub const ALL: [TerminalSub; 7] = [
+        TerminalSub::Display,
+        TerminalSub::Input,
+        TerminalSub::Local,
+        TerminalSub::CommandBar,
+        TerminalSub::Awareness,
+        TerminalSub::Transfer,
+        TerminalSub::Highlight,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Display => "显示",
+            Self::Input => "输入",
+            Self::Local => "本地",
+            Self::CommandBar => "命令行",
+            Self::Awareness => "感知与集成",
+            Self::Transfer => "传输",
+            Self::Highlight => "高亮",
+        }
+    }
+
 }
 
 /// 终端默认光标样式（Oxideterm 终端设置里的 CursorStyle）。
@@ -49,6 +89,145 @@ impl CursorStyleChoice {
     }
 }
 
+/// 退格键发送的字节序列（对应 Oxideterm 的 per-key 退格序列）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BackspaceSequence {
+    #[default]
+    Delete,
+    ControlH,
+}
+
+impl BackspaceSequence {
+    pub fn bytes(self) -> Vec<u8> {
+        match self {
+            Self::Delete => vec![0x7f],
+            Self::ControlH => vec![0x08],
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Delete => "DEL (0x7F)",
+            Self::ControlH => "Backspace (0x08)",
+        }
+    }
+}
+
+/// 删除键发送的字节序列（对应 Oxideterm 的删除序列）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DeleteSequence {
+    #[default]
+    Csi3Tilde,
+    Delete,
+    ControlH,
+}
+
+impl DeleteSequence {
+    pub fn bytes(self) -> Vec<u8> {
+        match self {
+            Self::Csi3Tilde => b"\x1b[3~".to_vec(),
+            Self::Delete => vec![0x7f],
+            Self::ControlH => vec![0x08],
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Csi3Tilde => "CSI 3 ~ (\\x1b[3~)",
+            Self::Delete => "DEL (0x7F)",
+            Self::ControlH => "Backspace (0x08)",
+        }
+    }
+}
+
+/// 终端字符集编码（对应 Oxideterm 的 TerminalEncoding；内核通过 `set_encoding` 应用）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EncodingChoice {
+    #[default]
+    Utf8,
+    Gbk,
+    Gb18030,
+    Big5,
+    ShiftJis,
+    EucJp,
+    EucKr,
+    Windows1252,
+}
+
+impl EncodingChoice {
+    pub const ALL: [EncodingChoice; 8] = [
+        EncodingChoice::Utf8,
+        EncodingChoice::Gbk,
+        EncodingChoice::Gb18030,
+        EncodingChoice::Big5,
+        EncodingChoice::ShiftJis,
+        EncodingChoice::EucJp,
+        EncodingChoice::EucKr,
+        EncodingChoice::Windows1252,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Utf8 => "UTF-8",
+            Self::Gbk => "GBK",
+            Self::Gb18030 => "GB18030",
+            Self::Big5 => "Big5",
+            Self::ShiftJis => "Shift_JIS",
+            Self::EucJp => "EUC-JP",
+            Self::EucKr => "EUC-KR",
+            Self::Windows1252 => "Windows-1252",
+        }
+    }
+
+    pub fn to_kernel(self) -> hapcli_terminal::TerminalEncoding {
+        use hapcli_terminal::TerminalEncoding as K;
+        match self {
+            Self::Utf8 => K::Utf8,
+            Self::Gbk => K::Gbk,
+            Self::Gb18030 => K::Gb18030,
+            Self::Big5 => K::Big5,
+            Self::ShiftJis => K::ShiftJis,
+            Self::EucJp => K::EucJp,
+            Self::EucKr => K::EucKr,
+            Self::Windows1252 => K::Windows1252,
+        }
+    }
+}
+
+/// 终端 ANSI 配色预设（对应内核 `TerminalThemePreset`，作用于会话画面）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ThemePresetChoice {
+    #[default]
+    Default,
+    Dracula,
+    HighContrast,
+}
+
+impl ThemePresetChoice {
+    pub const ALL: [ThemePresetChoice; 3] = [
+        ThemePresetChoice::Dracula,
+        ThemePresetChoice::Default,
+        ThemePresetChoice::HighContrast,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Dracula => "Dracula",
+            Self::Default => "默认",
+            Self::HighContrast => "高对比",
+        }
+    }
+
+    pub fn to_kernel(self) -> hapcli_terminal::TerminalThemePreset {
+        use hapcli_terminal::TerminalThemePreset as K;
+        match self {
+            Self::Dracula => K::Dracula,
+            Self::Default => K::Default,
+            Self::HighContrast => K::HighContrast,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
     pub font_size: f32,
@@ -67,6 +246,18 @@ pub struct AppSettings {
     /// 终端默认光标样式（新会话生效）。
     #[serde(default)]
     pub cursor_style: CursorStyleChoice,
+    /// 退格键发送的字节序列（新会话生效）。
+    #[serde(default)]
+    pub backspace_sequence: BackspaceSequence,
+    /// 删除键发送的字节序列（新会话生效）。
+    #[serde(default)]
+    pub delete_sequence: DeleteSequence,
+    /// 终端字符集编码（新会话即时应用）。
+    #[serde(default)]
+    pub terminal_encoding: EncodingChoice,
+    /// 终端 ANSI 配色预设（即时应用到所有会话）。
+    #[serde(default)]
+    pub terminal_theme: ThemePresetChoice,
     /// 选中完成（松开鼠标 / 双击 / 三击）后自动复制到剪贴板。
     pub copy_on_select: bool,
     /// 鼠标中键点击粘贴剪贴板内容。
@@ -128,6 +319,10 @@ impl Default for AppSettings {
             scrollback_lines: default_scrollback(),
             line_height: default_line_height(),
             cursor_style: CursorStyleChoice::default(),
+            backspace_sequence: BackspaceSequence::default(),
+            delete_sequence: DeleteSequence::default(),
+            terminal_encoding: EncodingChoice::default(),
+            terminal_theme: ThemePresetChoice::default(),
             copy_on_select: false,
             middle_click_paste: true,
             ssh_auto_reconnect: true,
@@ -189,6 +384,10 @@ mod tests {
             scrollback_lines: 5000,
             line_height: 1.2,
             cursor_style: CursorStyleChoice::Beam,
+            backspace_sequence: BackspaceSequence::ControlH,
+            delete_sequence: DeleteSequence::Delete,
+            terminal_encoding: EncodingChoice::Gbk,
+            terminal_theme: ThemePresetChoice::HighContrast,
             copy_on_select: true,
             middle_click_paste: true,
             ssh_auto_reconnect: true,

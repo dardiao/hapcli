@@ -644,8 +644,8 @@ wait
             placeholder: false,
         }));
 
-        let first = snapshot_from_term(&term, size, &graphics);
-        let second = snapshot_from_term(&term, size, &graphics);
+        let first = snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME);
+        let second = snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME);
         let first_data = first.images[0].data.as_ref().expect("image data");
         let second_data = second.images[0].data.as_ref().expect("image data");
 
@@ -682,7 +682,7 @@ wait
             graphics.handle_event(event);
         }
 
-        let snapshot = snapshot_from_term(&term.borrow(), size, &graphics);
+        let snapshot = snapshot_from_term(&term.borrow(), size, &graphics, &HAPCLI_DARK_THEME);
         assert_eq!(snapshot.images.len(), 1);
         let image = &snapshot.images[0];
         assert_eq!(image.row, 5);
@@ -706,13 +706,13 @@ wait
 
         // TUI applications commonly move the cursor into scratch space before hiding it.
         parser.advance(&mut term, b"\x1b[6;41H\x1b[?25l");
-        let hidden = snapshot_from_term(&term, size, &graphics);
+        let hidden = snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME);
         assert_eq!(hidden.cursor_col, 40);
         assert_eq!(hidden.cursor_row, 5);
         assert_eq!(hidden.cursor_shape, TerminalCursorShape::Hidden);
 
         parser.advance(&mut term, b"\x1b[?25h");
-        let visible = snapshot_from_term(&term, size, &graphics);
+        let visible = snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME);
         assert_eq!(visible.cursor_shape, TerminalCursorShape::Block);
     }
 
@@ -739,7 +739,7 @@ wait
             b"\x1b[?1049h\x1b[>4;2m\x1b[?1h\x1b=\x1b[?2004h\x1b[?1004h\x1b[1;24r\x1b[m\x1b[H\x1b[2J\x1b[?25l\x1b[24;1H\"hapcli-vim-test.txt\" [New]\x1b[1;1H\x1b[?25h",
         );
 
-        let snapshot = snapshot_from_term(&term, size, &graphics);
+        let snapshot = snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME);
         assert!(
             snapshot.lines[0].cells.iter().all(|cell| cell.ch == ' '),
             "Vim's alternate-screen clear retained shell glyphs in the first row"
@@ -782,7 +782,7 @@ wait
         parser.advance(&mut term, b"\x1b[?1049h\x1b[m\x1b[H\x1b[2J");
         term.resize(resized);
 
-        let snapshot = snapshot_from_term(&term, resized, &graphics);
+        let snapshot = snapshot_from_term(&term, resized, &graphics, &HAPCLI_DARK_THEME);
         assert!(
             snapshot.lines[0]
                 .cells
@@ -811,7 +811,7 @@ wait
             b"\x1b[?25l\x1b[m\x1b[24;1H\x1b[1m-- INSERT --\x1b[m\x1b[24;13H\x1b[K\x1b[24;1H\x1b[K\x1b[1;1H846\x08\x1b[?25h",
         );
 
-        let snapshot = snapshot_from_term(&term, size, &graphics);
+        let snapshot = snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME);
         let first_row = &snapshot.lines[0];
         let text = first_row
             .cells
@@ -863,7 +863,7 @@ wait
         );
 
         let term = term.borrow();
-        let snapshot = snapshot_from_term(&term, size, &graphics);
+        let snapshot = snapshot_from_term(&term, size, &graphics, &HAPCLI_DARK_THEME);
         assert!(!term.mode().contains(TermMode::ALT_SCREEN));
         assert!(snapshot.images.is_empty());
     }
@@ -880,7 +880,7 @@ wait
         let mut parser = Processor::<StdSyncHandler>::new();
         parser.advance(&mut term, b"012345678901234567890123456789X");
 
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let row_text = |row: usize| -> String {
             snapshot.lines[row]
                 .cells
@@ -924,6 +924,7 @@ wait
             &TerminalGraphicsState::default(),
             1,
             4,
+            &HAPCLI_DARK_THEME,
         );
 
         assert_eq!(snapshot.display_offset, 1);
@@ -975,7 +976,7 @@ wait
             event,
             TerminalEvent::CommandMark(TerminalCommandMarkEvent::Closed(_))
         )));
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let visible_text = snapshot
             .lines
             .iter()
@@ -1146,7 +1147,7 @@ wait
                 host: Some(host),
             } if cwd == "/home/dev/Oxide Term" && host == "build-host"
         )));
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let visible_text = snapshot
             .lines
             .iter()
@@ -1188,7 +1189,7 @@ wait
             event,
             TerminalEvent::CwdChanged { cwd, .. } if cwd == "/wrong"
         )));
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let visible_text = snapshot
             .lines
             .iter()
@@ -1233,7 +1234,7 @@ wait
                     && clipboard.operation == TerminalEditorClipboardOperation::Copy
                     && clipboard.text.as_str() == "你好"
         )));
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let visible_text = snapshot
             .lines
             .iter()
@@ -1268,7 +1269,7 @@ wait
             event,
             TerminalEvent::EditorIntegration(_)
         )));
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let visible_text = snapshot
             .lines
             .iter()
@@ -1393,7 +1394,7 @@ wait
                 if cwd == "/work/Oxide Term"
         )));
         assert!(integration.command_marks().is_empty());
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let visible_text = snapshot
             .lines
             .iter()
@@ -1428,7 +1429,7 @@ wait
             TerminalEvent::CwdChanged { cwd, host: None }
                 if cwd == "/srv/Oxide Term"
         )));
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let visible_text = snapshot
             .lines
             .iter()
@@ -1469,7 +1470,7 @@ wait
         assert_eq!(marks.len(), 1);
         assert_eq!(marks[0].command.as_deref(), Some("pwd"));
         assert!(!marks[0].is_closed);
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let visible_text = snapshot
             .lines
             .iter()
@@ -1513,7 +1514,7 @@ wait
                 host: Some(host),
             } if cwd == "/home/dev" && host == "build-host"
         )));
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let visible_text = snapshot
             .lines
             .iter()
@@ -1614,7 +1615,7 @@ wait
         );
 
         assert_eq!(recorded, "❯ typed input".as_bytes());
-        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default());
+        let snapshot = snapshot_from_term(&term, size, &TerminalGraphicsState::default(), &HAPCLI_DARK_THEME);
         let visible_text = snapshot
             .lines
             .iter()
@@ -1668,12 +1669,13 @@ wait
 
     #[test]
     fn color_request_uses_hapcli_terminal_palette_indices() {
-        let dim_background = color_for_alacritty_request_with_override(268, None);
+        let dim_background = color_for_alacritty_request_with_override(268, None, &HAPCLI_DARK_THEME);
         assert_eq!(dim_background.r, HAPCLI_DARK_THEME.ansi[0].r);
         assert_eq!(dim_background.g, HAPCLI_DARK_THEME.ansi[0].g);
         assert_eq!(dim_background.b, HAPCLI_DARK_THEME.ansi[0].b);
 
-        let out_of_range = color_for_alacritty_request_with_override(999, None);
+        let out_of_range =
+            color_for_alacritty_request_with_override(999, None, &HAPCLI_DARK_THEME);
         assert_eq!((out_of_range.r, out_of_range.g, out_of_range.b), (0, 0, 0));
     }
 
@@ -1701,7 +1703,8 @@ wait
             b: 56,
         };
 
-        let color = color_for_alacritty_request_with_override(4, Some(override_color));
+        let color =
+            color_for_alacritty_request_with_override(4, Some(override_color), &HAPCLI_DARK_THEME);
         assert_eq!((color.r, color.g, color.b), (12, 34, 56));
     }
 
@@ -1712,6 +1715,7 @@ wait
             Color::Indexed(15),
             'x',
             TerminalAttrs::default(),
+            &HAPCLI_DARK_THEME,
         );
 
         assert_ne!(fg, HAPCLI_DARK_THEME.ansi[7]);
@@ -1727,6 +1731,7 @@ wait
             Color::Named(NamedColor::Background),
             'x',
             TerminalAttrs::default(),
+            &HAPCLI_DARK_THEME,
         );
         assert_eq!(truecolor_fg, TerminalColor::rgb(255, 0, 0));
 
@@ -1735,8 +1740,9 @@ wait
             Color::Named(NamedColor::Background),
             'x',
             TerminalAttrs::default(),
+            &HAPCLI_DARK_THEME,
         );
-        assert_eq!(indexed_fg, indexed_color_to_rgb(196));
+        assert_eq!(indexed_fg, indexed_color_to_rgb(196, &HAPCLI_DARK_THEME));
     }
 
     #[test]
@@ -1746,6 +1752,7 @@ wait
             Color::Indexed(15),
             '\u{e0b0}',
             TerminalAttrs::default(),
+            &HAPCLI_DARK_THEME,
         );
 
         assert_eq!(fg, HAPCLI_DARK_THEME.ansi[7]);

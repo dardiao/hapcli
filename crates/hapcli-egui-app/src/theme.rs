@@ -30,19 +30,19 @@ fn dark_visuals() -> egui::Visuals {
     v.hyperlink_color = hex(0x82b4ff);
     v.warn_fg_color = hex(0xe0b05c);
     v.error_fg_color = hex(0xe06c75);
-    v.window_rounding = Rounding::same(10.0);
+    v.window_rounding = Rounding::same(3.0);
     v.window_stroke = Stroke::new(1.0_f32, hex(0x2a323c));
-    v.menu_rounding = Rounding::same(10.0);
+    v.menu_rounding = Rounding::same(3.0);
     v.selection = egui::style::Selection {
         bg_fill: hex(0x3b6db0),
         stroke: Stroke::new(1.0_f32, hex(0x6ea8ff)),
     };
     v.widgets = egui::style::Widgets {
-        noninteractive: widget(0x1d232b, 0x1d232b, 0xb9c0ca, 0x242c36, 10.0),
-        inactive: widget(0x242c36, 0x242c36, 0xd5dae1, 0x303a46, 10.0),
-        hovered: widget(0x344d68, 0x344d68, 0xffffff, 0x4a6c96, 10.0),
-        active: widget(0x2f5a8f, 0x2f5a8f, 0xffffff, 0x4a7fb5, 10.0),
-        open: widget(0x2a3440, 0x2a3440, 0xffffff, 0x394654, 10.0),
+        noninteractive: widget(0x1d232b, 0x1d232b, 0xb9c0ca, 0x242c36, 3.0),
+        inactive: widget(0x242c36, 0x242c36, 0xd5dae1, 0x303a46, 3.0),
+        hovered: widget(0x344d68, 0x344d68, 0xffffff, 0x4a6c96, 3.0),
+        active: widget(0x2f5a8f, 0x2f5a8f, 0xffffff, 0x4a7fb5, 3.0),
+        open: widget(0x2a3440, 0x2a3440, 0xffffff, 0x394654, 3.0),
     };
     v
 }
@@ -58,19 +58,19 @@ fn light_visuals() -> egui::Visuals {
     v.hyperlink_color = hex(0x1f6feb);
     v.warn_fg_color = hex(0xb7791f);
     v.error_fg_color = hex(0xc0392b);
-    v.window_rounding = Rounding::same(10.0);
+    v.window_rounding = Rounding::same(3.0);
     v.window_stroke = Stroke::new(1.0_f32, hex(0xbdcae0));
-    v.menu_rounding = Rounding::same(10.0);
+    v.menu_rounding = Rounding::same(3.0);
     v.selection = egui::style::Selection {
         bg_fill: hex(0x8fbcff),
         stroke: Stroke::new(1.0_f32, hex(0x2f7bfd)),
     };
     v.widgets = egui::style::Widgets {
-        noninteractive: widget(0xf4f8fe, 0xf4f8fe, 0x2c3a4a, 0xc2d0e6, 10.0),
-        inactive: widget(0xdee9f7, 0xdee9f7, 0x14202e, 0xa9c4e8, 10.0),
-        hovered: widget(0xc7ddfa, 0xc7ddfa, 0x0f1722, 0x8fb9f0, 10.0),
-        active: widget(0x9fc6ff, 0x9fc6ff, 0x0f1722, 0x6f9fe8, 10.0),
-        open: widget(0xe3ecf7, 0xe3ecf7, 0x14202e, 0xb6c9e0, 10.0),
+        noninteractive: widget(0xf4f8fe, 0xf4f8fe, 0x2c3a4a, 0xc2d0e6, 3.0),
+        inactive: widget(0xdee9f7, 0xdee9f7, 0x14202e, 0xa9c4e8, 3.0),
+        hovered: widget(0xc7ddfa, 0xc7ddfa, 0x0f1722, 0x8fb9f0, 3.0),
+        active: widget(0x9fc6ff, 0x9fc6ff, 0x0f1722, 0x6f9fe8, 3.0),
+        open: widget(0xe3ecf7, 0xe3ecf7, 0x14202e, 0xb6c9e0, 3.0),
     };
     v
 }
@@ -94,7 +94,7 @@ pub fn apply_egui_theme(ctx: &egui::Context, choice: ThemeChoice) {
         style.spacing.item_spacing = Vec2::new(8.0, 6.0);
         style.spacing.button_padding = Vec2::new(12.0, 6.0);
         style.spacing.menu_margin = Margin::same(8.0);
-        style.spacing.window_margin = Margin::same(10.0);
+        style.spacing.window_margin = Margin::same(3.0);
         style.spacing.interact_size = Vec2::new(40.0, 26.0);
         style.spacing.combo_width = 180.0;
         style.spacing.text_edit_width = 240.0;
@@ -115,7 +115,7 @@ mod tests {
         apply_egui_theme(&ctx, ThemeChoice::Light);
         assert_eq!(ctx.theme(), egui::Theme::Light);
         assert_eq!(ctx.style().visuals.panel_fill, hex(0xe4ecf7));
-        assert_eq!(ctx.style().visuals.widgets.inactive.rounding, Rounding::same(10.0));
+        assert_eq!(ctx.style().visuals.widgets.inactive.rounding, Rounding::same(3.0));
 
         apply_egui_theme(&ctx, ThemeChoice::Dark);
         assert_eq!(ctx.theme(), egui::Theme::Dark);

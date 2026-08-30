@@ -227,6 +227,10 @@ impl TerminalSession {
         self.backend.set_encoding(encoding);
     }
 
+    pub fn set_theme_preset(&mut self, preset: crate::TerminalThemePreset) {
+        self.backend.set_theme(preset);
+    }
+
     pub fn set_output_processor(&mut self, processor: Option<TerminalOutputProcessor>) {
         self.backend.set_output_processor(processor);
     }

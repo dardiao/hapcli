@@ -102,9 +102,11 @@ pub use shell_integration::{
     TerminalCommandMarkClosedBy, TerminalCommandMarkConfidence, TerminalCommandMarkDetectionSource,
     TerminalCommandMarkEvent,
 };
+pub use color::TerminalThemePreset;
+pub use color::{is_terminal_default_bg, is_terminal_default_fg};
 
 use color::{
-    HAPCLI_DARK_THEME, attrs_from_flags, color_for_alacritty_request_with_override,
+    HAPCLI_DARK_THEME, HapcliTheme, attrs_from_flags, color_for_alacritty_request_with_override,
     style_colors_for_cell,
 };
 use local_graphics_event_loop::{

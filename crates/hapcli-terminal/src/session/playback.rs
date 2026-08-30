@@ -11,6 +11,7 @@ struct PlaybackTerminalSession {
     graphics_alt_screen_active: bool,
     shell_integration: TerminalShellIntegration,
     scrollback_lines: usize,
+    theme: HapcliTheme,
 }
 
 impl PlaybackTerminalSession {
@@ -45,6 +46,7 @@ impl PlaybackTerminalSession {
             graphics_alt_screen_active: false,
             shell_integration: TerminalShellIntegration::default(),
             scrollback_lines,
+            theme: HAPCLI_DARK_THEME,
         }
     }
 
@@ -204,6 +206,10 @@ impl TerminalSessionBackend for PlaybackTerminalSession {
 
     fn set_encoding(&mut self, _encoding: TerminalEncoding) {}
 
+    fn set_theme(&mut self, preset: TerminalThemePreset) {
+        self.theme = preset.theme();
+    }
+
     fn feed_recording_output(&mut self, bytes: &[u8]) {
         self.feed_output(bytes);
     }
@@ -294,12 +300,12 @@ impl TerminalSessionBackend for PlaybackTerminalSession {
 
     fn snapshot(&self) -> TerminalSnapshot {
         let term = self.term.lock();
-        snapshot_from_term(&term, self.size, &self.graphics)
+        snapshot_from_term(&term, self.size, &self.graphics, &self.theme)
     }
 
     fn snapshot_incremental(&self, previous: &TerminalSnapshot) -> TerminalSnapshot {
         let mut term = self.term.lock();
-        incremental_snapshot_from_term(&mut term, self.size, &self.graphics, previous)
+        incremental_snapshot_from_term(&mut term, self.size, &self.graphics, previous, &self.theme)
     }
 
     fn snapshot_with_display_offset(
@@ -308,7 +314,14 @@ impl TerminalSessionBackend for PlaybackTerminalSession {
         rows: usize,
     ) -> TerminalSnapshot {
         let term = self.term.lock();
-        snapshot_from_term_with_display_offset(&term, self.size, &self.graphics, display_offset, rows)
+        snapshot_from_term_with_display_offset(
+            &term,
+            self.size,
+            &self.graphics,
+            display_offset,
+            rows,
+            &self.theme,
+        )
     }
 
     fn terminate_active_task(&mut self) -> Result<()> {

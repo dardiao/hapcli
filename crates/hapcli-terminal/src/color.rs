@@ -55,6 +55,135 @@ pub(crate) const HAPCLI_DARK_THEME: HapcliTheme = HapcliTheme {
     ],
 };
 
+pub(crate) fn default_theme() -> HapcliTheme {
+    HapcliTheme {
+        foreground: TerminalColor::rgb(0xd4, 0xd4, 0xd4),
+        ansi_background: TerminalColor::rgb(0x0a, 0x0a, 0x0a),
+        bright_foreground: TerminalColor::rgb(0xff, 0xff, 0xff),
+        dim_foreground: TerminalColor::rgb(0x8a, 0x8a, 0x8a),
+        cursor: TerminalColor::rgb(0xd0, 0xd0, 0xd0),
+        ansi: [
+            TerminalColor::rgb(0x00, 0x00, 0x00),
+            TerminalColor::rgb(0xcd, 0x00, 0x00),
+            TerminalColor::rgb(0x00, 0xcd, 0x00),
+            TerminalColor::rgb(0xcd, 0xcd, 0x00),
+            TerminalColor::rgb(0x00, 0x00, 0xee),
+            TerminalColor::rgb(0xcd, 0x00, 0xcd),
+            TerminalColor::rgb(0x00, 0xcd, 0xcd),
+            TerminalColor::rgb(0xe5, 0xe5, 0xe5),
+            TerminalColor::rgb(0x7f, 0x7f, 0x7f),
+            TerminalColor::rgb(0xff, 0x00, 0x00),
+            TerminalColor::rgb(0x00, 0xff, 0x00),
+            TerminalColor::rgb(0xff, 0xff, 0x00),
+            TerminalColor::rgb(0x5c, 0x5c, 0xff),
+            TerminalColor::rgb(0xff, 0x00, 0xff),
+            TerminalColor::rgb(0x00, 0xff, 0xff),
+            TerminalColor::rgb(0xff, 0xff, 0xff),
+        ],
+        dim_ansi: [
+            TerminalColor::rgb(0x00, 0x00, 0x00),
+            TerminalColor::rgb(0x8f, 0x00, 0x00),
+            TerminalColor::rgb(0x00, 0x8f, 0x00),
+            TerminalColor::rgb(0x8f, 0x8f, 0x00),
+            TerminalColor::rgb(0x00, 0x00, 0xa6),
+            TerminalColor::rgb(0x8f, 0x00, 0x8f),
+            TerminalColor::rgb(0x00, 0x8f, 0x8f),
+            TerminalColor::rgb(0xa0, 0xa0, 0xa0),
+        ],
+    }
+}
+
+pub(crate) fn high_contrast_theme() -> HapcliTheme {
+    HapcliTheme {
+        foreground: TerminalColor::rgb(0xff, 0xff, 0xff),
+        ansi_background: TerminalColor::rgb(0x00, 0x00, 0x00),
+        bright_foreground: TerminalColor::rgb(0xff, 0xff, 0xff),
+        dim_foreground: TerminalColor::rgb(0xc0, 0xc0, 0xc0),
+        cursor: TerminalColor::rgb(0xff, 0xff, 0xff),
+        ansi: [
+            TerminalColor::rgb(0x00, 0x00, 0x00),
+            TerminalColor::rgb(0xff, 0x00, 0x00),
+            TerminalColor::rgb(0x00, 0xff, 0x00),
+            TerminalColor::rgb(0xff, 0xff, 0x00),
+            TerminalColor::rgb(0x00, 0x00, 0xff),
+            TerminalColor::rgb(0xff, 0x00, 0xff),
+            TerminalColor::rgb(0x00, 0xff, 0xff),
+            TerminalColor::rgb(0xff, 0xff, 0xff),
+            TerminalColor::rgb(0x55, 0x55, 0x55),
+            TerminalColor::rgb(0xff, 0x55, 0x55),
+            TerminalColor::rgb(0x55, 0xff, 0x55),
+            TerminalColor::rgb(0xff, 0xff, 0x55),
+            TerminalColor::rgb(0x55, 0x55, 0xff),
+            TerminalColor::rgb(0xff, 0x55, 0xff),
+            TerminalColor::rgb(0x55, 0xff, 0xff),
+            TerminalColor::rgb(0xff, 0xff, 0xff),
+        ],
+        dim_ansi: [
+            TerminalColor::rgb(0x00, 0x00, 0x00),
+            TerminalColor::rgb(0xb2, 0x00, 0x00),
+            TerminalColor::rgb(0x00, 0xb2, 0x00),
+            TerminalColor::rgb(0xb2, 0xb2, 0x00),
+            TerminalColor::rgb(0x00, 0x00, 0xb2),
+            TerminalColor::rgb(0xb2, 0x00, 0xb2),
+            TerminalColor::rgb(0x00, 0xb2, 0xb2),
+            TerminalColor::rgb(0xb2, 0xb2, 0xb2),
+        ],
+    }
+}
+
+/// 终端 ANSI 配色预设（可运行时切换，作用于会话画面）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TerminalThemePreset {
+    #[default]
+    Default,
+    Dracula,
+    HighContrast,
+}
+
+impl TerminalThemePreset {
+    pub const ALL: [TerminalThemePreset; 3] = [
+        TerminalThemePreset::Default,
+        TerminalThemePreset::Dracula,
+        TerminalThemePreset::HighContrast,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Default => "默认",
+            Self::Dracula => "Dracula",
+            Self::HighContrast => "高对比",
+        }
+    }
+
+    pub(crate) fn theme(self) -> HapcliTheme {
+        match self {
+            Self::Default => default_theme(),
+            Self::Dracula => HAPCLI_DARK_THEME,
+            Self::HighContrast => high_contrast_theme(),
+        }
+    }
+}
+
+/// 是否为某个配色预设的“默认终端背景色”。
+pub fn is_terminal_default_bg(color: TerminalColor) -> bool {
+    [
+        HAPCLI_DARK_THEME.ansi_background,
+        default_theme().ansi_background,
+        high_contrast_theme().ansi_background,
+    ]
+    .contains(&color)
+}
+
+/// 是否为某个配色预设的“默认终端前景色”。
+pub fn is_terminal_default_fg(color: TerminalColor) -> bool {
+    [
+        HAPCLI_DARK_THEME.foreground,
+        default_theme().foreground,
+        high_contrast_theme().foreground,
+    ]
+    .contains(&color)
+}
+
 pub(crate) const DEFAULT_MINIMUM_CONTRAST_SCORE: f32 = 45.0;
 pub(crate) fn attrs_from_flags(flags: Flags) -> TerminalAttrs {
     TerminalAttrs {
@@ -67,31 +196,32 @@ pub(crate) fn attrs_from_flags(flags: Flags) -> TerminalAttrs {
     }
 }
 
-fn color_to_rgb(color: Color) -> TerminalColor {
+fn color_to_rgb(color: Color, theme: &HapcliTheme) -> TerminalColor {
     match color {
-        Color::Named(named) => named_color_to_rgb(named),
+        Color::Named(named) => named_color_to_rgb(named, theme),
         Color::Spec(rgb) => TerminalColor::rgb(rgb.r, rgb.g, rgb.b),
-        Color::Indexed(index) => indexed_color_to_rgb(index),
+        Color::Indexed(index) => indexed_color_to_rgb(index, theme),
     }
 }
 
 pub(crate) fn color_for_alacritty_request_with_override(
     index: usize,
     override_color: Option<Rgb>,
+    theme: &HapcliTheme,
 ) -> Rgb {
     if let Some(color) = override_color {
         return color;
     }
 
     let color = match index {
-        0..=15 => HAPCLI_DARK_THEME.ansi[index],
-        16..=255 => indexed_color_to_rgb(index as u8),
-        256 => HAPCLI_DARK_THEME.foreground,
-        257 => HAPCLI_DARK_THEME.ansi_background,
-        258 => HAPCLI_DARK_THEME.cursor,
-        259..=266 => HAPCLI_DARK_THEME.dim_ansi[(index - 259).min(7)],
-        267 => HAPCLI_DARK_THEME.bright_foreground,
-        268 => HAPCLI_DARK_THEME.ansi[0],
+        0..=15 => theme.ansi[index],
+        16..=255 => indexed_color_to_rgb(index as u8, theme),
+        256 => theme.foreground,
+        257 => theme.ansi_background,
+        258 => theme.cursor,
+        259..=266 => theme.dim_ansi[(index - 259).min(7)],
+        267 => theme.bright_foreground,
+        268 => theme.ansi[0],
         _ => TerminalColor::rgb(0, 0, 0),
     };
 
@@ -102,43 +232,43 @@ pub(crate) fn color_for_alacritty_request_with_override(
     }
 }
 
-fn named_color_to_rgb(color: NamedColor) -> TerminalColor {
+fn named_color_to_rgb(color: NamedColor, theme: &HapcliTheme) -> TerminalColor {
     match color {
-        NamedColor::Black => HAPCLI_DARK_THEME.ansi[0],
-        NamedColor::Red => HAPCLI_DARK_THEME.ansi[1],
-        NamedColor::Green => HAPCLI_DARK_THEME.ansi[2],
-        NamedColor::Yellow => HAPCLI_DARK_THEME.ansi[3],
-        NamedColor::Blue => HAPCLI_DARK_THEME.ansi[4],
-        NamedColor::Magenta => HAPCLI_DARK_THEME.ansi[5],
-        NamedColor::Cyan => HAPCLI_DARK_THEME.ansi[6],
-        NamedColor::White => HAPCLI_DARK_THEME.ansi[7],
-        NamedColor::BrightBlack => HAPCLI_DARK_THEME.ansi[8],
-        NamedColor::BrightRed => HAPCLI_DARK_THEME.ansi[9],
-        NamedColor::BrightGreen => HAPCLI_DARK_THEME.ansi[10],
-        NamedColor::BrightYellow => HAPCLI_DARK_THEME.ansi[11],
-        NamedColor::BrightBlue => HAPCLI_DARK_THEME.ansi[12],
-        NamedColor::BrightMagenta => HAPCLI_DARK_THEME.ansi[13],
-        NamedColor::BrightCyan => HAPCLI_DARK_THEME.ansi[14],
-        NamedColor::BrightWhite => HAPCLI_DARK_THEME.ansi[15],
-        NamedColor::Foreground => HAPCLI_DARK_THEME.foreground,
-        NamedColor::Background => HAPCLI_DARK_THEME.ansi_background,
-        NamedColor::Cursor => HAPCLI_DARK_THEME.cursor,
-        NamedColor::DimBlack => HAPCLI_DARK_THEME.dim_ansi[0],
-        NamedColor::DimRed => HAPCLI_DARK_THEME.dim_ansi[1],
-        NamedColor::DimGreen => HAPCLI_DARK_THEME.dim_ansi[2],
-        NamedColor::DimYellow => HAPCLI_DARK_THEME.dim_ansi[3],
-        NamedColor::DimBlue => HAPCLI_DARK_THEME.dim_ansi[4],
-        NamedColor::DimMagenta => HAPCLI_DARK_THEME.dim_ansi[5],
-        NamedColor::DimCyan => HAPCLI_DARK_THEME.dim_ansi[6],
-        NamedColor::DimWhite => HAPCLI_DARK_THEME.dim_ansi[7],
-        NamedColor::BrightForeground => HAPCLI_DARK_THEME.bright_foreground,
-        NamedColor::DimForeground => HAPCLI_DARK_THEME.dim_foreground,
+        NamedColor::Black => theme.ansi[0],
+        NamedColor::Red => theme.ansi[1],
+        NamedColor::Green => theme.ansi[2],
+        NamedColor::Yellow => theme.ansi[3],
+        NamedColor::Blue => theme.ansi[4],
+        NamedColor::Magenta => theme.ansi[5],
+        NamedColor::Cyan => theme.ansi[6],
+        NamedColor::White => theme.ansi[7],
+        NamedColor::BrightBlack => theme.ansi[8],
+        NamedColor::BrightRed => theme.ansi[9],
+        NamedColor::BrightGreen => theme.ansi[10],
+        NamedColor::BrightYellow => theme.ansi[11],
+        NamedColor::BrightBlue => theme.ansi[12],
+        NamedColor::BrightMagenta => theme.ansi[13],
+        NamedColor::BrightCyan => theme.ansi[14],
+        NamedColor::BrightWhite => theme.ansi[15],
+        NamedColor::Foreground => theme.foreground,
+        NamedColor::Background => theme.ansi_background,
+        NamedColor::Cursor => theme.cursor,
+        NamedColor::DimBlack => theme.dim_ansi[0],
+        NamedColor::DimRed => theme.dim_ansi[1],
+        NamedColor::DimGreen => theme.dim_ansi[2],
+        NamedColor::DimYellow => theme.dim_ansi[3],
+        NamedColor::DimBlue => theme.dim_ansi[4],
+        NamedColor::DimMagenta => theme.dim_ansi[5],
+        NamedColor::DimCyan => theme.dim_ansi[6],
+        NamedColor::DimWhite => theme.dim_ansi[7],
+        NamedColor::BrightForeground => theme.bright_foreground,
+        NamedColor::DimForeground => theme.dim_foreground,
     }
 }
 
-pub(crate) fn indexed_color_to_rgb(index: u8) -> TerminalColor {
+pub(crate) fn indexed_color_to_rgb(index: u8, theme: &HapcliTheme) -> TerminalColor {
     match index {
-        0..=15 => HAPCLI_DARK_THEME.ansi[index as usize],
+        0..=15 => theme.ansi[index as usize],
         16..=231 => {
             let index = index - 16;
             let r = index / 36;
@@ -192,6 +322,7 @@ pub(crate) fn style_colors_for_cell(
     bg: Color,
     ch: char,
     attrs: TerminalAttrs,
+    theme: &HapcliTheme,
 ) -> (TerminalColor, TerminalColor) {
     let mut fg_color = fg;
     let mut bg_color = bg;
@@ -199,8 +330,8 @@ pub(crate) fn style_colors_for_cell(
         std::mem::swap(&mut fg_color, &mut bg_color);
     }
 
-    let mut fg = color_to_rgb(fg_color);
-    let bg = color_to_rgb(bg_color);
+    let mut fg = color_to_rgb(fg_color, theme);
+    let bg = color_to_rgb(bg_color, theme);
 
     if !is_app_chosen_exact_color(&fg_color) && !is_terminal_decoration_glyph(ch) {
         fg = ensure_minimum_contrast(fg, bg, DEFAULT_MINIMUM_CONTRAST_SCORE);

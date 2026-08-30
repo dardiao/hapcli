@@ -2,10 +2,18 @@
 
 use eframe::egui::{Key, Modifiers};
 
+use crate::settings::{BackspaceSequence, DeleteSequence};
+
 /// 根据 egui 键盘事件生成需要写入 PTY 的字节。
 ///
 /// 返回 `None` 表示该事件不应转发到终端（例如 Cmd 快捷键、纯修饰键）。
-pub fn key_event_to_bytes(key: Key, modifiers: Modifiers, pressed: bool) -> Option<Vec<u8>> {
+pub fn key_event_to_bytes(
+    key: Key,
+    modifiers: Modifiers,
+    pressed: bool,
+    backspace_seq: BackspaceSequence,
+    delete_seq: DeleteSequence,
+) -> Option<Vec<u8>> {
     if !pressed {
         return None;
     }
@@ -23,7 +31,7 @@ pub fn key_event_to_bytes(key: Key, modifiers: Modifiers, pressed: bool) -> Opti
     }
 
     // 特殊键序列（方向键/功能键）自带 ESC 与修饰符编码。
-    if let Some(bytes) = special_key_sequence(key, modifiers) {
+    if let Some(bytes) = special_key_sequence(key, modifiers, backspace_seq, delete_seq) {
         return Some(bytes);
     }
 
@@ -31,7 +39,12 @@ pub fn key_event_to_bytes(key: Key, modifiers: Modifiers, pressed: bool) -> Opti
 }
 
 /// 终端标准特殊键序列。
-fn special_key_sequence(key: Key, modifiers: Modifiers) -> Option<Vec<u8>> {
+fn special_key_sequence(
+    key: Key,
+    modifiers: Modifiers,
+    backspace_seq: BackspaceSequence,
+    delete_seq: DeleteSequence,
+) -> Option<Vec<u8>> {
     use Key::*;
 
     let arrow = |code: &str, modifiers: Modifiers| {
@@ -68,10 +81,10 @@ fn special_key_sequence(key: Key, modifiers: Modifiers) -> Option<Vec<u8>> {
 
     match key {
         Enter => Some(b"\r".to_vec()),
-        Backspace => Some(vec![0x7f]),
+        Backspace => Some(backspace_seq.bytes()),
         Tab => Some(b"\t".to_vec()),
         Escape => Some(vec![0x1b]),
-        Delete => Some(tilde("3", modifiers).into_bytes()),
+        Delete => Some(delete_seq.bytes()),
         Insert => Some(tilde("2", modifiers).into_bytes()),
         Home => Some(b"\x1b[H".to_vec()),
         End => Some(b"\x1b[F".to_vec()),
@@ -125,29 +138,40 @@ fn ctrl_byte(key: Key) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::settings::{BackspaceSequence, DeleteSequence};
+
+    fn kb(key: Key, modifiers: Modifiers, pressed: bool) -> Option<Vec<u8>> {
+        key_event_to_bytes(
+            key,
+            modifiers,
+            pressed,
+            BackspaceSequence::Delete,
+            DeleteSequence::Csi3Tilde,
+        )
+    }
 
     #[test]
     fn ctrl_letter_maps_to_control_byte() {
-        assert_eq!(key_event_to_bytes(Key::C, Modifiers::CTRL, true), Some(vec![0x03]));
-        assert_eq!(key_event_to_bytes(Key::D, Modifiers::CTRL, true), Some(vec![0x04]));
-        assert_eq!(key_event_to_bytes(Key::Z, Modifiers::CTRL, true), Some(vec![0x1a]));
+        assert_eq!(kb(Key::C, Modifiers::CTRL, true), Some(vec![0x03]));
+        assert_eq!(kb(Key::D, Modifiers::CTRL, true), Some(vec![0x04]));
+        assert_eq!(kb(Key::Z, Modifiers::CTRL, true), Some(vec![0x1a]));
     }
 
     #[test]
     fn ctrl_punctuation_maps_to_xterm_controls() {
-        assert_eq!(key_event_to_bytes(Key::Num3, Modifiers::CTRL, true), Some(vec![0x1b]));
-        assert_eq!(key_event_to_bytes(Key::Num8, Modifiers::CTRL, true), Some(vec![0x7f]));
-        assert_eq!(key_event_to_bytes(Key::OpenBracket, Modifiers::CTRL, true), Some(vec![0x1b]));
+        assert_eq!(kb(Key::Num3, Modifiers::CTRL, true), Some(vec![0x1b]));
+        assert_eq!(kb(Key::Num8, Modifiers::CTRL, true), Some(vec![0x7f]));
+        assert_eq!(kb(Key::OpenBracket, Modifiers::CTRL, true), Some(vec![0x1b]));
     }
 
     #[test]
     fn special_keys_map_to_escape_sequences() {
-        assert_eq!(key_event_to_bytes(Key::Enter, Modifiers::NONE, true), Some(b"\r".to_vec()));
-        assert_eq!(key_event_to_bytes(Key::Backspace, Modifiers::NONE, true), Some(vec![0x7f]));
-        assert_eq!(key_event_to_bytes(Key::Tab, Modifiers::NONE, true), Some(b"\t".to_vec()));
-        assert_eq!(key_event_to_bytes(Key::Escape, Modifiers::NONE, true), Some(vec![0x1b]));
+        assert_eq!(kb(Key::Enter, Modifiers::NONE, true), Some(b"\r".to_vec()));
+        assert_eq!(kb(Key::Backspace, Modifiers::NONE, true), Some(vec![0x7f]));
+        assert_eq!(kb(Key::Tab, Modifiers::NONE, true), Some(b"\t".to_vec()));
+        assert_eq!(kb(Key::Escape, Modifiers::NONE, true), Some(vec![0x1b]));
         assert_eq!(
-            key_event_to_bytes(Key::ArrowUp, Modifiers::NONE, true),
+            kb(Key::ArrowUp, Modifiers::NONE, true),
             Some(b"\x1b[A".to_vec())
         );
     }
@@ -155,27 +179,27 @@ mod tests {
     #[test]
     fn arrow_with_modifiers_uses_xterm_modifier_codes() {
         assert_eq!(
-            key_event_to_bytes(Key::ArrowLeft, Modifiers::SHIFT, true),
+            kb(Key::ArrowLeft, Modifiers::SHIFT, true),
             Some(b"\x1b[1;2D".to_vec())
         );
         assert_eq!(
-            key_event_to_bytes(Key::ArrowUp, Modifiers::CTRL, true),
+            kb(Key::ArrowUp, Modifiers::CTRL, true),
             Some(b"\x1b[1;5A".to_vec())
         );
         assert_eq!(
-            key_event_to_bytes(Key::ArrowDown, Modifiers::ALT, true),
+            kb(Key::ArrowDown, Modifiers::ALT, true),
             Some(b"\x1b[1;3B".to_vec())
         );
     }
 
     #[test]
     fn mac_cmd_shortcuts_are_not_forwarded() {
-        assert_eq!(key_event_to_bytes(Key::C, Modifiers::COMMAND, true), None);
-        assert_eq!(key_event_to_bytes(Key::V, Modifiers::COMMAND, true), None);
+        assert_eq!(kb(Key::C, Modifiers::COMMAND, true), None);
+        assert_eq!(kb(Key::V, Modifiers::COMMAND, true), None);
     }
 
     #[test]
     fn key_release_is_ignored() {
-        assert_eq!(key_event_to_bytes(Key::Enter, Modifiers::NONE, false), None);
+        assert_eq!(kb(Key::Enter, Modifiers::NONE, false), None);
     }
 }

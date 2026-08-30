@@ -4,7 +4,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-APP_NAME="hapcli"
+APP_NAME="HapCLI"
 BIN_NAME="hapcli-egui-app"
 VERSION="$(cargo metadata --no-deps --format-version 1 \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["packages"][0]["version"])')"
@@ -24,13 +24,15 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>hapcli</string>
+    <string>HapCLI</string>
     <key>CFBundleDisplayName</key>
-    <string>hapcli</string>
+    <string>HapCLI</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>HapX.tm 的商标。</string>
     <key>CFBundleIdentifier</key>
     <string>com.hapcli.app</string>
     <key>CFBundleExecutable</key>
-    <string>hapcli</string>
+    <string>HapCLI</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

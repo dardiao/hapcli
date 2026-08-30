@@ -71,6 +71,10 @@ impl TerminalSessionBackend for LocalPtySession {
         LocalPtySession::set_encoding(self, encoding);
     }
 
+    fn set_theme(&mut self, preset: crate::TerminalThemePreset) {
+        LocalPtySession::set_theme(self, preset);
+    }
+
     fn set_output_processor(&mut self, processor: Option<TerminalOutputProcessor>) {
         LocalPtySession::set_output_processor(self, processor);
     }

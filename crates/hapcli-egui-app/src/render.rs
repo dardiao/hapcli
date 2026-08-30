@@ -15,9 +15,6 @@ use hapcli_terminal::{
 use crate::settings::ThemeChoice;
 
 /// 内核暗色主题的默认前景/背景（快照中空 cell 与默认文本的颜色）。
-const KERNEL_DARK_BG: hapcli_terminal::TerminalColor = hapcli_terminal::TerminalColor::rgb(0x28, 0x2a, 0x36);
-const KERNEL_DARK_FG: hapcli_terminal::TerminalColor = hapcli_terminal::TerminalColor::rgb(0xf8, 0xf8, 0xf2);
-
 /// 终端配色（后续可扩展为主题配置）。
 #[derive(Clone, Copy, Debug)]
 #[allow(dead_code)] // foreground/selection 预留给主题配置与选中高亮
@@ -620,15 +617,20 @@ fn resolve_colors(cell: &TerminalCell, theme: &TerminalTheme) -> (Color32, Color
         fg = mix(fg, bg, 0.55);
     }
 
-    // 将内核暗色主题的默认前景/背景映射为当前主题色。
-    if bg == to_color32(KERNEL_DARK_BG) {
+    // 将内核任一预设的默认前景/背景映射为当前主题色（浅色主题下不因预设变黑）。
+    // 注意用反色交换后的颜色做判断（与单元测试语义一致）。
+    if hapcli_terminal::is_terminal_default_bg(to_terminal_color(bg)) {
         bg = theme.background;
     }
-    if fg == to_color32(KERNEL_DARK_FG) {
+    if hapcli_terminal::is_terminal_default_fg(to_terminal_color(fg)) {
         fg = theme.foreground;
     }
 
     (fg, bg)
+}
+
+fn to_terminal_color(color: Color32) -> hapcli_terminal::TerminalColor {
+    hapcli_terminal::TerminalColor::rgb(color.r(), color.g(), color.b())
 }
 
 fn paint_cursor(
@@ -927,7 +929,7 @@ mod tests {
         let mut spacer_rect_index = None;
         for (index, shape) in output.shapes.iter().enumerate() {
             match &shape.shape {
-                egui::epaint::Shape::Text(text) => {
+                egui::epaint::Shape::Text(_text) => {
                     if text_index.is_none() {
                         text_index = Some(index);
                     }
@@ -978,6 +980,17 @@ mod tests {
             TerminalAttrs::default(),
         );
         let (fg, bg) = resolve_colors(&plain, &theme);
+        assert_eq!(bg, Color32::from_rgb(0xf7, 0xf7, 0xf7));
+        assert_eq!(fg, Color32::from_rgb(0x1c, 0x1e, 0x21));
+
+        // 非 Dracula 预设（“默认” xterm 深色）的默认底/前景同样应映射到主题色。
+        let default_preset = cell(
+            'b',
+            TerminalColor::rgb(0xd4, 0xd4, 0xd4),
+            TerminalColor::rgb(0x0a, 0x0a, 0x0a),
+            TerminalAttrs::default(),
+        );
+        let (fg, bg) = resolve_colors(&default_preset, &theme);
         assert_eq!(bg, Color32::from_rgb(0xf7, 0xf7, 0xf7));
         assert_eq!(fg, Color32::from_rgb(0x1c, 0x1e, 0x21));
     }
@@ -1223,7 +1236,7 @@ mod tests {
         let font_id = FontId::monospace(13.0);
         let theme = TerminalTheme::default();
 
-        ctx.run(RawInput::default(), |ctx| {
+        let _ = ctx.run(RawInput::default(), |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
                 let cell_size = ui.fonts(|fonts| {
                     Vec2::new(fonts.glyph_width(&font_id, 'W'), fonts.row_height(&font_id))
@@ -1248,7 +1261,7 @@ mod tests {
 
         // 第一遍：测量终端区域，并按下指针。
         let mut rect = egui::Rect::NOTHING;
-        ctx.run(RawInput::default(), |ctx| {
+        let _ = ctx.run(RawInput::default(), |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
                 let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None, &[], &mut ImageTextureCache::default());
                 rect = response.rect;
@@ -1268,7 +1281,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        ctx.run(press_raw, |ctx| {
+        let _ = ctx.run(press_raw, |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
                 let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None, &[], &mut ImageTextureCache::default());
                 // 真实应用每帧都会渲染滚动条；按下帧必须存在该 widget 才能承接点击。
@@ -1287,7 +1300,7 @@ mod tests {
             ..Default::default()
         };
         let command = RefCell::new(None);
-        ctx.run(release_raw, |ctx| {
+        let _ = ctx.run(release_raw, |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
                 let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None, &[], &mut ImageTextureCache::default());
                 *command.borrow_mut() = scrollbar(ui, &snapshot, &response);

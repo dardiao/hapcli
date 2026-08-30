@@ -58,7 +58,7 @@ pub(crate) fn discovery_roots(options: &SkillDiscoveryOptions) -> Vec<SkillRoot>
                 .unwrap_or(settings_path)
                 .join("skills"),
             SkillScope::User,
-            SkillOrigin::hapcli,
+            SkillOrigin::Hapcli,
             500,
         ));
     }

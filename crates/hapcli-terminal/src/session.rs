@@ -37,7 +37,8 @@ use tokio::{
 pub use crate::backpressure::{TerminalDrainBudget, TerminalDrainReport, TerminalMagicKind};
 
 use crate::{
-    LocalEventListener, LocalEventReceiver, LocalPtyConfig, LocalPtySession, TermMode,
+    HAPCLI_DARK_THEME, HapcliTheme, LocalEventListener, LocalEventReceiver, LocalPtyConfig,
+    LocalPtySession, TerminalThemePreset, TermMode,
     TerminalActivityReceiver, TerminalCommandMark, TerminalCwdIntegrationLaunchState,
     TerminalEvent, TerminalGraphicsState, TerminalLifecycle, TerminalModemTransferRequest,
     TerminalProcessInfo, TerminalProcessProbe, TerminalSearchMatch, TerminalSize, TerminalSnapshot,

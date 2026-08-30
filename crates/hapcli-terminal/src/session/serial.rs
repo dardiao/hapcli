@@ -173,6 +173,7 @@ pub struct SerialSession {
     output_decoder: TerminalOutputDecoder,
     output_processor: Option<TerminalOutputProcessor>,
     output_events_enabled: bool,
+    theme: HapcliTheme,
     input_encoder: TerminalInputEncoder,
     encoding_detector: EncodingMismatchDetector,
     modem_consumer: ModemConsumer,
@@ -336,6 +337,7 @@ impl SerialSession {
             output_decoder: TerminalOutputDecoder::new(encoding),
             output_processor: None,
             output_events_enabled: false,
+            theme: HAPCLI_DARK_THEME,
             input_encoder: TerminalInputEncoder::new(encoding),
             encoding_detector: EncodingMismatchDetector::new(encoding),
             modem_consumer: ModemConsumer::new(),
@@ -738,6 +740,10 @@ impl TerminalSessionBackend for SerialSession {
         self.encoding_detector.set_encoding(encoding);
     }
 
+    fn set_theme(&mut self, preset: TerminalThemePreset) {
+        self.theme = preset.theme();
+    }
+
     fn set_output_processor(&mut self, processor: Option<TerminalOutputProcessor>) {
         self.output_processor = processor;
         self.output_decoder.reset();
@@ -919,6 +925,7 @@ impl TerminalSessionBackend for SerialSession {
                 cell_height: self.resize.cell_height,
             },
             &self.graphics,
+            &self.theme,
         )
     }
 
@@ -934,6 +941,7 @@ impl TerminalSessionBackend for SerialSession {
             },
             &self.graphics,
             previous,
+            &self.theme,
         )
     }
 
@@ -954,6 +962,7 @@ impl TerminalSessionBackend for SerialSession {
             &self.graphics,
             display_offset,
             rows,
+            &self.theme,
         )
     }
 
@@ -1601,6 +1610,7 @@ mod serial_tests {
             output_decoder: TerminalOutputDecoder::new(TerminalEncoding::Utf8),
             output_processor: None,
             output_events_enabled: false,
+            theme: HAPCLI_DARK_THEME,
             input_encoder: TerminalInputEncoder::new(TerminalEncoding::Utf8),
             encoding_detector: EncodingMismatchDetector::new(TerminalEncoding::Utf8),
             modem_consumer: ModemConsumer::new(),

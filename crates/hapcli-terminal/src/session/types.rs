@@ -137,6 +137,7 @@ pub trait TerminalSessionBackend: Send {
     fn write_text(&mut self, text: &str) -> Result<()>;
     fn paste_text(&mut self, text: &str) -> Result<()>;
     fn set_encoding(&mut self, encoding: TerminalEncoding);
+    fn set_theme(&mut self, preset: crate::TerminalThemePreset);
     fn set_output_processor(&mut self, _processor: Option<TerminalOutputProcessor>) {}
     fn set_output_events_enabled(&mut self, _enabled: bool) {}
     fn serial_runtime_options(&self) -> Option<SerialRuntimeOptions> {

@@ -591,7 +591,7 @@ pub fn sftp_panel_ui(ui: &mut egui::Ui, panel: &mut SftpPanelState) -> Vec<SftpC
                 1.5_f32,
                 egui::Color32::from_rgb(0xbd, 0x93, 0xf9),
             ))
-            .rounding(6.0)
+            .rounding(3.0)
             .inner_margin(8.0)
             .show(ui, |ui| {
                 ui.label(
@@ -828,7 +828,7 @@ mod tests {
 
     #[test]
     fn apply_event_finishes_transfer_and_requests_refresh() {
-        let (_tx, rx) = channel::<SftpCommand>();
+        let (_tx, _rx) = channel::<SftpCommand>();
         let (_evt_tx, evt_rx) = channel::<SftpEvent>();
         let mut panel = SftpPanelState {
             tx: _tx,

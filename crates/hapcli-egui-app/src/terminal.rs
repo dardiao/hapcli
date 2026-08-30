@@ -38,6 +38,10 @@ pub struct TerminalPrefs {
     pub sftp_sync_cwd: bool,
     /// 是否有模态弹窗（设置 / 新建连接 / 重命名）打开，此时不应把控制键转发给终端。
     pub modal_open: bool,
+    /// 退格键发送的字节序列。
+    pub backspace_sequence: crate::settings::BackspaceSequence,
+    /// 删除键发送的字节序列。
+    pub delete_sequence: crate::settings::DeleteSequence,
 }
 
 /// 终端右键菜单动作（菜单关闭后统一处理，避免在菜单闭包内借用会话）。
@@ -133,12 +137,13 @@ impl TerminalTab {
         rows: usize,
         scrollback_lines: usize,
         cursor_style: TerminalCursorStyle,
+        encoding: TerminalEncoding,
     ) -> anyhow::Result<Self> {
         let session = enable_trzsz(TerminalSession::local_with_graphics_and_encoding(
             cols,
             rows,
             GraphicsOptions::default(),
-            TerminalEncoding::Utf8,
+            encoding,
             scrollback_lines,
             cursor_style,
         )?);
@@ -209,13 +214,14 @@ impl TerminalTab {
         rows: usize,
         scrollback_lines: usize,
         cursor_style: TerminalCursorStyle,
+        encoding: TerminalEncoding,
     ) -> Self {
         let session = enable_trzsz(TerminalSession::ssh_with_graphics_and_encoding(
             config,
             cols,
             rows,
             GraphicsOptions::default(),
-            TerminalEncoding::Utf8,
+            encoding,
             scrollback_lines,
             cursor_style,
         ));
@@ -727,7 +733,13 @@ impl TerminalTab {
                             }
                         }
                         if let Some(bytes) =
-                            keys::key_event_to_bytes(*key, *modifiers, *pressed)
+                            keys::key_event_to_bytes(
+                                *key,
+                                *modifiers,
+                                *pressed,
+                                prefs.backspace_sequence,
+                                prefs.delete_sequence,
+                            )
                         {
                             writes.push(bytes);
                         }
