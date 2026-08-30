@@ -1147,10 +1147,6 @@ impl eframe::App for HapcliApp {
                     ui,
                     egui::Button::new(egui::RichText::new("⋯").size(16.0)),
                     |ui| {
-                        if ui.button("设置…").clicked() {
-                            want_settings = true;
-                            ui.close_menu();
-                        }
                         if ui.button("快捷命令").clicked() {
                             toggle_quick = true;
                             ui.close_menu();
@@ -1190,7 +1186,15 @@ impl eframe::App for HapcliApp {
                         }
                     },
                 );
-                more_menu.response.on_hover_text("设置 / 快捷命令 / 会话操作");
+                more_menu.response.on_hover_text("快捷命令 / 会话操作");
+                // ⚙ 设置：锁定在最右侧，随时可点。
+                if ui
+                    .button(egui::RichText::new("⚙").size(15.0))
+                    .on_hover_text("设置")
+                    .clicked()
+                {
+                    want_settings = true;
+                }
             });
         });
 
@@ -1762,24 +1766,46 @@ fn draw_tab(
     can_close: bool,
     light: bool,
 ) -> (bool, bool, Option<TabMenuAction>) {
-    const TAB_HEIGHT: f32 = 26.0;
+    const TAB_HEIGHT: f32 = 30.0;
     const PADDING_X: f32 = 12.0;
     const CLOSE_SIZE: f32 = 16.0;
     const GAP: f32 = 6.0;
 
-    let font_id = egui::FontId::proportional(14.5);
-    let text_color = if light {
-        if selected {
-            egui::Color32::from_rgb(0x1c, 0x1e, 0x21)
-        } else {
-            egui::Color32::from_rgb(0x55, 0x5c, 0x66)
-        }
+    let font_id = egui::FontId::proportional(14.0);
+    // Chrome 风格：选中标签与内容区同底色、顶部圆角、底部贴合；未选中标签暗一档。
+    let content_bg = if light {
+        egui::Color32::from_rgb(0xf7, 0xf7, 0xf7)
     } else {
-        if selected {
-            egui::Color32::from_rgb(0xec, 0xf0, 0xf4)
-        } else {
-            egui::Color32::from_rgb(0x9a, 0xa2, 0xab)
-        }
+        egui::Color32::from_rgb(0x28, 0x2a, 0x36)
+    };
+    let rounding = egui::Rounding {
+        nw: 8.0,
+        ne: 8.0,
+        sw: 0.0,
+        se: 0.0,
+    };
+    let (background, text_color) = if selected {
+        (
+            content_bg,
+            if light {
+                egui::Color32::from_rgb(0x1c, 0x1e, 0x21)
+            } else {
+                egui::Color32::from_rgb(0xf8, 0xf8, 0xf2)
+            },
+        )
+    } else {
+        (
+            if light {
+                egui::Color32::from_rgb(0xe7, 0xeb, 0xf0)
+            } else {
+                egui::Color32::from_rgb(0x11, 0x16, 0x1c)
+            },
+            if light {
+                egui::Color32::from_rgb(0x55, 0x5c, 0x66)
+            } else {
+                egui::Color32::from_rgb(0x8f, 0x98, 0xa3)
+            },
+        )
     };
     let text_width = ui
         .fonts(|fonts| fonts.layout_no_wrap(label.to_owned(), font_id.clone(), egui::Color32::WHITE))
@@ -1791,32 +1817,20 @@ fn draw_tab(
         ui.allocate_exact_size(egui::vec2(width, TAB_HEIGHT), egui::Sense::click());
 
     let painter = ui.painter();
-    let background = if light {
-        if selected {
-            egui::Color32::from_rgb(0xd6, 0xe2, 0xee)
-        } else {
-            egui::Color32::from_rgb(0xf2, 0xf4, 0xf7)
-        }
-    } else {
-        if selected {
-            egui::Color32::from_rgb(0x2e, 0x4a, 0x6e)
-        } else {
-            egui::Color32::from_rgb(0x16, 0x1b, 0x22)
-        }
-    };
-    painter.rect_filled(rect, 7.0, background);
-    if selected {
-        painter.rect_stroke(
-            rect,
-            7.0,
-            egui::Stroke::new(
-                1.0_f32,
-                if light {
-                    egui::Color32::from_rgb(0x9f, 0xb4, 0xc8)
-                } else {
-                    egui::Color32::from_rgb(0x4f, 0x86, 0xc6)
-                },
+    painter.rect_filled(rect, rounding, background);
+    if !selected {
+        // 未选中标签底部画一条工具栏分界线；选中标签与内容区贴合、不画线。
+        painter.rect_filled(
+            egui::Rect::from_min_max(
+                egui::pos2(rect.left(), rect.bottom() - 1.0),
+                egui::pos2(rect.right(), rect.bottom()),
             ),
+            0.0,
+            if light {
+                egui::Color32::from_rgb(0xc9, 0xd0, 0xd8)
+            } else {
+                egui::Color32::from_rgb(0x0b, 0x0f, 0x14)
+            },
         );
     }
 
