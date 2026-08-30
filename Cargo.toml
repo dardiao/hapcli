@@ -61,7 +61,7 @@ russh-sftp = { path = "crates/russh-sftp" }
 [workspace.package]
 edition = "2024"
 publish = false
-version = "3.1.2"
+version = "3.1.3"
 
 [workspace.dependencies]
 alacritty_terminal = "0.26.0"
