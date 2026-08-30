@@ -24,8 +24,9 @@ static TRZSZ_OWNER_COUNTER: AtomicU64 = AtomicU64::new(0);
 /// 右侧面板当前展示的标签页。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RightPanelTab {
-    Sftp,
+    Files,
     Quick,
+    Forward,
 }
 
 #[derive(Clone, Copy, Debug)]

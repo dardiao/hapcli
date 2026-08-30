@@ -49,27 +49,28 @@ fn dark_visuals() -> egui::Visuals {
 
 fn light_visuals() -> egui::Visuals {
     let mut v = egui::Visuals::light();
-    v.panel_fill = hex(0xf2f4f7);
-    v.window_fill = hex(0xffffff);
-    v.extreme_bg_color = hex(0xe9ecf0);
-    v.faint_bg_color = hex(0xebeef2);
-    v.code_bg_color = hex(0xf0f2f5);
-    v.hyperlink_color = hex(0x1a56db);
+    // 与深色主题同一套设计语言：浅灰蓝面板 + 蓝色强调。
+    v.panel_fill = hex(0xeef1f6);
+    v.window_fill = hex(0xf7f9fc);
+    v.extreme_bg_color = hex(0xe2e7ef);
+    v.faint_bg_color = hex(0xe9edf3);
+    v.code_bg_color = hex(0xeceff4);
+    v.hyperlink_color = hex(0x2f7bfd);
     v.warn_fg_color = hex(0xb7791f);
     v.error_fg_color = hex(0xc0392b);
     v.window_rounding = Rounding::same(10.0);
-    v.window_stroke = Stroke::new(1.0_f32, hex(0xd8dce2));
+    v.window_stroke = Stroke::new(1.0_f32, hex(0xd4dae3));
     v.menu_rounding = Rounding::same(10.0);
     v.selection = egui::style::Selection {
-        bg_fill: hex(0xa8cdff),
-        stroke: Stroke::new(1.0_f32, hex(0x2f7bd9)),
+        bg_fill: hex(0xb9d6ff),
+        stroke: Stroke::new(1.0_f32, hex(0x2f7bfd)),
     };
     v.widgets = egui::style::Widgets {
-        noninteractive: widget(0xffffff, 0xffffff, 0x3c4149, 0xe2e5ea, 10.0),
-        inactive: widget(0xeef1f5, 0xeef1f5, 0x1c1e21, 0xd8dce2, 10.0),
-        hovered: widget(0xdbe6f5, 0xdbe6f5, 0x111111, 0xb9cdea, 10.0),
-        active: widget(0xc3d9f7, 0xc3d9f7, 0x111111, 0x9bbce8, 10.0),
-        open: widget(0xe9edf2, 0xe9edf2, 0x1c1e21, 0xccd3dc, 10.0),
+        noninteractive: widget(0xf7f9fc, 0xf7f9fc, 0x3c4149, 0xd7dde6, 10.0),
+        inactive: widget(0xe9edf3, 0xe9edf3, 0x1c1e21, 0xcbd3de, 10.0),
+        hovered: widget(0xd6e4fb, 0xd6e4fb, 0x111111, 0x9dbff0, 10.0),
+        active: widget(0xb9d6ff, 0xb9d6ff, 0x111111, 0x7fa8e8, 10.0),
+        open: widget(0xe9edf3, 0xe9edf3, 0x1c1e21, 0xccd3dc, 10.0),
     };
     v
 }

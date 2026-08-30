@@ -21,7 +21,6 @@ pub enum ForwardEvent {
 }
 
 pub struct ForwardPanel {
-    pub show: bool,
     pub tx: Sender<ForwardCommand>,
     pub rx: Receiver<ForwardEvent>,
     pub rules: Vec<ForwardRule>,
@@ -98,7 +97,6 @@ pub fn spawn_forward_worker(handle: SshConnectionHandle) -> ForwardPanel {
     });
 
     ForwardPanel {
-        show: false,
         tx: cmd_tx,
         rx: evt_rx,
         rules: Vec::new(),

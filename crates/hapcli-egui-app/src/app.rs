@@ -1071,7 +1071,7 @@ impl eframe::App for HapcliApp {
         let mut want_local = false;
         let mut want_settings = false;
         let mut want_reconnect = false;
-        let mut toggle_sftp = false;
+        let mut toggle_files = false;
         let mut toggle_quick = false;
         let mut toggle_forward = false;
         let active_is_ssh = self.tabs[self.active_tab].session.status().kind
@@ -1081,12 +1081,9 @@ impl eframe::App for HapcliApp {
                 .session
                 .ssh_connection_handle()
                 .is_some();
-        let sftp_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Sftp);
+        let files_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Files);
         let quick_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Quick);
-        let forward_open = self.tabs[self.active_tab]
-            .forward
-            .as_ref()
-            .is_some_and(|panel| panel.show);
+        let forward_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Forward);
         egui::TopBottomPanel::top("tab_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 4.0;
@@ -1127,6 +1124,7 @@ impl eframe::App for HapcliApp {
                     egui::Button::new(
                         egui::RichText::new("＋")
                             .color(egui::Color32::from_rgb(0xff, 0xff, 0xff))
+                            .size(16.0)
                             .strong(),
                     )
                     .fill(egui::Color32::from_rgb(0x2f, 0x5a, 0x8f))
@@ -1146,7 +1144,7 @@ impl eframe::App for HapcliApp {
                 // ⋯：设置 / 快捷命令 / SSH 会话操作（平时收起，需要时找得到）。
                 let more_menu = egui::menu::menu_custom_button(
                     ui,
-                    egui::Button::new(egui::RichText::new("⋯").size(16.0)),
+                    egui::Button::new(egui::RichText::new("⋯").size(17.0)),
                     |ui| {
                         if ui
                             .button(if quick_open { "快捷命令 ✓" } else { "快捷命令" })
@@ -1156,20 +1154,18 @@ impl eframe::App for HapcliApp {
                             ui.close_menu();
                         }
                         ui.separator();
-                        // SFTP / 本地文件：SSH 与本地会话都能打开浏览。
-                        let sftp_label = if active_is_ssh {
-                            if sftp_open { "SFTP 已开 ✓" } else { "SFTP" }
-                        } else if sftp_open {
-                            "本地文件已开 ✓"
+                        // 文件：SSH 会话浏览远程 SFTP，本地会话浏览本地目录。
+                        let files_label = if files_open {
+                            "文件 ✓"
                         } else {
-                            "本地文件"
+                            "文件"
                         };
                         let can_browse = if active_is_ssh { sftp_connected } else { true };
                         if ui
-                            .add_enabled(can_browse, egui::Button::new(sftp_label))
+                            .add_enabled(can_browse, egui::Button::new(files_label))
                             .clicked()
                         {
-                            toggle_sftp = true;
+                            toggle_files = true;
                             ui.close_menu();
                         }
                         if active_is_ssh {
@@ -1183,7 +1179,7 @@ impl eframe::App for HapcliApp {
                                 .add_enabled(
                                     sftp_connected,
                                     egui::Button::new(if forward_open {
-                                        "端口转发已开 ✓"
+                                        "端口转发 ✓"
                                     } else {
                                         "端口转发"
                                     }),
@@ -1199,7 +1195,7 @@ impl eframe::App for HapcliApp {
                 more_menu.response.on_hover_text("快捷命令 / 会话操作");
                 // ⚙ 设置：锁定在最右侧，随时可点。
                 if ui
-                    .button(egui::RichText::new("⚙").size(15.0))
+                    .button(egui::RichText::new("⚙").size(16.0))
                     .on_hover_text("设置")
                     .clicked()
                 {
@@ -1236,12 +1232,12 @@ impl eframe::App for HapcliApp {
             self.tabs[index].reconnect_dismissed = false;
             self.tabs[index].reconnect_status = Some("正在重连…".to_string());
         }
-        if toggle_sftp {
+        if toggle_files {
             let index = self.active_tab;
-            if self.tabs[index].right_panel == Some(RightPanelTab::Sftp) {
+            if self.tabs[index].right_panel == Some(RightPanelTab::Files) {
                 self.tabs[index].right_panel = None;
             } else {
-                self.tabs[index].right_panel = Some(RightPanelTab::Sftp);
+                self.tabs[index].right_panel = Some(RightPanelTab::Files);
                 if active_is_ssh {
                     if self.tabs[index].sftp.is_none()
                         && let Some(handle) = self.tabs[index].session.ssh_connection_handle()
@@ -1257,13 +1253,17 @@ impl eframe::App for HapcliApp {
         }
         if toggle_forward {
             let index = self.active_tab;
-            if self.tabs[index].forward.is_some() {
-                self.tabs[index].forward = None;
-            } else if let Some(handle) = self.tabs[index].session.ssh_connection_handle() {
-                let mut panel = forward::spawn_forward_worker(handle);
-                panel.show = true;
-                panel.tx.send(forward::ForwardCommand::List).ok();
-                self.tabs[index].forward = Some(panel);
+            if self.tabs[index].right_panel == Some(RightPanelTab::Forward) {
+                self.tabs[index].right_panel = None;
+            } else {
+                if self.tabs[index].forward.is_none()
+                    && let Some(handle) = self.tabs[index].session.ssh_connection_handle()
+                {
+                    let panel = forward::spawn_forward_worker(handle);
+                    panel.tx.send(forward::ForwardCommand::List).ok();
+                    self.tabs[index].forward = Some(panel);
+                }
+                self.tabs[index].right_panel = Some(RightPanelTab::Forward);
             }
         }
         if toggle_quick {
@@ -1371,31 +1371,6 @@ impl eframe::App for HapcliApp {
             self.settings_window(ctx);
         }
 
-        // 3.8 端口转发窗口。
-        let forward_showing = self.tabs[self.active_tab]
-            .forward
-            .as_ref()
-            .is_some_and(|panel| panel.show);
-        if forward_showing {
-            self.poll_forward();
-            let default_pos = ctx.screen_rect().center() - egui::vec2(200.0, 140.0);
-            egui::Window::new("端口转发")
-                .collapsible(false)
-                .resizable(false)
-                .default_pos(default_pos)
-                .show(ctx, |ui| {
-                    let index = self.active_tab;
-                    let panel = self.tabs[index]
-                        .forward
-                        .as_mut()
-                        .expect("forward panel");
-                    let commands = forward::forward_window_ui(ui, panel);
-                    for command in commands {
-                        let _ = panel.tx.send(command);
-                    }
-                });
-        }
-
         // 3.6 断开提示窗口。
         self.reconnect_banner(ctx);
 
@@ -1462,15 +1437,14 @@ impl eframe::App for HapcliApp {
                     ui.add_space(4.0);
                     ui.horizontal(|ui| {
                         let index = self.active_tab;
-                        let sftp_label = if active_is_ssh { "SFTP" } else { "本地文件" };
                         if ui
                             .selectable_label(
-                                self.tabs[index].right_panel == Some(RightPanelTab::Sftp),
-                                sftp_label,
+                                self.tabs[index].right_panel == Some(RightPanelTab::Files),
+                                "文件",
                             )
                             .clicked()
                         {
-                            self.tabs[index].right_panel = Some(RightPanelTab::Sftp);
+                            self.tabs[index].right_panel = Some(RightPanelTab::Files);
                         }
                         if ui
                             .selectable_label(
@@ -1481,11 +1455,23 @@ impl eframe::App for HapcliApp {
                         {
                             self.tabs[index].right_panel = Some(RightPanelTab::Quick);
                         }
+                        if ui
+                            .add_enabled(
+                                active_is_ssh && sftp_connected,
+                                egui::SelectableLabel::new(
+                                    self.tabs[index].right_panel == Some(RightPanelTab::Forward),
+                                    "端口转发",
+                                ),
+                            )
+                            .clicked()
+                        {
+                            self.tabs[index].right_panel = Some(RightPanelTab::Forward);
+                        }
                     });
                     ui.separator();
                     let index = self.active_tab;
                     match right_tab {
-                        RightPanelTab::Sftp => {
+                        RightPanelTab::Files => {
                             if active_is_ssh {
                                 if let Some(panel) = self.tabs[index].sftp.as_mut() {
                                     let mut transfer_started = false;
@@ -1518,6 +1504,17 @@ impl eframe::App for HapcliApp {
                             let panel = &mut self.quick_panel;
                             let session = &mut self.tabs[index].session;
                             panel.ui(ui, session);
+                        }
+                        RightPanelTab::Forward => {
+                            self.poll_forward();
+                            if let Some(panel) = self.tabs[index].forward.as_mut() {
+                                let commands = forward::forward_window_ui(ui, panel);
+                                for command in commands {
+                                    let _ = panel.tx.send(command);
+                                }
+                            } else {
+                                ui.weak("端口转发尚未初始化");
+                            }
                         }
                     }
                 });
