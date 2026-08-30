@@ -1139,24 +1139,6 @@ impl HapcliApp {
 
     /// 帮助与关于：版本信息、更新检查、诊断。
     fn settings_page_help(&mut self, ui: &mut egui::Ui) {
-        ui.label(egui::RichText::new("版本信息").strong());
-        ui.add_space(4.0);
-        egui::Grid::new("settings_help_grid")
-            .num_columns(2)
-            .spacing([10.0, 8.0])
-            .show(ui, |ui| {
-                ui.label("应用程序");
-                ui.label("hapcli");
-                ui.end_row();
-                ui.label("版本");
-                ui.label(env!("CARGO_PKG_VERSION"));
-                ui.end_row();
-                ui.label("更新通道");
-                ui.weak("稳定版");
-                ui.end_row();
-            });
-
-        ui.add_space(12.0);
         ui.label(egui::RichText::new("更新").strong());
         ui.add_space(4.0);
         ui.horizontal(|ui| {

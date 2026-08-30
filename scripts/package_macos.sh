@@ -28,7 +28,7 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
     <key>CFBundleDisplayName</key>
     <string>HapCLI</string>
     <key>NSHumanReadableCopyright</key>
-    <string>HapX.tm 的商标。</string>
+    <string>© 2026 HapX™ 保留所有权利。HapX™ 是 HapX 的注册商标。</string>
     <key>CFBundleIdentifier</key>
     <string>com.hapcli.app</string>
     <key>CFBundleExecutable</key>
