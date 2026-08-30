@@ -128,6 +128,8 @@ pub struct TerminalTab {
     pub last_probe: Option<Instant>,
     /// 静态标签：本地会话或 `user@host` 基础标签。
     base_label: String,
+    /// 标量快照需强制整量重建（例如配色预设切换后重算颜色）。
+    pub force_full_snapshot: bool,
 }
 
 impl TerminalTab {
@@ -201,6 +203,7 @@ impl TerminalTab {
             last_probe: None,
             image_textures: ImageTextureCache::default(),
             base_label: "本地".to_string(),
+            force_full_snapshot: false,
         })
     }
 
@@ -279,6 +282,7 @@ impl TerminalTab {
             last_probe: None,
             image_textures: ImageTextureCache::default(),
             base_label,
+            force_full_snapshot: false,
         }
     }
 
@@ -355,6 +359,7 @@ impl TerminalTab {
             last_probe: None,
             image_textures: ImageTextureCache::default(),
             base_label,
+            force_full_snapshot: false,
         }
     }
 
@@ -431,6 +436,7 @@ impl TerminalTab {
             last_probe: None,
             image_textures: ImageTextureCache::default(),
             base_label,
+            force_full_snapshot: false,
         })
     }
 
@@ -1082,7 +1088,13 @@ impl TerminalTab {
         cursor_blink_on: bool,
         theme: &crate::render::TerminalTheme,
     ) -> Response {
-        self.snapshot = self.session.snapshot_incremental(&self.snapshot);
+        // 配色预设等需要整体重算颜色时，做一次整量快照。
+        if self.force_full_snapshot {
+            self.force_full_snapshot = false;
+            self.snapshot = self.session.snapshot();
+        } else {
+            self.snapshot = self.session.snapshot_incremental(&self.snapshot);
+        }
 
         let search_highlights =
             viewport_highlights(&self.snapshot, &self.search_matches, self.search_current);
