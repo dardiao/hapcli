@@ -1084,125 +1084,153 @@ impl eframe::App for HapcliApp {
         let files_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Files);
         let quick_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Quick);
         let forward_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Forward);
-        egui::TopBottomPanel::top("tab_bar").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 4.0;
-                // 标签行：只放标签，可横向滚动。
-                egui::ScrollArea::horizontal()
-                    .id_salt("tab_scroll")
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 4.0;
-                            for index in 0..self.tabs.len() {
-                                let selected = index == self.active_tab;
-                                let label = self.tabs[index].display_label();
-                                let (clicked, close_clicked, menu) =
-                                    draw_tab(
-                                        ui,
-                                        index,
-                                        &label,
-                                        selected,
-                                        self.tabs.len() > 1,
-                                        self.settings.theme == ThemeChoice::Light,
-                                    );
-                                if clicked {
-                                    clicked_tab = Some(index);
+        // 标签栏：左侧滚动标签，右侧操作区右对齐贴边（VS Code / FinalShell 风格）。
+        egui::TopBottomPanel::top("tab_bar")
+            .frame(
+                egui::Frame::side_top_panel(&ctx.style()).inner_margin(egui::Margin {
+                    left: 0.0,
+                    right: 6.0,
+                    top: 4.0,
+                    bottom: 4.0,
+                }),
+            )
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 4.0;
+                    // 标签行：只放标签，可横向滚动。
+                    egui::ScrollArea::horizontal()
+                        .id_salt("tab_scroll")
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 4.0;
+                                for index in 0..self.tabs.len() {
+                                    let selected = index == self.active_tab;
+                                    let label = self.tabs[index].display_label();
+                                    let (clicked, close_clicked, menu) =
+                                        draw_tab(
+                                            ui,
+                                            index,
+                                            &label,
+                                            selected,
+                                            self.tabs.len() > 1,
+                                            self.settings.theme == ThemeChoice::Light,
+                                        );
+                                    if clicked {
+                                        clicked_tab = Some(index);
+                                    }
+                                    if close_clicked {
+                                        close_tab = Some(index);
+                                    }
+                                    if let Some(action) = menu {
+                                        tab_menu = Some((index, action));
+                                    }
                                 }
-                                if close_clicked {
-                                    close_tab = Some(index);
-                                }
-                                if let Some(action) = menu {
-                                    tab_menu = Some((index, action));
-                                }
-                            }
+                            });
                         });
+                    ui.separator();
+                    // 右侧操作区：右对齐贴边，齿轮固定在最右，再往左是 ⋯ 和 ＋。
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.spacing_mut().item_spacing.x = 2.0;
+                        // ⚙ 设置：最右侧，贴近右边框；再点一次关闭设置弹窗。
+                        if ui
+                            .add(
+                                egui::Button::new(egui::RichText::new("⚙").size(16.0))
+                                    .min_size(egui::vec2(28.0, 26.0))
+                                    .rounding(6.0),
+                            )
+                            .on_hover_text("设置")
+                            .clicked()
+                        {
+                            want_settings = true;
+                        }
+                        // ⋯：快捷命令 / SSH 会话操作（平时收起，需要时找得到）。
+                        let more_menu = egui::menu::menu_custom_button(
+                            ui,
+                            egui::Button::new(egui::RichText::new("⋯").size(17.0))
+                                .min_size(egui::vec2(28.0, 26.0))
+                                .rounding(6.0),
+                            |ui| {
+                                if ui
+                                    .button(if quick_open { "快捷命令 ✓" } else { "快捷命令" })
+                                    .clicked()
+                                {
+                                    toggle_quick = true;
+                                    ui.close_menu();
+                                }
+                                ui.separator();
+                                // 文件：SSH 会话浏览远程 SFTP，本地会话浏览本地目录。
+                                let files_label = if files_open {
+                                    "文件 ✓"
+                                } else {
+                                    "文件"
+                                };
+                                let can_browse = if active_is_ssh {
+                                    sftp_connected
+                                } else {
+                                    true
+                                };
+                                if ui
+                                    .add_enabled(can_browse, egui::Button::new(files_label))
+                                    .clicked()
+                                {
+                                    toggle_files = true;
+                                    ui.close_menu();
+                                }
+                                if active_is_ssh {
+                                    if !self.tabs[self.active_tab]
+                                        .session
+                                        .lifecycle()
+                                        .is_running()
+                                        && ui.button("重连").clicked()
+                                    {
+                                        want_reconnect = true;
+                                        ui.close_menu();
+                                    }
+                                    if ui
+                                        .add_enabled(
+                                            sftp_connected,
+                                            egui::Button::new(if forward_open {
+                                                "端口转发 ✓"
+                                            } else {
+                                                "端口转发"
+                                            }),
+                                        )
+                                        .clicked()
+                                    {
+                                        toggle_forward = true;
+                                        ui.close_menu();
+                                    }
+                                }
+                            },
+                        );
+                        more_menu.response.on_hover_text("快捷命令 / 会话操作");
+                        // ＋：新建 SSH 或本地会话。
+                        let add_menu = egui::menu::menu_custom_button(
+                            ui,
+                            egui::Button::new(
+                                egui::RichText::new("＋")
+                                    .color(egui::Color32::from_rgb(0xff, 0xff, 0xff))
+                                    .size(16.0)
+                                    .strong(),
+                            )
+                            .fill(egui::Color32::from_rgb(0x2f, 0x5a, 0x8f))
+                            .min_size(egui::vec2(28.0, 26.0))
+                            .rounding(6.0),
+                            |ui| {
+                                if ui.button("SSH 连接…").clicked() {
+                                    want_connect = true;
+                                    ui.close_menu();
+                                }
+                                if ui.button("本地终端").clicked() {
+                                    want_local = true;
+                                    ui.close_menu();
+                                }
+                            },
+                        );
+                        add_menu.response.on_hover_text("新建 SSH 或本地会话");
                     });
-                ui.separator();
-                // ＋：新建会话。
-                let add_menu = egui::menu::menu_custom_button(
-                    ui,
-                    egui::Button::new(
-                        egui::RichText::new("＋")
-                            .color(egui::Color32::from_rgb(0xff, 0xff, 0xff))
-                            .size(16.0)
-                            .strong(),
-                    )
-                    .fill(egui::Color32::from_rgb(0x2f, 0x5a, 0x8f))
-                    .rounding(6.0),
-                    |ui| {
-                        if ui.button("SSH 连接…").clicked() {
-                            want_connect = true;
-                            ui.close_menu();
-                        }
-                        if ui.button("本地终端").clicked() {
-                            want_local = true;
-                            ui.close_menu();
-                        }
-                    },
-                );
-                add_menu.response.on_hover_text("新建 SSH 或本地会话");
-                // ⋯：设置 / 快捷命令 / SSH 会话操作（平时收起，需要时找得到）。
-                let more_menu = egui::menu::menu_custom_button(
-                    ui,
-                    egui::Button::new(egui::RichText::new("⋯").size(17.0)),
-                    |ui| {
-                        if ui
-                            .button(if quick_open { "快捷命令 ✓" } else { "快捷命令" })
-                            .clicked()
-                        {
-                            toggle_quick = true;
-                            ui.close_menu();
-                        }
-                        ui.separator();
-                        // 文件：SSH 会话浏览远程 SFTP，本地会话浏览本地目录。
-                        let files_label = if files_open {
-                            "文件 ✓"
-                        } else {
-                            "文件"
-                        };
-                        let can_browse = if active_is_ssh { sftp_connected } else { true };
-                        if ui
-                            .add_enabled(can_browse, egui::Button::new(files_label))
-                            .clicked()
-                        {
-                            toggle_files = true;
-                            ui.close_menu();
-                        }
-                        if active_is_ssh {
-                            if !self.tabs[self.active_tab].session.lifecycle().is_running()
-                                && ui.button("重连").clicked()
-                            {
-                                want_reconnect = true;
-                                ui.close_menu();
-                            }
-                            if ui
-                                .add_enabled(
-                                    sftp_connected,
-                                    egui::Button::new(if forward_open {
-                                        "端口转发 ✓"
-                                    } else {
-                                        "端口转发"
-                                    }),
-                                )
-                                .clicked()
-                            {
-                                toggle_forward = true;
-                                ui.close_menu();
-                            }
-                        }
-                    },
-                );
-                more_menu.response.on_hover_text("快捷命令 / 会话操作");
-                // ⚙ 设置：锁定在最右侧，随时可点。
-                if ui
-                    .button(egui::RichText::new("⚙").size(16.0))
-                    .on_hover_text("设置")
-                    .clicked()
-                {
-                    want_settings = true;
-                }
+                });
             });
-        });
 
         if let Some(index) = clicked_tab {
             self.activate_tab(index);
@@ -1220,8 +1248,13 @@ impl eframe::App for HapcliApp {
             self.show_settings = false;
         }
         if want_settings {
-            self.show_settings = true;
-            self.show_connect_dialog = false;
+            // 齿轮开关：再点一次关闭设置弹窗（VS Code 习惯）。
+            if self.show_settings {
+                self.show_settings = false;
+            } else {
+                self.show_settings = true;
+                self.show_connect_dialog = false;
+            }
         }
         if want_reconnect {
             let index = self.active_tab;
