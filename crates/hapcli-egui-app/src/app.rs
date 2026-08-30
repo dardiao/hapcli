@@ -12,7 +12,7 @@ use crate::render::build_theme;
 use crate::quick::QuickCommandsPanel;
 use crate::settings::{AppSettings, ThemeChoice, load_settings, save_settings};
 use crate::sftp;
-use crate::terminal::{TerminalPrefs, TerminalTab};
+use crate::terminal::{RightPanelTab, TerminalPrefs, TerminalTab};
 use crate::theme::apply_egui_theme;
 use crate::trzsz::{TrzszPromptRequest, TrzszPromptSelection, TrzszWorkerEvent, spawn_trzsz_worker};
 use crate::update::{UpdateCheckState, UpdateStatus, open_url, parse_proxy_prefixes};
@@ -1081,7 +1081,8 @@ impl eframe::App for HapcliApp {
                 .session
                 .ssh_connection_handle()
                 .is_some();
-        let sftp_open = self.tabs[self.active_tab].sftp.is_some();
+        let sftp_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Sftp);
+        let quick_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Quick);
         let forward_open = self.tabs[self.active_tab]
             .forward
             .as_ref()
@@ -1147,26 +1148,35 @@ impl eframe::App for HapcliApp {
                     ui,
                     egui::Button::new(egui::RichText::new("⋯").size(16.0)),
                     |ui| {
-                        if ui.button("快捷命令").clicked() {
+                        if ui
+                            .button(if quick_open { "快捷命令 ✓" } else { "快捷命令" })
+                            .clicked()
+                        {
                             toggle_quick = true;
                             ui.close_menu();
                         }
+                        ui.separator();
+                        // SFTP / 本地文件：SSH 与本地会话都能打开浏览。
+                        let sftp_label = if active_is_ssh {
+                            if sftp_open { "SFTP 已开 ✓" } else { "SFTP" }
+                        } else if sftp_open {
+                            "本地文件已开 ✓"
+                        } else {
+                            "本地文件"
+                        };
+                        let can_browse = if active_is_ssh { sftp_connected } else { true };
+                        if ui
+                            .add_enabled(can_browse, egui::Button::new(sftp_label))
+                            .clicked()
+                        {
+                            toggle_sftp = true;
+                            ui.close_menu();
+                        }
                         if active_is_ssh {
-                            ui.separator();
                             if !self.tabs[self.active_tab].session.lifecycle().is_running()
                                 && ui.button("重连").clicked()
                             {
                                 want_reconnect = true;
-                                ui.close_menu();
-                            }
-                            if ui
-                                .add_enabled(
-                                    sftp_connected,
-                                    egui::Button::new(if sftp_open { "SFTP 已开 ✓" } else { "SFTP" }),
-                                )
-                                .clicked()
-                            {
-                                toggle_sftp = true;
                                 ui.close_menu();
                             }
                             if ui
@@ -1228,12 +1238,21 @@ impl eframe::App for HapcliApp {
         }
         if toggle_sftp {
             let index = self.active_tab;
-            if self.tabs[index].sftp.is_some() {
-                self.tabs[index].sftp = None;
-            } else if let Some(handle) = self.tabs[index].session.ssh_connection_handle() {
-                let panel = sftp::spawn_sftp_worker(handle);
-                panel.send(sftp::SftpCommand::List(".".to_string()));
-                self.tabs[index].sftp = Some(panel);
+            if self.tabs[index].right_panel == Some(RightPanelTab::Sftp) {
+                self.tabs[index].right_panel = None;
+            } else {
+                self.tabs[index].right_panel = Some(RightPanelTab::Sftp);
+                if active_is_ssh {
+                    if self.tabs[index].sftp.is_none()
+                        && let Some(handle) = self.tabs[index].session.ssh_connection_handle()
+                    {
+                        let panel = sftp::spawn_sftp_worker(handle);
+                        panel.send(sftp::SftpCommand::List(".".to_string()));
+                        self.tabs[index].sftp = Some(panel);
+                    }
+                } else if self.tabs[index].local_browser.is_none() {
+                    self.tabs[index].local_browser = Some(sftp::LocalBrowserState::new());
+                }
             }
         }
         if toggle_forward {
@@ -1248,8 +1267,12 @@ impl eframe::App for HapcliApp {
             }
         }
         if toggle_quick {
-            self.quick_panel.show = !self.quick_panel.show;
-            surrender_focus(ctx);
+            let index = self.active_tab;
+            if self.tabs[index].right_panel == Some(RightPanelTab::Quick) {
+                self.tabs[index].right_panel = None;
+            } else {
+                self.tabs[index].right_panel = Some(RightPanelTab::Quick);
+            }
         }
 
         // 2.5 搜索栏（仅活动会话开启搜索时显示）。
@@ -1348,20 +1371,6 @@ impl eframe::App for HapcliApp {
             self.settings_window(ctx);
         }
 
-        // 3.7 快捷命令窗口。
-        if self.quick_panel.show {
-            let default_pos = ctx.screen_rect().center() - egui::vec2(170.0, 190.0);
-            egui::Window::new("快捷命令")
-                .collapsible(false)
-                .resizable(false)
-                .default_pos(default_pos)
-                .show(ctx, |ui| {
-                    let panel = &mut self.quick_panel;
-                    let session = &mut self.tabs[self.active_tab].session;
-                    panel.ui(ui, session);
-                });
-        }
-
         // 3.8 端口转发窗口。
         let forward_showing = self.tabs[self.active_tab]
             .forward
@@ -1443,34 +1452,73 @@ impl eframe::App for HapcliApp {
                 });
             });
 
-        // 6.5 SFTP：轮询事件 + 右侧面板。
+        // 6.5 右侧面板（SFTP / 本地文件 / 快捷命令，用标签切换）。
         self.poll_sftp();
-        if self.tabs[self.active_tab].sftp.is_some() {
-            egui::SidePanel::right("sftp_panel")
+        if let Some(right_tab) = self.tabs[self.active_tab].right_panel {
+            egui::SidePanel::right("right_panel")
                 .resizable(true)
                 .default_width(360.0)
                 .show(ctx, |ui| {
                     ui.add_space(4.0);
-                    ui.heading("SFTP");
+                    ui.horizontal(|ui| {
+                        let index = self.active_tab;
+                        let sftp_label = if active_is_ssh { "SFTP" } else { "本地文件" };
+                        if ui
+                            .selectable_label(
+                                self.tabs[index].right_panel == Some(RightPanelTab::Sftp),
+                                sftp_label,
+                            )
+                            .clicked()
+                        {
+                            self.tabs[index].right_panel = Some(RightPanelTab::Sftp);
+                        }
+                        if ui
+                            .selectable_label(
+                                self.tabs[index].right_panel == Some(RightPanelTab::Quick),
+                                "快捷命令",
+                            )
+                            .clicked()
+                        {
+                            self.tabs[index].right_panel = Some(RightPanelTab::Quick);
+                        }
+                    });
                     ui.separator();
                     let index = self.active_tab;
-                    let panel = self.tabs[index].sftp.as_mut().expect("sftp panel");
-                    let mut transfer_started = false;
-                    let commands = sftp::sftp_panel_ui(ui, panel);
-                    for command in commands {
-                        if matches!(
-                            command,
-                            sftp::SftpCommand::Download { .. }
-                                | sftp::SftpCommand::DownloadDir { .. }
-                                | sftp::SftpCommand::Upload { .. }
-                                | sftp::SftpCommand::UploadDir { .. }
-                        ) {
-                            transfer_started = true;
+                    match right_tab {
+                        RightPanelTab::Sftp => {
+                            if active_is_ssh {
+                                if let Some(panel) = self.tabs[index].sftp.as_mut() {
+                                    let mut transfer_started = false;
+                                    let commands = sftp::sftp_panel_ui(ui, panel);
+                                    for command in commands {
+                                        if matches!(
+                                            command,
+                                            sftp::SftpCommand::Download { .. }
+                                                | sftp::SftpCommand::DownloadDir { .. }
+                                                | sftp::SftpCommand::Upload { .. }
+                                                | sftp::SftpCommand::UploadDir { .. }
+                                        ) {
+                                            transfer_started = true;
+                                        }
+                                        panel.send(command);
+                                    }
+                                    if transfer_started {
+                                        panel.busy = true;
+                                    }
+                                } else {
+                                    ui.weak("SFTP 尚未连接，请先连接 SSH");
+                                }
+                            } else if let Some(browser) = self.tabs[index].local_browser.as_mut() {
+                                sftp::local_browser_ui(ui, browser);
+                            } else {
+                                ui.weak("本地文件浏览器未初始化");
+                            }
                         }
-                        panel.send(command);
-                    }
-                    if transfer_started {
-                        panel.busy = true;
+                        RightPanelTab::Quick => {
+                            let panel = &mut self.quick_panel;
+                            let session = &mut self.tabs[index].session;
+                            panel.ui(ui, session);
+                        }
                     }
                 });
         }

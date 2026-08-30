@@ -21,6 +21,13 @@ use zeroize::Zeroizing;
 
 static TRZSZ_OWNER_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+/// 右侧面板当前展示的标签页。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RightPanelTab {
+    Sftp,
+    Quick,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct TerminalPrefs {
     pub copy_on_select: bool,
@@ -81,7 +88,11 @@ pub struct TerminalTab {
     pub search_focus_requested: bool,
     /// 搜索框已消费 Enter（用于导航），终端不应再把该 Enter 转发给 shell。
     pub search_enter_consumed: bool,
+    /// 右侧面板是否打开及当前标签（SFTP / 快捷命令）。
+    pub right_panel: Option<RightPanelTab>,
     pub sftp: Option<crate::sftp::SftpPanelState>,
+    /// 本地终端使用的本地目录浏览器状态。
+    pub local_browser: Option<crate::sftp::LocalBrowserState>,
     /// 上一次同步给 SFTP 面板的目录（用于 `cd -`）。
     pub sftp_prev_cwd: Option<String>,
     /// 当前输入行缓冲（用于识别 `cd` 命令）。
@@ -150,7 +161,9 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             search_enter_consumed: false,
+            right_panel: None,
             sftp: None,
+            local_browser: None,
             sftp_prev_cwd: None,
             input_line: String::new(),
             input_line_unreliable: false,
@@ -213,7 +226,9 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             search_enter_consumed: false,
+            right_panel: None,
             sftp: None,
+            local_browser: None,
             sftp_prev_cwd: None,
             input_line: String::new(),
             input_line_unreliable: false,
@@ -282,7 +297,9 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             search_enter_consumed: false,
+            right_panel: None,
             sftp: None,
+            local_browser: None,
             sftp_prev_cwd: None,
             input_line: String::new(),
             input_line_unreliable: false,
@@ -351,7 +368,9 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             search_enter_consumed: false,
+            right_panel: None,
             sftp: None,
+            local_browser: None,
             sftp_prev_cwd: None,
             input_line: String::new(),
             input_line_unreliable: false,
@@ -415,6 +434,8 @@ impl TerminalTab {
         self.drag_scroll_accum = 0.0;
         self.drop_hovering = false;
         self.search_enter_consumed = false;
+        self.right_panel = None;
+        self.local_browser = None;
     }
 
     /// 内核有输出时唤醒 egui 重绘；会话销毁后线程自动退出。

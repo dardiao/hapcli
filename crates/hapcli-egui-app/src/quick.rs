@@ -7,7 +7,6 @@ use hapcli_quick_commands::{
 use hapcli_terminal::TerminalSession;
 
 pub struct QuickCommandsPanel {
-    pub show: bool,
     snapshot: QuickCommandsSnapshot,
     filter: String,
     new_name: String,
@@ -26,7 +25,6 @@ impl QuickCommandsPanel {
             .map(|category| category.id.clone())
             .unwrap_or_default();
         Self {
-            show: false,
             snapshot,
             filter: String::new(),
             new_name: String::new(),

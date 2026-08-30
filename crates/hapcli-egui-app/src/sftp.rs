@@ -3,7 +3,7 @@
 
 use std::{
     future::Future,
-    path::Path,
+    path::{Path, PathBuf},
     pin::Pin,
     sync::{Arc, mpsc::Receiver, mpsc::Sender, mpsc::channel},
 };
@@ -429,6 +429,128 @@ fn upload_command_for_drop(path: &Path, cwd: &str) -> Option<SftpCommand> {
         Some(SftpCommand::UploadDir { local, remote })
     } else {
         Some(SftpCommand::Upload { local, remote })
+    }
+}
+
+/// 本地目录浏览器的一项。
+#[derive(Clone)]
+pub struct LocalEntry {
+    pub name: String,
+    pub path: PathBuf,
+    pub is_dir: bool,
+    pub size: u64,
+}
+
+/// 本地终端右侧面板使用的本地目录浏览器（同步读取本地文件系统）。
+pub struct LocalBrowserState {
+    pub cwd: PathBuf,
+    pub entries: Vec<LocalEntry>,
+    pub error: Option<String>,
+}
+
+impl LocalBrowserState {
+    pub fn new() -> Self {
+        let mut state = Self {
+            cwd: std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/")),
+            entries: Vec::new(),
+            error: None,
+        };
+        state.refresh();
+        state
+    }
+
+    pub fn refresh(&mut self) {
+        self.entries.clear();
+        self.error = None;
+        match std::fs::read_dir(&self.cwd) {
+            Ok(entries) => {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    let is_dir = path.is_dir();
+                    let size = if is_dir {
+                        0
+                    } else {
+                        std::fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0)
+                    };
+                    self.entries.push(LocalEntry {
+                        name,
+                        path,
+                        is_dir,
+                        size,
+                    });
+                }
+                self.entries.sort_by(|a, b| {
+                    b.is_dir
+                        .cmp(&a.is_dir)
+                        .then(a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+                });
+            }
+            Err(error) => self.error = Some(format!("无法读取目录: {error}")),
+        }
+    }
+
+    pub fn enter(&mut self, path: &Path) {
+        if path.is_dir() {
+            self.cwd = path.to_path_buf();
+            self.refresh();
+        }
+    }
+
+    pub fn up(&mut self) {
+        if let Some(parent) = self.cwd.parent() {
+            self.cwd = parent.to_path_buf();
+            self.refresh();
+        }
+    }
+}
+
+/// 渲染本地目录浏览器。
+pub fn local_browser_ui(ui: &mut egui::Ui, state: &mut LocalBrowserState) {
+    ui.horizontal(|ui| {
+        ui.label("路径");
+        let mut path_text = state.cwd.display().to_string();
+        ui.add(
+            egui::TextEdit::singleline(&mut path_text)
+                .desired_width(170.0),
+        );
+        if ui.button("进入").clicked() {
+            let path = PathBuf::from(path_text.trim());
+            state.cwd = path;
+            state.refresh();
+        }
+        if ui.button("上级").clicked() {
+            state.up();
+        }
+        if ui.button("刷新").clicked() {
+            state.refresh();
+        }
+    });
+    if let Some(error) = &state.error {
+        ui.colored_label(egui::Color32::from_rgb(0xff, 0x77, 0x77), error);
+    }
+    ui.separator();
+    let mut enter_path: Option<PathBuf> = None;
+    egui::ScrollArea::vertical()
+        .max_height(340.0)
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            for entry in &state.entries {
+                let icon = if entry.is_dir { "📁" } else { "📄" };
+                let size = if entry.is_dir {
+                    String::new()
+                } else {
+                    format_size(entry.size)
+                };
+                let label = format!("{icon} {}  {size}", entry.name);
+                let response = ui.selectable_label(false, label);
+                if entry.is_dir && response.double_clicked() {
+                    enter_path = Some(entry.path.clone());
+                }
+            }
+        });
+    if let Some(path) = enter_path {
+        state.enter(&path);
     }
 }
 
