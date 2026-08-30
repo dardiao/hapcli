@@ -20,6 +20,8 @@ pub enum SettingsPage {
     /// 终端设置：终端仿真器内容的外观与行为（字体、字号、光标、滚动等），
     /// 只作用于连上 SSH / zsh 之后的终端画面，与 app 界面 UI 无关。
     Terminal,
+    /// 版本信息：应用版本、更新检查、代理与诊断。
+    VersionInfo,
 }
 
 /// 终端设置页顶部的子标签（对应 Oxideterm 终端设置里的子页）。

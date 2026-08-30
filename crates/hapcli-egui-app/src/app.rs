@@ -705,6 +705,7 @@ impl HapcliApp {
                             (SettingsPage::General, "常规设置"),
                             (SettingsPage::Appearance, "外观设置"),
                             (SettingsPage::Terminal, "终端设置"),
+                            (SettingsPage::VersionInfo, "版本信息"),
                         ];
                         ui.scope(|ui| {
                             // 高亮底色只比文字左右多一点点（≈3px）。
@@ -769,6 +770,9 @@ impl HapcliApp {
                                 SettingsPage::Appearance => {
                                     ("外观设置", "应用界面 UI 的深浅主题、透明窗口等。")
                                 }
+                                SettingsPage::VersionInfo => {
+                                    ("版本信息", "应用程序信息、更新与诊断。")
+                                }
                                 SettingsPage::Terminal => unreachable!(),
                             };
                             ui.label(egui::RichText::new(title).strong().size(14.0));
@@ -793,6 +797,7 @@ impl HapcliApp {
                                         ui,
                                         &mut toggle_transparent,
                                     ),
+                                    SettingsPage::VersionInfo => self.settings_page_version_info(ui),
                                     SettingsPage::Terminal => match self.terminal_sub {
                                         TerminalSub::Display => self.settings_page_terminal(
                                             ui,
@@ -877,11 +882,13 @@ impl HapcliApp {
             &mut self.settings.check_updates,
             "启动时及每 6 小时自动检查新版本（发现新版可在应用内直接升级）",
         );
+    }
 
-        ui.add_space(12.0);
+    /// 版本信息页：应用版本、更新检查、GitHub 代理与诊断。
+    fn settings_page_version_info(&mut self, ui: &mut egui::Ui) {
         ui.label(egui::RichText::new("版本信息").strong());
         ui.add_space(4.0);
-        egui::Grid::new("settings_general_version_grid")
+        egui::Grid::new("settings_version_grid")
             .num_columns(2)
             .spacing([10.0, 8.0])
             .show(ui, |ui| {
@@ -952,7 +959,7 @@ impl HapcliApp {
         ui.add_space(12.0);
         ui.label(egui::RichText::new("诊断").strong());
         ui.add_space(4.0);
-        egui::Grid::new("settings_general_diag_grid")
+        egui::Grid::new("settings_version_diag_grid")
             .num_columns(2)
             .spacing([10.0, 8.0])
             .show(ui, |ui| {
