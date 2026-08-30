@@ -326,14 +326,15 @@ fn fetch_release_once(
 }
 
 /// 当前平台对应的安装包文件名。
-fn platform_asset_name() -> Option<&'static str> {
+/// 当前平台安装包的识别标记（文件名中需包含，大小写不敏感）。
+fn platform_asset_marker() -> Option<&'static str> {
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
-        Some("hapcli-macos-arm64.zip")
+        Some("macos-arm64")
     }
     #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     {
-        Some("hapcli-windows-x86_64.zip")
+        Some("windows-x86_64")
     }
     #[cfg(not(any(
         all(target_os = "macos", target_arch = "aarch64"),
@@ -345,10 +346,13 @@ fn platform_asset_name() -> Option<&'static str> {
 }
 
 fn pick_platform_asset(assets: &[UpdateAsset]) -> Option<UpdateAsset> {
-    let expected = platform_asset_name()?;
+    let marker = platform_asset_marker()?;
     assets
         .iter()
-        .find(|asset| asset.name == expected)
+        .find(|asset| {
+            let name = asset.name.to_ascii_lowercase();
+            name.contains(marker) && name.ends_with(".zip")
+        })
         .cloned()
 }
 
@@ -609,25 +613,31 @@ fn extract_archive(zip_path: &Path, staging: &Path) -> Result<(), String> {
 fn locate_payload(staging: &Path) -> Result<PathBuf, String> {
     #[cfg(target_os = "macos")]
     {
-        let app = staging.join("hapcli.app");
-        let exe = app.join("Contents/MacOS/hapcli");
-        if exe.is_file() {
-            return Ok(exe);
+        // 兼容任意 .app 包名（hapcli.app / HapCLI.app）与 zip 内多一层目录的情况。
+        let mut roots = vec![staging.to_path_buf()];
+        if let Ok(entries) = std::fs::read_dir(staging) {
+            for entry in entries.flatten() {
+                roots.push(entry.path());
+            }
         }
-        // 兼容 zip 内多一层目录的情况。
-        let Ok(entries) = std::fs::read_dir(staging) else {
-            return Err("解压后未找到 hapcli.app".to_string());
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() && path.extension().and_then(|ext| ext.to_str()) == Some("app") {
-                let nested = path.join("Contents/MacOS/hapcli");
-                if nested.is_file() {
-                    return Ok(nested);
+        for root in roots {
+            if let Ok(sub) = std::fs::read_dir(&root) {
+                for entry in sub.flatten() {
+                    let path = entry.path();
+                    if path.extension().and_then(|ext| ext.to_str()) == Some("app") {
+                        let macos = path.join("Contents/MacOS");
+                        if let Ok(files) = std::fs::read_dir(&macos) {
+                            for file in files.flatten() {
+                                if file.path().is_file() {
+                                    return Ok(file.path());
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
-        Err("解压后未找到 hapcli.app".to_string())
+        Err("解压后未找到 .app 应用".to_string())
     }
     #[cfg(target_os = "windows")]
     {
@@ -939,9 +949,11 @@ mod tests {
                 browser_download_url: "https://example.invalid/mac.zip".to_string(),
             },
         ];
-        if let Some(expected) = platform_asset_name() {
+        if let Some(marker) = platform_asset_marker() {
             let picked = pick_platform_asset(&assets).expect("asset should match");
-            assert_eq!(picked.name, expected);
+            let name = picked.name.to_ascii_lowercase();
+            assert!(name.contains(marker));
+            assert!(name.ends_with(".zip"));
         } else {
             assert!(pick_platform_asset(&assets).is_none());
         }
