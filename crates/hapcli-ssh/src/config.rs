@@ -75,9 +75,6 @@ pub struct SshConfig {
     pub x11_forwarding: Option<X11ForwardPolicy>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub post_connect_command: Option<String>,
-    /// 通过 env 请求 + 远程启动文件注入启用远程 ls 彩色输出。
-    #[serde(default = "default_true")]
-    pub shell_colors: bool,
 }
 
 impl fmt::Debug for SshConfig {
@@ -480,13 +477,8 @@ impl Default for SshConfig {
             legacy_ssh_compatibility: false,
             x11_forwarding: None,
             post_connect_command: None,
-            shell_colors: true,
         }
     }
-}
-
-const fn default_true() -> bool {
-    true
 }
 
 const fn default_port() -> u16 {

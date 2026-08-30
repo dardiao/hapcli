@@ -55,8 +55,6 @@ pub struct ConnectForm {
     pub key_passphrase: String,
     pub post_connect_command: String,
     pub save_password: bool,
-    /// 本次 SSH 连接是否自动启用远程彩色输出（来自全局设置）。
-    pub shell_colors: bool,
     pub serial_port: String,
     pub baud_rate: u32,
     pub data_bits: u8,
@@ -84,7 +82,6 @@ impl Default for ConnectForm {
             key_passphrase: String::new(),
             post_connect_command: String::new(),
             save_password: false,
-            shell_colors: true,
             serial_port: String::new(),
             baud_rate: 115_200,
             data_bits: 8,
@@ -516,7 +513,6 @@ impl ConnectForm {
             username: username.to_string(),
             auth,
             timeout_secs: 20,
-            shell_colors: self.shell_colors,
             ..Default::default()
         };
         let post_connect_command = self.post_connect_command.trim().to_string();

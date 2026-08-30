@@ -10,6 +10,15 @@ pub enum ThemeChoice {
     Light,
 }
 
+/// 设置窗口左侧的分类页面。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SettingsPage {
+    /// 常规设置：主题与通用行为（复制粘贴、重连、通知、更新等）。
+    General,
+    /// 终端设置：终端仿真器的外观与行为（字体、透明度、光标等）。
+    Terminal,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
     pub font_size: f32,
@@ -27,9 +36,6 @@ pub struct AppSettings {
     pub ssh_auto_reconnect: bool,
     /// 长命令（前台进程运行超过阈值后结束）完成时发系统通知。
     pub notify_on_long_command: bool,
-    /// SSH 远程会话自动启用彩色输出（env 请求 + 远程启动文件注入）。
-    #[serde(default = "default_true")]
-    pub ssh_shell_colors: bool,
     /// SSH 终端输入 cd 时，自动让 SFTP 面板跟随切换目录。
     #[serde(default = "default_true")]
     pub sftp_sync_cwd: bool,
@@ -76,7 +82,6 @@ impl Default for AppSettings {
             middle_click_paste: true,
             ssh_auto_reconnect: true,
             notify_on_long_command: true,
-            ssh_shell_colors: true,
             sftp_sync_cwd: true,
             check_updates: true,
             ignored_update_version: None,
@@ -135,7 +140,6 @@ mod tests {
             middle_click_paste: true,
             ssh_auto_reconnect: true,
             notify_on_long_command: true,
-            ssh_shell_colors: false,
             sftp_sync_cwd: true,
             check_updates: true,
             ignored_update_version: None,
@@ -155,7 +159,6 @@ mod tests {
         assert!(loaded.middle_click_paste);
         assert!(loaded.ssh_auto_reconnect);
         assert!(loaded.notify_on_long_command);
-        assert!(!loaded.ssh_shell_colors);
     }
 
     #[test]

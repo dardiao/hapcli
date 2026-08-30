@@ -10,7 +10,9 @@ use crate::connect::{ConnectForm, ConnectTarget, DialogOutcome};
 use crate::forward;
 use crate::render::build_theme;
 use crate::quick::QuickCommandsPanel;
-use crate::settings::{AppSettings, ThemeChoice, load_settings, save_settings};
+use crate::settings::{
+    AppSettings, SettingsPage, ThemeChoice, load_settings, save_settings,
+};
 use crate::sftp;
 use crate::terminal::{RightPanelTab, TerminalPrefs, TerminalTab};
 use crate::theme::apply_egui_theme;
@@ -50,6 +52,8 @@ pub struct HapcliApp {
     rename_draft: String,
     /// 当前已应用的 egui 界面主题（用于检测切换后重绘）。
     applied_ui_theme: Option<ThemeChoice>,
+    /// 设置窗口当前打开的页面。
+    settings_page: SettingsPage,
 }
 
 impl HapcliApp {
@@ -80,6 +84,7 @@ impl HapcliApp {
             rename_tab_index: None,
             rename_draft: String::new(),
             applied_ui_theme: Some(initial_theme),
+            settings_page: SettingsPage::General,
         })
     }
 
@@ -594,170 +599,75 @@ impl HapcliApp {
         let mut clear_font = false;
         let mut toggle_transparent: Option<bool> = None;
 
-        let default_pos = ctx.screen_rect().center() - egui::vec2(150.0, 190.0);
+        let default_pos = ctx.screen_rect().center() - egui::vec2(300.0, 240.0);
         egui::Window::new("设置")
             .collapsible(false)
-            .resizable(false)
+            .resizable(true)
+            .default_width(620.0)
+            .default_height(460.0)
+            .min_width(540.0)
+            .min_height(400.0)
             .default_pos(default_pos)
             .show(ctx, |ui| {
-                ui.label(egui::RichText::new("外观").strong());
-                ui.add_space(4.0);
-                egui::Grid::new("settings_grid")
-                    .num_columns(2)
-                    .spacing([10.0, 8.0])
-                    .show(ui, |ui| {
-                        ui.label("主题");
-                        let theme_label = match self.settings.theme {
-                            ThemeChoice::Dark => "深色",
-                            ThemeChoice::Light => "浅色",
-                        };
-                        egui::ComboBox::from_id_salt("theme_choice")
-                            .selected_text(theme_label)
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(
-                                    &mut self.settings.theme,
-                                    ThemeChoice::Dark,
-                                    "深色",
-                                );
-                                ui.selectable_value(
-                                    &mut self.settings.theme,
-                                    ThemeChoice::Light,
-                                    "浅色",
-                                );
-                            });
-                        ui.end_row();
-
-                        ui.label("字体大小");
-                        ui.add(
-                            egui::Slider::new(
-                                &mut self.settings.font_size,
-                                MIN_FONT_SIZE..=MAX_FONT_SIZE,
-                            )
-                            .suffix(" pt"),
-                        );
-                        ui.end_row();
-
-                        ui.label("背景不透明度");
-                        ui.add(
-                            egui::Slider::new(&mut self.settings.background_alpha, 0.3..=1.0),
-                        );
-                        ui.end_row();
-
-                        ui.label("透明窗口");
-                        let before = self.settings.transparent_window;
-                        ui.checkbox(&mut self.settings.transparent_window, "启用");
-                        if before != self.settings.transparent_window {
-                            toggle_transparent = Some(self.settings.transparent_window);
-                        }
-                        ui.end_row();
-
-                        ui.label("终端字体");
-                        ui.horizontal(|ui| {
-                            let font_label = if self.custom_font_loaded {
-                                "自定义字体已加载".to_string()
-                            } else {
-                                format!("默认 ({})", platform_default_font_label())
-                            };
-                            ui.label(font_label);
-                            if ui.small_button("选择字体文件…").clicked() {
-                                pick_font = true;
+                ui.horizontal(|ui| {
+                    // 左侧：设置分类列表。
+                    ui.vertical(|ui| {
+                        ui.set_width(120.0);
+                        ui.add_space(6.0);
+                        ui.label(egui::RichText::new("设置").strong());
+                        ui.add_space(8.0);
+                        let pages = [
+                            (SettingsPage::General, "常规设置"),
+                            (SettingsPage::Terminal, "终端设置"),
+                        ];
+                        for (page, label) in pages {
+                            if ui
+                                .selectable_label(self.settings_page == page, label)
+                                .clicked()
+                            {
+                                self.settings_page = page;
                             }
-                            if self.custom_font_loaded && ui.small_button("恢复默认").clicked() {
-                                clear_font = true;
+                        }
+                        ui.add_space(10.0);
+                        ui.weak("更多分类\n陆续加入");
+                    });
+                    ui.separator();
+                    // 右侧：当前页面内容（可滚动）。
+                    egui::ScrollArea::vertical()
+                        .id_salt("settings_content_scroll")
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            ui.set_width(ui.available_width());
+                            ui.add_space(4.0);
+                            match self.settings_page {
+                                SettingsPage::General => self.settings_page_general(ui),
+                                SettingsPage::Terminal => self.settings_page_terminal(
+                                    ui,
+                                    &mut pick_font,
+                                    &mut clear_font,
+                                    &mut toggle_transparent,
+                                ),
+                            }
+                            if let Some(path) = &self.settings.terminal_font_path {
+                                ui.add_space(6.0);
+                                ui.label(
+                                    egui::RichText::new(format!("字体: {path}"))
+                                        .size(10.0)
+                                        .weak(),
+                                );
+                            }
+                            if let Some(error) = &self.settings_error {
+                                ui.add_space(6.0);
+                                ui.colored_label(
+                                    egui::Color32::from_rgb(0xff, 0x77, 0x77),
+                                    error,
+                                );
                             }
                         });
-                        ui.end_row();
-                    });
-
-                ui.add_space(8.0);
-                ui.label(egui::RichText::new("行为").strong());
-                ui.add_space(2.0);
-                ui.checkbox(
-                    &mut self.settings.copy_on_select,
-                    "选中即复制（拖选、双击、三击完成后自动复制）",
-                );
-                ui.checkbox(
-                    &mut self.settings.middle_click_paste,
-                    "鼠标中键点击粘贴剪贴板内容",
-                );
-                ui.checkbox(
-                    &mut self.settings.ssh_auto_reconnect,
-                    "SSH 断线自动重连（最多 3 次，间隔 2.5 秒）",
-                );
-                ui.checkbox(
-                    &mut self.settings.notify_on_long_command,
-                    "长命令完成时发系统通知（前台运行超 5 秒的命令结束，且未在查看该标签页）",
-                );
-                ui.checkbox(
-                    &mut self.settings.ssh_shell_colors,
-                    "SSH 远程终端彩色输出（连接时自动让 ls 显示彩色，保证生效，无需修改远程文件）",
-                );
-                ui.checkbox(
-                    &mut self.settings.sftp_sync_cwd,
-                    "SSH 终端 cd 自动同步到 SFTP 面板（输入 cd 后立即跟随，无需远程配置）",
-                );
-                ui.horizontal(|ui| {
-                    ui.checkbox(
-                        &mut self.settings.check_updates,
-                        "启动时及每 6 小时自动检查新版本（发现新版可在应用内直接升级）",
-                    );
-                    if ui.small_button("立即检查").clicked() {
-                        self.update_state
-                            .check_now(env!("CARGO_PKG_VERSION"), Duration::ZERO);
-                    }
-                    match &self.update_state.status {
-                        UpdateStatus::Checking => {
-                            ui.weak("正在检查…");
-                        }
-                        UpdateStatus::UpToDate => {
-                            ui.weak("已是最新版本");
-                        }
-                        UpdateStatus::Error(message) => {
-                            ui.weak(format!("检查失败：{message}"));
-                        }
-                        _ => {}
-                    }
                 });
-                ui.horizontal(|ui| {
-                    ui.label("GitHub 代理");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.settings.github_proxies)
-                            .desired_width(360.0)
-                            .hint_text("例如 gh.dpik.top, gh-proxy.com（逗号分隔，可只填域名）"),
-                    );
-                    if ui
-                        .small_button("恢复默认")
-                        .on_hover_text("来自 github.akams.cn 收集的加速源")
-                        .clicked()
-                    {
-                        self.settings.github_proxies = crate::settings::default_github_proxies();
-                    }
-                });
-                ui.weak("用法：代理前缀 + GitHub 完整链接，如 https://gh.dpik.top/https://github.com/…；直连失败时自动测速选最快节点。留空即禁用。");
-                if self.settings.ignored_update_version.is_some() {
-                    ui.horizontal(|ui| {
-                        ui.weak(format!(
-                            "已忽略版本：{}",
-                            self.settings.ignored_update_version.as_deref().unwrap_or("")
-                        ));
-                        if ui.small_button("恢复提示").clicked() {
-                            self.settings.ignored_update_version = None;
-                        }
-                    });
-                }
-
-                if let Some(path) = &self.settings.terminal_font_path {
-                    ui.label(
-                        egui::RichText::new(format!("字体: {path}"))
-                            .size(10.0)
-                            .weak(),
-                    );
-                }
-                if let Some(error) = &self.settings_error {
-                    ui.colored_label(egui::Color32::from_rgb(0xff, 0x77, 0x77), error);
-                }
-
-                ui.add_space(10.0);
+                ui.add_space(6.0);
+                ui.separator();
+                // 底部按钮（两个页面共用）。
                 ui.horizontal(|ui| {
                     if ui.button("保存").clicked() {
                         save = true;
@@ -801,6 +711,162 @@ impl HapcliApp {
                 self.settings_error = Some(format!("保存失败: {message}"));
             }
         }
+    }
+
+    /// 常规设置页：主题与通用行为。
+    fn settings_page_general(&mut self, ui: &mut egui::Ui) {
+        ui.label(egui::RichText::new("外观").strong());
+        ui.add_space(4.0);
+        egui::Grid::new("settings_general_grid")
+            .num_columns(2)
+            .spacing([10.0, 8.0])
+            .show(ui, |ui| {
+                ui.label("主题");
+                let theme_label = match self.settings.theme {
+                    ThemeChoice::Dark => "深色",
+                    ThemeChoice::Light => "浅色",
+                };
+                egui::ComboBox::from_id_salt("theme_choice")
+                    .selected_text(theme_label)
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut self.settings.theme, ThemeChoice::Dark, "深色");
+                        ui.selectable_value(&mut self.settings.theme, ThemeChoice::Light, "浅色");
+                    });
+                ui.end_row();
+            });
+
+        ui.add_space(10.0);
+        ui.label(egui::RichText::new("行为").strong());
+        ui.add_space(2.0);
+        ui.checkbox(
+            &mut self.settings.copy_on_select,
+            "选中即复制（拖选、双击、三击完成后自动复制）",
+        );
+        ui.checkbox(
+            &mut self.settings.middle_click_paste,
+            "鼠标中键点击粘贴剪贴板内容",
+        );
+        ui.checkbox(
+            &mut self.settings.ssh_auto_reconnect,
+            "SSH 断线自动重连（最多 3 次，间隔 2.5 秒）",
+        );
+        ui.checkbox(
+            &mut self.settings.notify_on_long_command,
+            "长命令完成时发系统通知（前台运行超 5 秒的命令结束，且未在查看该标签页）",
+        );
+        ui.checkbox(
+            &mut self.settings.sftp_sync_cwd,
+            "SSH 终端 cd 自动同步到 SFTP 面板（输入 cd 后立即跟随，无需远程配置）",
+        );
+        ui.horizontal(|ui| {
+            ui.checkbox(
+                &mut self.settings.check_updates,
+                "启动时及每 6 小时自动检查新版本（发现新版可在应用内直接升级）",
+            );
+            if ui.small_button("立即检查").clicked() {
+                self.update_state
+                    .check_now(env!("CARGO_PKG_VERSION"), Duration::ZERO);
+            }
+            match &self.update_state.status {
+                UpdateStatus::Checking => {
+                    ui.weak("正在检查…");
+                }
+                UpdateStatus::UpToDate => {
+                    ui.weak("已是最新版本");
+                }
+                UpdateStatus::Error(message) => {
+                    ui.weak(format!("检查失败：{message}"));
+                }
+                _ => {}
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("GitHub 代理");
+            ui.add(
+                egui::TextEdit::singleline(&mut self.settings.github_proxies)
+                    .desired_width(360.0)
+                    .hint_text("例如 gh.dpik.top, gh-proxy.com（逗号分隔，可只填域名）"),
+            );
+            if ui
+                .small_button("恢复默认")
+                .on_hover_text("来自 github.akams.cn 收集的加速源")
+                .clicked()
+            {
+                self.settings.github_proxies = crate::settings::default_github_proxies();
+            }
+        });
+        ui.weak("用法：代理前缀 + GitHub 完整链接，如 https://gh.dpik.top/https://github.com/…；直连失败时自动测速选最快节点。留空即禁用。");
+        if self.settings.ignored_update_version.is_some() {
+            ui.horizontal(|ui| {
+                ui.weak(format!(
+                    "已忽略版本：{}",
+                    self.settings.ignored_update_version.as_deref().unwrap_or("")
+                ));
+                if ui.small_button("恢复提示").clicked() {
+                    self.settings.ignored_update_version = None;
+                }
+            });
+        }
+    }
+
+    /// 终端设置页：终端仿真器的外观与行为。
+    fn settings_page_terminal(
+        &mut self,
+        ui: &mut egui::Ui,
+        pick_font: &mut bool,
+        clear_font: &mut bool,
+        toggle_transparent: &mut Option<bool>,
+    ) {
+        ui.label(egui::RichText::new("终端外观").strong());
+        ui.add_space(4.0);
+        egui::Grid::new("settings_terminal_grid")
+            .num_columns(2)
+            .spacing([10.0, 8.0])
+            .show(ui, |ui| {
+                ui.label("字体大小");
+                ui.add(
+                    egui::Slider::new(
+                        &mut self.settings.font_size,
+                        MIN_FONT_SIZE..=MAX_FONT_SIZE,
+                    )
+                    .suffix(" pt"),
+                );
+                ui.end_row();
+
+                ui.label("背景不透明度");
+                ui.add(
+                    egui::Slider::new(&mut self.settings.background_alpha, 0.3..=1.0),
+                );
+                ui.end_row();
+
+                ui.label("透明窗口");
+                let before = self.settings.transparent_window;
+                ui.checkbox(&mut self.settings.transparent_window, "启用");
+                if before != self.settings.transparent_window {
+                    *toggle_transparent = Some(self.settings.transparent_window);
+                }
+                ui.end_row();
+
+                ui.label("终端字体");
+                ui.horizontal(|ui| {
+                    let font_label = if self.custom_font_loaded {
+                        "自定义字体已加载".to_string()
+                    } else {
+                        format!("默认 ({})", platform_default_font_label())
+                    };
+                    ui.label(font_label);
+                    if ui.small_button("选择字体文件…").clicked() {
+                        *pick_font = true;
+                    }
+                    if self.custom_font_loaded && ui.small_button("恢复默认").clicked() {
+                        *clear_font = true;
+                    }
+                });
+                ui.end_row();
+            });
+
+        ui.add_space(10.0);
+        ui.weak("更多终端仿真选项（光标样式、终端配色、滚动行为等）将陆续加入。");
     }
 
     /// 处理终端事件：Trzsz 提示 / 目录变化（SFTP 跟随）→ 提示窗 → worker 轮询。
@@ -1223,7 +1289,6 @@ impl eframe::App for HapcliApp {
         }
 
         if want_connect {
-            self.connect_form.shell_colors = self.settings.ssh_shell_colors;
             self.show_connect_dialog = true;
             self.show_settings = false;
         }
