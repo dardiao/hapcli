@@ -945,8 +945,8 @@ impl HapcliApp {
                     .hint_text("例如 gh.dpik.top, gh-proxy.com（逗号分隔，可只填域名）"),
             );
             if ui
-                .small_button("恢复默认")
-                .on_hover_text("来自 github.akams.cn 收集的加速源")
+                .button(egui::RichText::new("恢复默认").size(13.0))
+                .on_hover_text("HapCLI 收集的加速器")
                 .clicked()
             {
                 self.settings.github_proxies = crate::settings::default_github_proxies();
@@ -1873,9 +1873,9 @@ impl eframe::App for HapcliApp {
                             .monospace()
                             .size(11.0)
                             .color(if self.settings.theme == ThemeChoice::Light {
-                                egui::Color32::from_rgb(0x4a, 0x50, 0x58)
+                                egui::Color32::from_rgb(0x2b, 0x33, 0x40)
                             } else {
-                                egui::Color32::from_rgb(0x8a, 0x8f, 0x98)
+                                egui::Color32::from_rgb(0xc3, 0xca, 0xd3)
                             }),
                     );
                 });
