@@ -641,9 +641,20 @@ fn locate_payload(staging: &Path) -> Result<PathBuf, String> {
     }
     #[cfg(target_os = "windows")]
     {
-        let exe = staging.join("hapcli.exe");
-        if exe.is_file() {
-            return Ok(exe);
+        // 兼容重命名：优先 HapCLI.exe，其次 hapcli.exe，最后任意 .exe。
+        for candidate in ["HapCLI.exe", "hapcli.exe"] {
+            let exe = staging.join(candidate);
+            if exe.is_file() {
+                return Ok(exe);
+            }
+        }
+        if let Ok(entries) = std::fs::read_dir(staging) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|ext| ext.to_str()) == Some("exe") {
+                    return Ok(path);
+                }
+            }
         }
         Err("解压后未找到 hapcli.exe".to_string())
     }
