@@ -58,8 +58,6 @@ pub struct HapcliApp {
     terminal_sub: TerminalSub,
     /// 当前已应用到所有会话的终端编码（检测 `settings.terminal_encoding` 变化后同步）。
     applied_terminal_encoding: hapcli_terminal::TerminalEncoding,
-    /// 当前已应用到所有会话的配色预设（检测变化后强制整快照重算颜色）。
-    applied_terminal_theme: hapcli_terminal::TerminalThemePreset,
 }
 
 impl HapcliApp {
@@ -78,7 +76,6 @@ impl HapcliApp {
             settings.terminal_encoding.to_kernel(),
         )?;
         let initial_terminal_encoding = settings.terminal_encoding.to_kernel();
-        let initial_terminal_theme = settings.terminal_theme.to_kernel();
         Ok(Self {
             tabs: vec![local],
             active_tab: 0,
@@ -102,7 +99,6 @@ impl HapcliApp {
             settings_page: SettingsPage::General,
             terminal_sub: TerminalSub::default(),
             applied_terminal_encoding: initial_terminal_encoding,
-            applied_terminal_theme: initial_terminal_theme,
         })
     }
 
@@ -124,13 +120,13 @@ impl HapcliApp {
     /// 把当前 ANSI 配色预设应用到所有会话（每帧廉价执行，保证新旧会话一致）。
     fn apply_terminal_theme(&mut self) {
         let target = self.settings.terminal_theme.to_kernel();
-        if self.applied_terminal_theme != target {
-            // 切换预设后强制整快照，让已渲染的内容立即用新配色重算。
-            for tab in &mut self.tabs {
+        // 逐个标签比对：新建标签（默认 Dracula）未应用当前预设时立即应用并整快照。
+        for tab in &mut self.tabs {
+            if tab.applied_theme != target {
                 tab.session.set_theme_preset(target);
+                tab.applied_theme = target;
                 tab.force_full_snapshot = true;
             }
-            self.applied_terminal_theme = target;
         }
     }
 

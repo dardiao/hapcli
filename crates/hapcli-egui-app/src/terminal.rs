@@ -8,7 +8,8 @@ use eframe::egui::{self, FontId, PointerButton, Pos2, Rect, Response, Vec2};
 use hapcli_sftp::join_remote_path;
 use hapcli_terminal::{
     GraphicsOptions, SerialSessionConfig, TerminalCursorStyle, TerminalEncoding, TerminalSession,
-    TerminalSessionKind, TerminalSearchMatch, TerminalSnapshot, TelnetSessionConfig,
+    TerminalSessionKind, TerminalSearchMatch, TerminalSnapshot, TerminalThemePreset,
+    TelnetSessionConfig,
     TrzszTransferPolicy,
 };
 
@@ -130,6 +131,8 @@ pub struct TerminalTab {
     base_label: String,
     /// 标量快照需强制整量重建（例如配色预设切换后重算颜色）。
     pub force_full_snapshot: bool,
+    /// 当前会话已应用的配色预设（用于新建会话立即应用配置、切换时整快照重算）。
+    pub applied_theme: TerminalThemePreset,
 }
 
 impl TerminalTab {
@@ -204,6 +207,7 @@ impl TerminalTab {
             image_textures: ImageTextureCache::default(),
             base_label: "本地".to_string(),
             force_full_snapshot: false,
+            applied_theme: TerminalThemePreset::Dracula,
         })
     }
 
@@ -283,6 +287,7 @@ impl TerminalTab {
             image_textures: ImageTextureCache::default(),
             base_label,
             force_full_snapshot: false,
+            applied_theme: TerminalThemePreset::Dracula,
         }
     }
 
@@ -360,6 +365,7 @@ impl TerminalTab {
             image_textures: ImageTextureCache::default(),
             base_label,
             force_full_snapshot: false,
+            applied_theme: TerminalThemePreset::Dracula,
         }
     }
 
@@ -437,6 +443,7 @@ impl TerminalTab {
             image_textures: ImageTextureCache::default(),
             base_label,
             force_full_snapshot: false,
+            applied_theme: TerminalThemePreset::Dracula,
         })
     }
 
@@ -477,6 +484,7 @@ impl TerminalTab {
         Self::spawn_activity_thread(&session, ctx);
 
         self.session = session;
+        self.applied_theme = TerminalThemePreset::Dracula;
         self.snapshot = self.session.snapshot();
         self.trzsz_prompt = None;
         self.trzsz_active = false;
