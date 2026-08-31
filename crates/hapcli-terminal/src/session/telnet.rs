@@ -279,7 +279,7 @@ impl TelnetSession {
             output_decoder: TerminalOutputDecoder::new(encoding),
             output_processor: None,
             output_events_enabled: false,
-            theme: HAPCLI_DARK_THEME,
+            theme: TerminalThemePreset::Default.theme(),
             input_encoder: TerminalInputEncoder::new(encoding),
             encoding_detector: EncodingMismatchDetector::new(encoding),
             modem_consumer: ModemConsumer::new(),

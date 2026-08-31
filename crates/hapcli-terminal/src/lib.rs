@@ -106,9 +106,11 @@ pub use color::TerminalThemePreset;
 pub use color::{is_terminal_default_bg, is_terminal_default_fg};
 
 use color::{
-    HAPCLI_DARK_THEME, HapcliTheme, attrs_from_flags, color_for_alacritty_request_with_override,
+    HapcliTheme, attrs_from_flags, color_for_alacritty_request_with_override,
     style_colors_for_cell,
 };
+#[cfg(test)]
+use color::HAPCLI_DARK_THEME;
 use local_graphics_event_loop::{
     LocalGraphicsEventLoop, LocalGraphicsMsg, LocalGraphicsNotifier, LocalPtyReadReport,
 };

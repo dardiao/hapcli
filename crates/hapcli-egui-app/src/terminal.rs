@@ -207,7 +207,7 @@ impl TerminalTab {
             image_textures: ImageTextureCache::default(),
             base_label: "本地".to_string(),
             force_full_snapshot: false,
-            applied_theme: TerminalThemePreset::Dracula,
+            applied_theme: TerminalThemePreset::Default,
         })
     }
 
@@ -287,7 +287,7 @@ impl TerminalTab {
             image_textures: ImageTextureCache::default(),
             base_label,
             force_full_snapshot: false,
-            applied_theme: TerminalThemePreset::Dracula,
+            applied_theme: TerminalThemePreset::Default,
         }
     }
 
@@ -365,7 +365,7 @@ impl TerminalTab {
             image_textures: ImageTextureCache::default(),
             base_label,
             force_full_snapshot: false,
-            applied_theme: TerminalThemePreset::Dracula,
+            applied_theme: TerminalThemePreset::Default,
         }
     }
 
@@ -443,7 +443,7 @@ impl TerminalTab {
             image_textures: ImageTextureCache::default(),
             base_label,
             force_full_snapshot: false,
-            applied_theme: TerminalThemePreset::Dracula,
+            applied_theme: TerminalThemePreset::Default,
         })
     }
 
@@ -484,7 +484,7 @@ impl TerminalTab {
         Self::spawn_activity_thread(&session, ctx);
 
         self.session = session;
-        self.applied_theme = TerminalThemePreset::Dracula;
+        self.applied_theme = TerminalThemePreset::Default;
         self.snapshot = self.session.snapshot();
         self.trzsz_prompt = None;
         self.trzsz_active = false;

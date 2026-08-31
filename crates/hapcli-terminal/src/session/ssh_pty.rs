@@ -204,7 +204,7 @@ impl SshPtySession {
             output_decoder: TerminalOutputDecoder::new(encoding),
             output_processor: None,
             output_events_enabled: false,
-            theme: HAPCLI_DARK_THEME,
+            theme: TerminalThemePreset::Default.theme(),
             privilege_prompt: TerminalPrivilegePromptStream::default(),
             input_encoder: TerminalInputEncoder::new(encoding),
             encoding_detector: EncodingMismatchDetector::new(encoding),

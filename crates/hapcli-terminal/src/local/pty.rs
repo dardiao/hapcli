@@ -188,7 +188,7 @@ impl LocalPtySession {
             graphics: TerminalGraphicsState::default(),
             encoding,
             input_encoder: TerminalInputEncoder::new(encoding),
-            theme: HAPCLI_DARK_THEME,
+            theme: TerminalThemePreset::Default.theme(),
         })
     }
 

@@ -46,7 +46,7 @@ impl PlaybackTerminalSession {
             graphics_alt_screen_active: false,
             shell_integration: TerminalShellIntegration::default(),
             scrollback_lines,
-            theme: HAPCLI_DARK_THEME,
+            theme: TerminalThemePreset::Default.theme(),
         }
     }
 
