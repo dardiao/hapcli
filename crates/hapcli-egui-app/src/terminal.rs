@@ -143,10 +143,14 @@ impl TerminalTab {
         scrollback_lines: usize,
         cursor_style: TerminalCursorStyle,
         encoding: TerminalEncoding,
+        shell: Option<hapcli_terminal::ShellInfo>,
     ) -> anyhow::Result<Self> {
-        let session = enable_trzsz(TerminalSession::local_with_graphics_and_encoding(
+        let mut local_config = hapcli_terminal::LocalPtyConfig::default();
+        local_config.shell = shell;
+        let session = enable_trzsz(TerminalSession::local_with_config_graphics_and_encoding(
             cols,
             rows,
+            local_config,
             GraphicsOptions::default(),
             encoding,
             scrollback_lines,

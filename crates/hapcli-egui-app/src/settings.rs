@@ -258,6 +258,9 @@ pub struct AppSettings {
     /// 终端 ANSI 配色预设（即时应用到所有会话）。
     #[serde(default)]
     pub terminal_theme: ThemePresetChoice,
+    /// 本地会话使用的 shell id（来自 `scan_shells()`）；空表示使用系统默认。
+    #[serde(default)]
+    pub local_shell_id: String,
     /// 选中完成（松开鼠标 / 双击 / 三击）后自动复制到剪贴板。
     pub copy_on_select: bool,
     /// 鼠标中键点击粘贴剪贴板内容。
@@ -323,6 +326,7 @@ impl Default for AppSettings {
             delete_sequence: DeleteSequence::default(),
             terminal_encoding: EncodingChoice::default(),
             terminal_theme: ThemePresetChoice::default(),
+            local_shell_id: String::new(),
             copy_on_select: false,
             middle_click_paste: true,
             ssh_auto_reconnect: true,
@@ -388,6 +392,7 @@ mod tests {
             delete_sequence: DeleteSequence::Delete,
             terminal_encoding: EncodingChoice::Gbk,
             terminal_theme: ThemePresetChoice::HighContrast,
+            local_shell_id: "powershell".to_string(),
             copy_on_select: true,
             middle_click_paste: true,
             ssh_auto_reconnect: true,

@@ -74,6 +74,13 @@ impl HapcliApp {
             settings.scrollback_lines,
             settings.cursor_style.to_kernel(),
             settings.terminal_encoding.to_kernel(),
+            if settings.local_shell_id.is_empty() {
+                None
+            } else {
+                hapcli_terminal::scan_shells()
+                    .into_iter()
+                    .find(|shell| shell.id == settings.local_shell_id)
+            },
         )?;
         let initial_terminal_encoding = settings.terminal_encoding.to_kernel();
         Ok(Self {
@@ -104,6 +111,17 @@ impl HapcliApp {
 
     fn active_tab(&mut self) -> &mut TerminalTab {
         &mut self.tabs[self.active_tab]
+    }
+
+    /// 解析当前设置中的本地 shell（存在且被扫描到则返回对应 ShellInfo）。
+    fn local_shell_choice(&self) -> Option<hapcli_terminal::ShellInfo> {
+        let id = self.settings.local_shell_id.as_str();
+        if id.is_empty() || id == "default" {
+            return None;
+        }
+        hapcli_terminal::scan_shells()
+            .into_iter()
+            .find(|shell| shell.id == id)
     }
 
     /// 当终端编码设置变化时，同步到所有会话（即时生效）。
@@ -342,6 +360,7 @@ impl HapcliApp {
             self.settings.scrollback_lines,
             self.settings.cursor_style.to_kernel(),
             self.settings.terminal_encoding.to_kernel(),
+            self.local_shell_choice(),
         ) {
             self.tabs.push(tab);
             self.active_tab = self.tabs.len() - 1;
@@ -1160,8 +1179,43 @@ impl HapcliApp {
 
     /// 终端设置 → 本地：本地会话能力说明。
     fn settings_page_terminal_local(&mut self, ui: &mut egui::Ui) {
-        ui.weak("本地终端使用系统默认 shell（macOS 为 zsh / Linux 为 bash 等），已支持历史、Tab 补全与快捷命令。");
-        ui.weak("自定义本地 shell、本地历史记录开关等后续加入。");
+        egui::Grid::new("settings_terminal_local_shell_grid")
+            .num_columns(2)
+            .spacing([10.0, 8.0])
+            .show(ui, |ui| {
+                ui.label("本地 shell");
+                let shells = hapcli_terminal::scan_shells();
+                let current = if self.settings.local_shell_id.is_empty() {
+                    "默认".to_string()
+                } else {
+                    shells
+                        .iter()
+                        .find(|shell| shell.id == self.settings.local_shell_id)
+                        .map(|shell| shell.label.clone())
+                        .unwrap_or_else(|| "默认".to_string())
+                };
+                egui::ComboBox::from_id_salt("local_shell")
+                    .selected_text(current)
+                    .show_ui(ui, |ui| {
+                        let default_selected = self.settings.local_shell_id.is_empty()
+                            || self.settings.local_shell_id == "default";
+                        if ui.selectable_label(default_selected, "默认").clicked() {
+                            self.settings.local_shell_id.clear();
+                        }
+                        for shell in &shells {
+                            let selected = self.settings.local_shell_id == shell.id;
+                            if ui
+                                .selectable_label(selected, shell.label.as_str())
+                                .clicked()
+                            {
+                                self.settings.local_shell_id = shell.id.clone();
+                            }
+                        }
+                    });
+                ui.end_row();
+            });
+        ui.add_space(8.0);
+        ui.weak("本地 shell 只作用于新建的本地会话（macOS 默认 zsh、Windows 默认 cmd，可切换 PowerShell 等）。");
         ui.add_space(10.0);
         ui.label(egui::RichText::new("字符集编码").strong());
         ui.add_space(4.0);
