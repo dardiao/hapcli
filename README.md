@@ -6,6 +6,19 @@
 
 > 完整演示视频（MP4）：[hapcli-demo.mp4](https://github.com/dardiao/hapcli/raw/main/assets/hapcli-demo.mp4)
 
+## 下载 Releases
+
+直接从 [Releases 页面](https://github.com/dardiao/hapcli/releases) 下载已编译好的安装包（当前最新 v3.2.7）：
+
+| 平台 | 安装包 |
+| --- | --- |
+| macOS (Apple Silicon) | [**hapcli-macos-arm64.zip**](https://github.com/dardiao/hapcli/releases/latest/download/hapcli-macos-arm64.zip) |
+| Windows (x64) | [**hapcli-windows-x86_64.zip**](https://github.com/dardiao/hapcli/releases/latest/download/hapcli-windows-x86_64.zip) |
+
+> 直接点击即可下载。macOS 首次打开若提示“无法验证开发者”，请右键 App → 打开，或执行 `xattr -dr com.apple.quarantine hapcli.app`。Windows 已静态链接运行库，无需额外安装 VC++ 运行库。
+
+---
+
 ## 编译说明
 
 ### 环境要求
