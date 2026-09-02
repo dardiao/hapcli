@@ -1494,6 +1494,8 @@ impl eframe::App for HapcliApp {
         let mut want_local = false;
         let mut want_settings = false;
         let mut want_reconnect = false;
+        let mut want_search = false;
+        let mut want_clear = false;
         let mut toggle_files = false;
         let mut toggle_quick = false;
         let mut toggle_forward = false;
@@ -1700,6 +1702,57 @@ impl eframe::App for HapcliApp {
             } else {
                 self.tabs[index].right_panel = Some(RightPanelTab::Quick);
             }
+        }
+
+        // 2.55 会话工具栏（当前标签的小功能区：会话名/状态 + 搜索/清屏/文件/快捷）。
+        egui::TopBottomPanel::top("session_toolbar")
+            .frame(egui::Frame::side_top_panel(&ctx.style()).inner_margin(egui::Margin {
+                left: 10.0,
+                right: 10.0,
+                top: 3.0,
+                bottom: 3.0,
+            }))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 6.0;
+                    ui.label(
+                        egui::RichText::new(self.tabs[self.active_tab].display_label()).strong(),
+                    );
+                    let running = self.tabs[self.active_tab].session.lifecycle().is_running();
+                    ui.label(
+                        egui::RichText::new(if running { "●" } else { "○" }).color(if running {
+                            egui::Color32::from_rgb(0x2f, 0xc0, 0x5f)
+                        } else {
+                            egui::Color32::from_rgb(0xcf, 0x67, 0x67)
+                        }),
+                    );
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.spacing_mut().item_spacing.x = 2.0;
+                        let tab_icon = |text: &str| {
+                            egui::Button::new(egui::RichText::new(text).size(15.0))
+                                .min_size(egui::vec2(26.0, 22.0))
+                                .rounding(3.0)
+                        };
+                        if ui.add(tab_icon("🧹")).on_hover_text("清屏").clicked() {
+                            want_clear = true;
+                        }
+                        if ui.add(tab_icon("🔍")).on_hover_text("搜索").clicked() {
+                            want_search = true;
+                        }
+                        if ui.add(tab_icon("📁")).on_hover_text("文件管理器").clicked() {
+                            toggle_files = true;
+                        }
+                        if ui.add(tab_icon("⚡")).on_hover_text("快捷命令").clicked() {
+                            toggle_quick = true;
+                        }
+                    });
+                });
+            });
+        if want_search {
+            self.tabs[self.active_tab].open_search();
+        }
+        if want_clear {
+            self.tabs[self.active_tab].clear_screen();
         }
 
         // 2.5 搜索栏（仅活动会话开启搜索时显示）。

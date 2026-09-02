@@ -1058,6 +1058,22 @@ impl TerminalTab {
         }
     }
 
+    /// 打开搜索框。
+    pub fn open_search(&mut self) {
+        self.search_open = true;
+        self.search_focus_requested = true;
+        self.refresh_search();
+    }
+
+    /// 标准清屏：清空本地缓冲并发送 Ctrl+L 重绘提示符。
+    pub fn clear_screen(&mut self) {
+        self.session.clear_buffer();
+        let _ = self.session.write_input(&[0x0c]);
+        self.selection = None;
+        self.search_matches.clear();
+        self.search_current = None;
+    }
+
     pub fn search_next(&mut self) {
         if self.search_matches.is_empty() {
             return;
@@ -1206,18 +1222,10 @@ impl TerminalTab {
             Some(TerminalMenuAction::Paste) => self.paste_clipboard(),
             Some(TerminalMenuAction::SelectAll) => self.select_all(),
             Some(TerminalMenuAction::Search) => {
-                self.search_open = true;
-                self.search_focus_requested = true;
-                self.refresh_search();
+                self.open_search();
             }
             Some(TerminalMenuAction::Clear) => {
-                // 标准清屏：先清空本地缓冲（屏幕 + 滚动历史），
-                // 再发 Ctrl+L 让 shell 把提示符（含未提交的输入）重绘到顶部。
-                self.session.clear_buffer();
-                let _ = self.session.write_input(&[0x0c]);
-                self.selection = None;
-                self.search_matches.clear();
-                self.search_current = None;
+                self.clear_screen();
             }
             None => {}
         }
