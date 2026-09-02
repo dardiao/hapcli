@@ -56,10 +56,10 @@ pub fn build_theme(choice: ThemeChoice, background_alpha: f32) -> TerminalTheme 
             search_current: Color32::from_rgba_unmultiplied(0xe5, 0xa5, 0x4a, 0xee),
         },
         ThemeChoice::Light => TerminalTheme {
-            background: Color32::from_rgba_unmultiplied(0xf7, 0xf7, 0xf7, alpha),
+            background: Color32::from_rgba_unmultiplied(0xff, 0xff, 0xff, alpha),
             foreground: Color32::from_rgb(0x1c, 0x1e, 0x21),
             cursor: Color32::from_rgb(0x40, 0x40, 0x40),
-            cursor_text: Color32::from_rgb(0xf7, 0xf7, 0xf7),
+            cursor_text: Color32::from_rgb(0xff, 0xff, 0xff),
             selection: Color32::from_rgba_unmultiplied(0x8a, 0xb4, 0xe0, 0x66),
             search: Color32::from_rgba_unmultiplied(0xc9, 0x9a, 0x2e, 0xaa),
             search_current: Color32::from_rgba_unmultiplied(0xb0, 0x7a, 0x12, 0xee),
@@ -531,7 +531,7 @@ pub fn scrollbar(
     painter.rect_filled(
         track,
         4.0,
-        Color32::from_rgba_unmultiplied(255, 255, 255, 18),
+        Color32::from_rgba_unmultiplied(150, 158, 170, 70),
     );
     let mut thumb_hovered = false;
     let mut command = None;
@@ -980,7 +980,7 @@ mod tests {
             TerminalAttrs::default(),
         );
         let (fg, bg) = resolve_colors(&plain, &theme);
-        assert_eq!(bg, Color32::from_rgb(0xf7, 0xf7, 0xf7));
+        assert_eq!(bg, Color32::from_rgb(0xff, 0xff, 0xff));
         assert_eq!(fg, Color32::from_rgb(0x1c, 0x1e, 0x21));
 
         // 非 Dracula 预设（“默认” xterm 深色）的默认底/前景同样应映射到主题色。
@@ -991,7 +991,7 @@ mod tests {
             TerminalAttrs::default(),
         );
         let (fg, bg) = resolve_colors(&default_preset, &theme);
-        assert_eq!(bg, Color32::from_rgb(0xf7, 0xf7, 0xf7));
+        assert_eq!(bg, Color32::from_rgb(0xff, 0xff, 0xff));
         assert_eq!(fg, Color32::from_rgb(0x1c, 0x1e, 0x21));
     }
 

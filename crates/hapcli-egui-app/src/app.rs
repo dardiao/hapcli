@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use eframe::egui::{self, FontFamily, FontId, PointerButton, RichText, Vec2};
+use eframe::egui::{self, FontFamily, FontId, PointerButton, Vec2};
 use hapcli_terminal::{
     TerminalEvent, TerminalSessionKind, TrzszTransferDirection, TrzszTransferSelection,
 };
@@ -426,49 +426,6 @@ impl HapcliApp {
         self.tabs.push(tab);
         self.active_tab = self.tabs.len() - 1;
         true
-    }
-
-    fn status_line(&self) -> String {
-        let tab = &self.tabs[self.active_tab];
-        let status = tab.session.status();
-        let kind = match status.kind {
-            hapcli_terminal::TerminalSessionKind::LocalPty => "本地",
-            hapcli_terminal::TerminalSessionKind::SshPty => "SSH",
-            hapcli_terminal::TerminalSessionKind::Telnet => "Telnet",
-            hapcli_terminal::TerminalSessionKind::Serial => "串口",
-        };
-        let lifecycle = match &status.lifecycle {
-            hapcli_terminal::TerminalLifecycle::Running => "运行中".to_string(),
-            hapcli_terminal::TerminalLifecycle::Exited(code) => {
-                format!("已退出（代码 {}）", code.unwrap_or(-1))
-            }
-            hapcli_terminal::TerminalLifecycle::Closed => "已关闭".to_string(),
-        };
-        let title = status.title.clone().unwrap_or_else(|| "zsh".to_string());
-        let trzsz = if tab.trzsz_active {
-            " · Trzsz 传输中…".to_string()
-        } else if let Some(status) = &tab.trzsz_status {
-            format!(" · {status}")
-        } else {
-            String::new()
-        };
-        let keychain = tab
-            .keychain_status
-            .as_ref()
-            .map(|status| format!(" · {status}"))
-            .unwrap_or_default();
-        let reconnect = tab
-            .reconnect_status
-            .as_ref()
-            .map(|status| format!(" · {status}"))
-            .unwrap_or_default();
-        format!(
-            "{kind} · {title} · {lifecycle} · {}x{} · 滚动 {} · {:.0}pt{trzsz}{keychain}{reconnect}",
-            tab.snapshot.cols,
-            tab.snapshot.rows,
-            tab.snapshot.display_offset,
-            self.settings.font_size,
-        )
     }
 
     /// SSH 断线自动重连调度。
@@ -1617,86 +1574,83 @@ impl eframe::App for HapcliApp {
                             });
                         });
                     ui.separator();
-                    // 右侧操作区：齿轮固定在最右、贴边，点开是竖向菜单（可含二级菜单）。
+                    // 右侧操作区：小功能区（新建 / 设置）+ 更多(⋮)，功能直接放在这一行。
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.spacing_mut().item_spacing.x = 2.0;
-                        // ⚙ 齿轮：最右侧，贴近右边框。
-                        let gear_menu = egui::menu::menu_custom_button(
-                            ui,
-                            egui::Button::new(egui::RichText::new("⚙").size(16.0))
+                        let icon_btn = |text: &str| {
+                            egui::Button::new(egui::RichText::new(text).size(16.0))
                                 .min_size(egui::vec2(28.0, 26.0))
-                                .rounding(3.0),
-                            |ui| {
-                                // 二级菜单：新建会话。
-                                ui.menu_button("新建会话", |ui| {
-                                    if ui.button("SSH 连接…").clicked() {
-                                        want_connect = true;
-                                        ui.close_menu();
-                                    }
-                                    if ui.button("本地终端").clicked() {
-                                        want_local = true;
-                                        ui.close_menu();
-                                    }
-                                });
-                                ui.separator();
+                                .rounding(3.0)
+                        };
+                        // ⋮ 更多：文件 / 快捷命令 / 端口转发 / 重连。
+                        let more_menu = egui::menu::menu_custom_button(ui, icon_btn("⋮"), |ui| {
+                            if ui
+                                .button(if quick_open { "快捷命令 ✓" } else { "快捷命令" })
+                                .clicked()
+                            {
+                                toggle_quick = true;
+                                ui.close_menu();
+                            }
+                            let files_label = if files_open {
+                                "文件管理器 ✓"
+                            } else {
+                                "文件管理器"
+                            };
+                            let can_browse = if active_is_ssh { sftp_connected } else { true };
+                            if ui
+                                .add_enabled(can_browse, egui::Button::new(files_label))
+                                .clicked()
+                            {
+                                toggle_files = true;
+                                ui.close_menu();
+                            }
+                            if active_is_ssh {
+                                if !self.tabs[self.active_tab]
+                                    .session
+                                    .lifecycle()
+                                    .is_running()
+                                    && ui.button("重连").clicked()
+                                {
+                                    want_reconnect = true;
+                                    ui.close_menu();
+                                }
                                 if ui
-                                    .button(if quick_open { "快捷命令 ✓" } else { "快捷命令" })
+                                    .add_enabled(
+                                        sftp_connected,
+                                        egui::Button::new(if forward_open {
+                                            "端口转发 ✓"
+                                        } else {
+                                            "端口转发"
+                                        }),
+                                    )
                                     .clicked()
                                 {
-                                    toggle_quick = true;
+                                    toggle_forward = true;
                                     ui.close_menu();
                                 }
-                                // 文件管理器：SSH 会话浏览远程 SFTP，本地会话浏览本地目录。
-                                let files_label = if files_open {
-                                    "文件管理器 ✓"
-                                } else {
-                                    "文件管理器"
-                                };
-                                let can_browse = if active_is_ssh {
-                                    sftp_connected
-                                } else {
-                                    true
-                                };
-                                if ui
-                                    .add_enabled(can_browse, egui::Button::new(files_label))
-                                    .clicked()
-                                {
-                                    toggle_files = true;
-                                    ui.close_menu();
-                                }
-                                if active_is_ssh {
-                                    if !self.tabs[self.active_tab]
-                                        .session
-                                        .lifecycle()
-                                        .is_running()
-                                        && ui.button("重连").clicked()
-                                    {
-                                        want_reconnect = true;
-                                        ui.close_menu();
-                                    }
-                                    if ui
-                                        .add_enabled(
-                                            sftp_connected,
-                                            egui::Button::new(if forward_open {
-                                                "端口转发 ✓"
-                                            } else {
-                                                "端口转发"
-                                            }),
-                                        )
-                                        .clicked()
-                                    {
-                                        toggle_forward = true;
-                                        ui.close_menu();
-                                    }
-                                }
-                                ui.separator();
-                                if ui.button("设置…").clicked() {
-                                    want_settings = true;
-                                    ui.close_menu();
-                                }
-                            },
-                        );
-                        gear_menu.response.on_hover_text("菜单（新建会话 / 快捷命令 / 设置）");
+                            }
+                        });
+                        more_menu.response.on_hover_text("更多（文件 / 快捷命令 / 端口转发）");
+                        // ⚙ 设置：一键打开设置窗口。
+                        if ui
+                            .add(icon_btn("⚙"))
+                            .on_hover_text("设置")
+                            .clicked()
+                        {
+                            want_settings = true;
+                        }
+                        // ＋ 新建会话。
+                        let new_menu = egui::menu::menu_custom_button(ui, icon_btn("＋"), |ui| {
+                            if ui.button("SSH 连接…").clicked() {
+                                want_connect = true;
+                                ui.close_menu();
+                            }
+                            if ui.button("本地终端").clicked() {
+                                want_local = true;
+                                ui.close_menu();
+                            }
+                        });
+                        new_menu.response.on_hover_text("新建会话");
                     });
                 });
             });
@@ -1907,30 +1861,6 @@ impl eframe::App for HapcliApp {
         self.handle_terminal_events(ctx);
 
         // 6. 底部状态栏。
-        let transparent = self.settings.transparent_window;
-        let status_frame = if transparent {
-            egui::Frame::default().fill(egui::Color32::TRANSPARENT)
-        } else {
-            egui::Frame::default()
-        };
-        egui::TopBottomPanel::bottom("status_bar")
-            .frame(status_frame)
-            .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.add_space(8.0);
-                    ui.label(
-                        RichText::new(self.status_line())
-                            .monospace()
-                            .size(11.0)
-                            .color(if self.settings.theme == ThemeChoice::Light {
-                                egui::Color32::from_rgb(0x2b, 0x33, 0x40)
-                            } else {
-                                egui::Color32::from_rgb(0xc3, 0xca, 0xd3)
-                            }),
-                    );
-                });
-            });
-
         // 6.5 右侧面板（SFTP / 本地文件 / 快捷命令，用标签切换）。
         self.poll_sftp();
         if let Some(right_tab) = self.tabs[self.active_tab].right_panel {
@@ -2025,6 +1955,7 @@ impl eframe::App for HapcliApp {
         }
 
         // 7. 中央终端区：尺寸同步所有会话，渲染活动会话。
+        let transparent = self.settings.transparent_window;
         let mut central_frame = egui::Frame::default().inner_margin(0.0);
         if transparent {
             central_frame = central_frame.fill(egui::Color32::TRANSPARENT);

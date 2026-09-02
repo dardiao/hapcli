@@ -50,27 +50,27 @@ fn dark_visuals() -> egui::Visuals {
 fn light_visuals() -> egui::Visuals {
     let mut v = egui::Visuals::light();
     // 与深色主题同一套设计语言：明显偏蓝的浅色面板 + 蓝色强调（一眼可辨的自定义浅色）。
-    v.panel_fill = hex(0xe4ecf7);
-    v.window_fill = hex(0xf4f8fe);
-    v.extreme_bg_color = hex(0xd7e2f2);
-    v.faint_bg_color = hex(0xe8eff8);
-    v.code_bg_color = hex(0xe1eaf5);
+    v.panel_fill = hex(0xf3f6fa);
+    v.window_fill = hex(0xffffff);
+    v.extreme_bg_color = hex(0xe9eef5);
+    v.faint_bg_color = hex(0xf1f4f8);
+    v.code_bg_color = hex(0xf0f3f7);
     v.hyperlink_color = hex(0x1f6feb);
     v.warn_fg_color = hex(0xb7791f);
     v.error_fg_color = hex(0xc0392b);
     v.window_rounding = Rounding::same(3.0);
-    v.window_stroke = Stroke::new(1.0_f32, hex(0xbdcae0));
+    v.window_stroke = Stroke::new(1.0_f32, hex(0xdde3ec));
     v.menu_rounding = Rounding::same(3.0);
     v.selection = egui::style::Selection {
         bg_fill: hex(0x8fbcff),
         stroke: Stroke::new(1.0_f32, hex(0x2f7bfd)),
     };
     v.widgets = egui::style::Widgets {
-        noninteractive: widget(0xf4f8fe, 0xf4f8fe, 0x2c3a4a, 0xc2d0e6, 3.0),
-        inactive: widget(0xdee9f7, 0xdee9f7, 0x14202e, 0xa9c4e8, 3.0),
-        hovered: widget(0xc7ddfa, 0xc7ddfa, 0x0f1722, 0x8fb9f0, 3.0),
-        active: widget(0x9fc6ff, 0x9fc6ff, 0x0f1722, 0x6f9fe8, 3.0),
-        open: widget(0xe3ecf7, 0xe3ecf7, 0x14202e, 0xb6c9e0, 3.0),
+        noninteractive: widget(0xf7f9fc, 0xf7f9fc, 0x2c3a4a, 0xdbe2ec, 3.0),
+        inactive: widget(0xffffff, 0xffffff, 0x14202e, 0xd7dfea, 3.0),
+        hovered: widget(0xeef4fb, 0xeef4fb, 0x0f1722, 0xb9cdec, 3.0),
+        active: widget(0xd6e6ff, 0xd6e6ff, 0x0f1722, 0x8fb9f0, 3.0),
+        open: widget(0xf1f5fa, 0xf1f5fa, 0x14202e, 0xd3dce7, 3.0),
     };
     v
 }
@@ -114,7 +114,7 @@ mod tests {
 
         apply_egui_theme(&ctx, ThemeChoice::Light);
         assert_eq!(ctx.theme(), egui::Theme::Light);
-        assert_eq!(ctx.style().visuals.panel_fill, hex(0xe4ecf7));
+        assert_eq!(ctx.style().visuals.panel_fill, hex(0xf3f6fa));
         assert_eq!(ctx.style().visuals.widgets.inactive.rounding, Rounding::same(3.0));
 
         apply_egui_theme(&ctx, ThemeChoice::Dark);
@@ -123,6 +123,6 @@ mod tests {
 
         apply_egui_theme(&ctx, ThemeChoice::Light);
         assert_eq!(ctx.theme(), egui::Theme::Light);
-        assert_eq!(ctx.style().visuals.panel_fill, hex(0xe4ecf7));
+        assert_eq!(ctx.style().visuals.panel_fill, hex(0xf3f6fa));
     }
 }
