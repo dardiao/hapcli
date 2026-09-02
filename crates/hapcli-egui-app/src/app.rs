@@ -1956,7 +1956,13 @@ impl eframe::App for HapcliApp {
 
         // 7. 中央终端区：尺寸同步所有会话，渲染活动会话。
         let transparent = self.settings.transparent_window;
-        let theme = build_theme(self.settings.theme, self.settings.background_alpha);
+        // 终端背景默认不透明（除非开启”透明窗口”），避免“底色 + 上层色”的层叠感。
+        let alpha = if self.settings.transparent_window {
+            self.settings.background_alpha
+        } else {
+            1.0
+        };
+        let theme = build_theme(self.settings.theme, alpha);
         let mut central_frame = egui::Frame::default().inner_margin(0.0);
         if transparent {
             central_frame = central_frame.fill(egui::Color32::TRANSPARENT);

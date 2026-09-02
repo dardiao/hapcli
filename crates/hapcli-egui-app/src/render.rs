@@ -581,7 +581,7 @@ pub fn scrollbar(
     painter.rect_filled(thumb, 6.0, thumb_color);
 
     if thumb_hovered && command.is_none() {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
     }
 
     command

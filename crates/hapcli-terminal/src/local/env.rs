@@ -13,6 +13,8 @@ fn hapcli_terminal_env(config: &LocalPtyConfig, _shell: &ShellInfo) -> HashMap<S
     // 启用 shell 颜色输出：macOS 的 ls 默认不带色，需要 CLICOLOR；
     // LSCOLORS 自定义为目录蓝、可执行文件（含 .sh）绿。
     terminal_env.insert("CLICOLOR".to_string(), "1".to_string());
+    // 本地 ls 的月份始终用英文简写（Aug/May…），避免中文（8月）——需覆盖 LC_ALL。
+    terminal_env.insert("LC_TIME".to_string(), "C".to_string());
     #[cfg(target_os = "macos")]
     terminal_env.insert(
         "LSCOLORS".to_string(),
@@ -43,7 +45,6 @@ fn hapcli_terminal_env(config: &LocalPtyConfig, _shell: &ShellInfo) -> HashMap<S
                 .map(|locale| format!("{locale}.UTF-8"))
                 .unwrap_or_else(|| "en_US.UTF-8".to_string());
             terminal_env.insert("LANG".to_string(), detected.clone());
-            terminal_env.insert("LC_ALL".to_string(), detected);
         }
     }
 
