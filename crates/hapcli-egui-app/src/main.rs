@@ -23,6 +23,7 @@ fn main() -> eframe::Result {
             .with_min_inner_size([420.0, 260.0])
             .with_title("HapCLI")
             .with_icon(app_icon())
+            .with_decorations(false)
             .with_transparent(false),
         ..Default::default()
     };

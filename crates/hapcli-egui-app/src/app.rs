@@ -1520,8 +1520,54 @@ impl eframe::App for HapcliApp {
                 }),
             )
             .show(ctx, |ui| {
+                // 无边框自绘标题栏：整行可作为窗口拖动区域（子控件点击仍生效）。
+                let titlebar_rect = ui.max_rect();
+                let tb_drag = ui.interact(
+                    titlebar_rect,
+                    egui::Id::new("hapcli_titlebar_drag"),
+                    egui::Sense::drag(),
+                );
+                if tb_drag.drag_started() {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                }
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 4.0;
+                    // 左上角窗口控制：红色关闭 / 黄色最小化 / 绿色最大化。
+                    let maximized = ui
+                        .ctx()
+                        .input(|input| input.viewport().maximized)
+                        .unwrap_or(false);
+                    let light = |ui: &mut egui::Ui,
+                                 color: egui::Color32,
+                                 cmd: egui::ViewportCommand,
+                                 tip: &str| {
+                        let (rect, resp) =
+                            ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::click());
+                        ui.painter().circle_filled(rect.center(), 6.0, color);
+                        if resp.clicked() {
+                            ui.ctx().send_viewport_cmd(cmd);
+                        }
+                        resp.on_hover_text(tip);
+                    };
+                    light(
+                        ui,
+                        egui::Color32::from_rgb(0xff, 0x5f, 0x57),
+                        egui::ViewportCommand::Close,
+                        "关闭",
+                    );
+                    light(
+                        ui,
+                        egui::Color32::from_rgb(0xfe, 0xbc, 0x2e),
+                        egui::ViewportCommand::Minimized(true),
+                        "最小化",
+                    );
+                    light(
+                        ui,
+                        egui::Color32::from_rgb(0x28, 0xc8, 0x40),
+                        egui::ViewportCommand::Maximized(!maximized),
+                        "最大化",
+                    );
+                    ui.add_space(6.0);
                     // 标签行：只放标签，可横向滚动（新建会话在齿轮菜单里）。
                     egui::ScrollArea::horizontal()
                         .id_salt("tab_scroll")
