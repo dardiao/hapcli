@@ -1130,6 +1130,9 @@ impl TerminalTab {
         self.last_layer_id = Some(ui.layer_id());
         self.last_response_id = Some(response.id);
 
+        if response.hovered() {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::Text);
+        }
         if let Some(command) = render::scrollbar(ui, &self.snapshot, &response) {
             match command {
                 ScrollCommand::ToOffset(offset) => self.session.scroll_to_display_offset(offset),
@@ -1150,9 +1153,6 @@ impl TerminalTab {
         // 连续 Tab 就会在多个标签之间跳动而不是继续补全。
         if ui.ctx().memory(|memory| memory.focused().is_none()) {
             response.request_focus();
-        }
-        if response.hovered() {
-            ui.ctx().set_cursor_icon(egui::CursorIcon::Text);
         }
 
         ui.memory_mut(|mem| {
