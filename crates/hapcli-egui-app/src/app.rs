@@ -1496,6 +1496,7 @@ impl eframe::App for HapcliApp {
         let mut want_reconnect = false;
         let mut want_search = false;
         let mut want_clear = false;
+        let mut want_disconnect = false;
         let mut toggle_files = false;
         let mut toggle_quick = false;
         let mut toggle_forward = false;
@@ -1605,6 +1606,8 @@ impl eframe::App for HapcliApp {
                         let icon_btn = |text: &str| {
                             egui::Button::new(egui::RichText::new(text).size(16.0))
                                 .min_size(egui::vec2(28.0, 26.0))
+                                .fill(egui::Color32::TRANSPARENT)
+                                .stroke(egui::Stroke::NONE)
                                 .rounding(3.0)
                         };
                         // ⋮ 更多：文件 / 快捷命令 / 端口转发 / 重连。
@@ -1753,6 +1756,7 @@ impl eframe::App for HapcliApp {
         // 2.55 会话工具栏（当前标签的小功能区：会话名/状态 + 搜索/清屏/文件/快捷）。
         let tb_bg = build_theme(self.settings.theme).background;
         egui::TopBottomPanel::top("session_toolbar")
+            .show_separator_line(false)
             .frame(
                 egui::Frame::side_top_panel(&ctx.style())
                     .fill(tb_bg)
@@ -1769,11 +1773,64 @@ impl eframe::App for HapcliApp {
                     ui.label(
                         egui::RichText::new(self.tabs[self.active_tab].display_label()).strong(),
                     );
+                    if self.tabs[self.active_tab].show_timestamps {
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_secs())
+                            .unwrap_or(0);
+                        let (h, m, s) = (now / 3600 % 24, now / 60 % 60, now % 60);
+                        ui.weak(format!("{h:02}:{m:02}:{s:02}"));
+                    }
+                    // SSH 会话专属小按钮：紧跟会话标签。
+                    if active_is_ssh {
+                        let ssh_icon = |text: &str| {
+                            egui::Button::new(egui::RichText::new(text).size(13.0))
+                                .min_size(egui::vec2(22.0, 20.0))
+                                .fill(egui::Color32::TRANSPARENT)
+                                .stroke(egui::Stroke::NONE)
+                                .rounding(3.0)
+                        };
+                        if let Some(cfg) = self.tabs[self.active_tab].ssh_reconnect_config.clone() {
+                            let address = format!("{}@{}:{}", cfg.username, cfg.host, cfg.port);
+                            if ui
+                                .add(ssh_icon("⧉"))
+                                .on_hover_text("复制连接地址")
+                                .clicked()
+                            {
+                                ctx.copy_text(address);
+                            }
+                        }
+                        if ui
+                            .add(ssh_icon("🕐"))
+                            .on_hover_text("显示 / 隐藏时间戳")
+                            .clicked()
+                        {
+                            self.tabs[self.active_tab].show_timestamps =
+                                !self.tabs[self.active_tab].show_timestamps;
+                        }
+                        if ui
+                            .add(ssh_icon("⏻"))
+                            .on_hover_text("断开当前连接（保留标签页）")
+                            .clicked()
+                        {
+                            want_disconnect = true;
+                        }
+                        if ui
+                            .add(ssh_icon("↻"))
+                            .on_hover_text("重新连接当前会话")
+                            .clicked()
+                        {
+                            want_reconnect = true;
+                        }
+                        ui.add_space(4.0);
+                    }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.spacing_mut().item_spacing.x = 2.0;
                         let tab_icon = |text: &str| {
                             egui::Button::new(egui::RichText::new(text).size(13.0))
                                 .min_size(egui::vec2(22.0, 20.0))
+                                .fill(egui::Color32::TRANSPARENT)
+                                .stroke(egui::Stroke::NONE)
                                 .rounding(3.0)
                         };
                         if ui.add(tab_icon("⚡")).on_hover_text("快捷命令").clicked() {
@@ -1796,6 +1853,9 @@ impl eframe::App for HapcliApp {
         }
         if want_clear {
             self.tabs[self.active_tab].clear_screen();
+        }
+        if want_disconnect {
+            self.tabs[self.active_tab].session.shutdown();
         }
 
         // 2.5 搜索栏（仅活动会话开启搜索时显示）。

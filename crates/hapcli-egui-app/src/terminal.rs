@@ -133,6 +133,8 @@ pub struct TerminalTab {
     pub force_full_snapshot: bool,
     /// 当前会话已应用的配色预设（用于新建会话立即应用配置、切换时整快照重算）。
     pub applied_theme: TerminalThemePreset,
+    /// 是否在会话工具栏显示当前时间戳。
+    pub show_timestamps: bool,
 }
 
 impl TerminalTab {
@@ -212,6 +214,7 @@ impl TerminalTab {
             base_label: "本地".to_string(),
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
+            show_timestamps: false,
         })
     }
 
@@ -292,6 +295,7 @@ impl TerminalTab {
             base_label,
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
+            show_timestamps: false,
         }
     }
 
@@ -370,6 +374,7 @@ impl TerminalTab {
             base_label,
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
+            show_timestamps: false,
         }
     }
 
@@ -448,6 +453,7 @@ impl TerminalTab {
             base_label,
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
+            show_timestamps: false,
         })
     }
 
