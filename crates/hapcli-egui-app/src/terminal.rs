@@ -26,7 +26,6 @@ static TRZSZ_OWNER_COUNTER: AtomicU64 = AtomicU64::new(0);
 /// 右侧面板当前展示的标签页。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RightPanelTab {
-    Files,
     Quick,
     Forward,
 }
@@ -135,6 +134,8 @@ pub struct TerminalTab {
     pub applied_theme: TerminalThemePreset,
     /// 是否在会话工具栏显示当前时间戳。
     pub show_timestamps: bool,
+    /// 左侧文件管理器是否打开。
+    pub left_files: bool,
 }
 
 impl TerminalTab {
@@ -215,6 +216,7 @@ impl TerminalTab {
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
             show_timestamps: false,
+            left_files: false,
         })
     }
 
@@ -296,6 +298,7 @@ impl TerminalTab {
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
             show_timestamps: false,
+            left_files: false,
         }
     }
 
@@ -375,6 +378,7 @@ impl TerminalTab {
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
             show_timestamps: false,
+            left_files: false,
         }
     }
 
@@ -454,6 +458,7 @@ impl TerminalTab {
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
             show_timestamps: false,
+            left_files: false,
         })
     }
 

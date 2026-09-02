@@ -1497,7 +1497,7 @@ impl eframe::App for HapcliApp {
         let mut want_search = false;
         let mut want_clear = false;
         let mut want_disconnect = false;
-        let mut toggle_files = false;
+        let mut toggle_left_files = false;
         let mut toggle_quick = false;
         let mut toggle_forward = false;
         let active_is_ssh = self.tabs[self.active_tab].session.status().kind
@@ -1507,8 +1507,7 @@ impl eframe::App for HapcliApp {
                 .session
                 .ssh_connection_handle()
                 .is_some();
-        let files_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Files);
-        let quick_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Quick);
+        let files_open = self.tabs[self.active_tab].left_files;
         let forward_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Forward);
         // 标签栏：左侧滚动标签，右侧操作区右对齐贴边（VS Code / FinalShell 风格）。
         egui::TopBottomPanel::top("tab_bar")
@@ -1599,8 +1598,28 @@ impl eframe::App for HapcliApp {
                                 }
                             });
                         });
+                    // ＋ 新建会话（紧跟标签右侧）。
+                    let new_menu = egui::menu::menu_custom_button(
+                        ui,
+                        egui::Button::new(egui::RichText::new("＋").size(16.0))
+                            .min_size(egui::vec2(28.0, 26.0))
+                            .fill(egui::Color32::TRANSPARENT)
+                            .stroke(egui::Stroke::NONE)
+                            .rounding(3.0),
+                        |ui| {
+                            if ui.button("SSH 连接…").clicked() {
+                                want_connect = true;
+                                ui.close_menu();
+                            }
+                            if ui.button("本地终端").clicked() {
+                                want_local = true;
+                                ui.close_menu();
+                            }
+                        },
+                    );
+                    new_menu.response.on_hover_text("新建会话");
                     ui.separator();
-                    // 右侧操作区：小功能区（新建 / 设置）+ 更多(⋮)，功能直接放在这一行。
+                    // 右侧操作区：设置(⚙) + 更多(⋮)。
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.spacing_mut().item_spacing.x = 2.0;
                         let icon_btn = |text: &str| {
@@ -1610,15 +1629,8 @@ impl eframe::App for HapcliApp {
                                 .stroke(egui::Stroke::NONE)
                                 .rounding(3.0)
                         };
-                        // ⋮ 更多：文件 / 快捷命令 / 端口转发 / 重连。
+                        // ⋮ 更多：文件管理器 / 端口转发 / 重连。
                         let more_menu = egui::menu::menu_custom_button(ui, icon_btn("⋮"), |ui| {
-                            if ui
-                                .button(if quick_open { "快捷命令 ✓" } else { "快捷命令" })
-                                .clicked()
-                            {
-                                toggle_quick = true;
-                                ui.close_menu();
-                            }
                             let files_label = if files_open {
                                 "文件管理器 ✓"
                             } else {
@@ -1629,7 +1641,7 @@ impl eframe::App for HapcliApp {
                                 .add_enabled(can_browse, egui::Button::new(files_label))
                                 .clicked()
                             {
-                                toggle_files = true;
+                                toggle_left_files = true;
                                 ui.close_menu();
                             }
                             if active_is_ssh {
@@ -1667,18 +1679,6 @@ impl eframe::App for HapcliApp {
                         {
                             want_settings = true;
                         }
-                        // ＋ 新建会话。
-                        let new_menu = egui::menu::menu_custom_button(ui, icon_btn("＋"), |ui| {
-                            if ui.button("SSH 连接…").clicked() {
-                                want_connect = true;
-                                ui.close_menu();
-                            }
-                            if ui.button("本地终端").clicked() {
-                                want_local = true;
-                                ui.close_menu();
-                            }
-                        });
-                        new_menu.response.on_hover_text("新建会话");
                     });
                 });
             });
@@ -1710,12 +1710,12 @@ impl eframe::App for HapcliApp {
             self.tabs[index].reconnect_dismissed = false;
             self.tabs[index].reconnect_status = Some("正在重连…".to_string());
         }
-        if toggle_files {
+        if toggle_left_files {
             let index = self.active_tab;
-            if self.tabs[index].right_panel == Some(RightPanelTab::Files) {
-                self.tabs[index].right_panel = None;
+            if self.tabs[index].left_files {
+                self.tabs[index].left_files = false;
             } else {
-                self.tabs[index].right_panel = Some(RightPanelTab::Files);
+                self.tabs[index].left_files = true;
                 if active_is_ssh {
                     if self.tabs[index].sftp.is_none()
                         && let Some(handle) = self.tabs[index].session.ssh_connection_handle()
@@ -1751,6 +1751,50 @@ impl eframe::App for HapcliApp {
             } else {
                 self.tabs[index].right_panel = Some(RightPanelTab::Quick);
             }
+        }
+
+        // 2.54 左侧文件管理器（SFTP / 本地文件；与会话工具栏同层，顶部齐平）。
+        self.poll_sftp();
+        if self.tabs[self.active_tab].left_files {
+            egui::SidePanel::left("file_manager")
+                .resizable(true)
+                .default_width(300.0)
+                .show(ctx, |ui| {
+                    ui.add_space(6.0);
+                    ui.horizontal(|ui| {
+                        ui.label("📁");
+                        ui.label(egui::RichText::new("文件管理器").strong());
+                    });
+                    ui.separator();
+                    let index = self.active_tab;
+                    if active_is_ssh {
+                        if let Some(panel) = self.tabs[index].sftp.as_mut() {
+                            let mut transfer_started = false;
+                            let commands = sftp::sftp_panel_ui(ui, panel);
+                            for command in commands {
+                                if matches!(
+                                    command,
+                                    sftp::SftpCommand::Download { .. }
+                                        | sftp::SftpCommand::DownloadDir { .. }
+                                        | sftp::SftpCommand::Upload { .. }
+                                        | sftp::SftpCommand::UploadDir { .. }
+                                ) {
+                                    transfer_started = true;
+                                }
+                                panel.send(command);
+                            }
+                            if transfer_started {
+                                panel.busy = true;
+                            }
+                        } else {
+                            ui.weak("SFTP 尚未连接，请先连接 SSH");
+                        }
+                    } else if let Some(browser) = self.tabs[index].local_browser.as_mut() {
+                        sftp::local_browser_ui(ui, browser);
+                    } else {
+                        ui.weak("本地文件浏览器未初始化");
+                    }
+                });
         }
 
         // 2.55 会话工具栏（当前标签的小功能区：会话名/状态 + 搜索/清屏/文件/快捷）。
@@ -1833,11 +1877,11 @@ impl eframe::App for HapcliApp {
                                 .stroke(egui::Stroke::NONE)
                                 .rounding(3.0)
                         };
-                        if ui.add(tab_icon("⚡")).on_hover_text("快捷命令").clicked() {
+                        if ui.add(tab_icon("🖊")).on_hover_text("快捷命令").clicked() {
                             toggle_quick = true;
                         }
                         if ui.add(tab_icon("📁")).on_hover_text("文件管理器").clicked() {
-                            toggle_files = true;
+                            toggle_left_files = true;
                         }
                         if ui.add(tab_icon("🧹")).on_hover_text("清屏").clicked() {
                             want_clear = true;
@@ -2006,15 +2050,6 @@ impl eframe::App for HapcliApp {
                         let index = self.active_tab;
                         if ui
                             .selectable_label(
-                                self.tabs[index].right_panel == Some(RightPanelTab::Files),
-                                "文件管理器",
-                            )
-                            .clicked()
-                        {
-                            self.tabs[index].right_panel = Some(RightPanelTab::Files);
-                        }
-                        if ui
-                            .selectable_label(
                                 self.tabs[index].right_panel == Some(RightPanelTab::Quick),
                                 "快捷命令",
                             )
@@ -2038,35 +2073,6 @@ impl eframe::App for HapcliApp {
                     ui.separator();
                     let index = self.active_tab;
                     match right_tab {
-                        RightPanelTab::Files => {
-                            if active_is_ssh {
-                                if let Some(panel) = self.tabs[index].sftp.as_mut() {
-                                    let mut transfer_started = false;
-                                    let commands = sftp::sftp_panel_ui(ui, panel);
-                                    for command in commands {
-                                        if matches!(
-                                            command,
-                                            sftp::SftpCommand::Download { .. }
-                                                | sftp::SftpCommand::DownloadDir { .. }
-                                                | sftp::SftpCommand::Upload { .. }
-                                                | sftp::SftpCommand::UploadDir { .. }
-                                        ) {
-                                            transfer_started = true;
-                                        }
-                                        panel.send(command);
-                                    }
-                                    if transfer_started {
-                                        panel.busy = true;
-                                    }
-                                } else {
-                                    ui.weak("SFTP 尚未连接，请先连接 SSH");
-                                }
-                            } else if let Some(browser) = self.tabs[index].local_browser.as_mut() {
-                                sftp::local_browser_ui(ui, browser);
-                            } else {
-                                ui.weak("本地文件浏览器未初始化");
-                            }
-                        }
                         RightPanelTab::Quick => {
                             let panel = &mut self.quick_panel;
                             let session = &mut self.tabs[index].session;
