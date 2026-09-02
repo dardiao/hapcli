@@ -1507,8 +1507,6 @@ impl eframe::App for HapcliApp {
                 .session
                 .ssh_connection_handle()
                 .is_some();
-        let files_open = self.tabs[self.active_tab].left_files;
-        let forward_open = self.tabs[self.active_tab].right_panel == Some(RightPanelTab::Forward);
         // 标签栏：左侧滚动标签，右侧操作区右对齐贴边（VS Code / FinalShell 风格）。
         egui::TopBottomPanel::top("tab_bar")
             .frame(
@@ -1619,7 +1617,7 @@ impl eframe::App for HapcliApp {
                     );
                     new_menu.response.on_hover_text("新建会话");
                     ui.separator();
-                    // 右侧操作区：设置(⚙) + 更多(⋮)。
+                    // 右侧操作区：设置(⚙)。
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.spacing_mut().item_spacing.x = 2.0;
                         let icon_btn = |text: &str| {
@@ -1629,48 +1627,6 @@ impl eframe::App for HapcliApp {
                                 .stroke(egui::Stroke::NONE)
                                 .rounding(3.0)
                         };
-                        // ⋮ 更多：文件管理器 / 端口转发 / 重连。
-                        let more_menu = egui::menu::menu_custom_button(ui, icon_btn("⋮"), |ui| {
-                            let files_label = if files_open {
-                                "文件管理器 ✓"
-                            } else {
-                                "文件管理器"
-                            };
-                            let can_browse = if active_is_ssh { sftp_connected } else { true };
-                            if ui
-                                .add_enabled(can_browse, egui::Button::new(files_label))
-                                .clicked()
-                            {
-                                toggle_left_files = true;
-                                ui.close_menu();
-                            }
-                            if active_is_ssh {
-                                if !self.tabs[self.active_tab]
-                                    .session
-                                    .lifecycle()
-                                    .is_running()
-                                    && ui.button("重连").clicked()
-                                {
-                                    want_reconnect = true;
-                                    ui.close_menu();
-                                }
-                                if ui
-                                    .add_enabled(
-                                        sftp_connected,
-                                        egui::Button::new(if forward_open {
-                                            "端口转发 ✓"
-                                        } else {
-                                            "端口转发"
-                                        }),
-                                    )
-                                    .clicked()
-                                {
-                                    toggle_forward = true;
-                                    ui.close_menu();
-                                }
-                            }
-                        });
-                        more_menu.response.on_hover_text("更多（文件 / 快捷命令 / 端口转发）");
                         // ⚙ 设置：一键打开设置窗口。
                         if ui
                             .add(icon_btn("⚙"))
@@ -1813,7 +1769,7 @@ impl eframe::App for HapcliApp {
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 6.0;
+                    ui.spacing_mut().item_spacing.x = 5.0;
                     ui.label(
                         egui::RichText::new(self.tabs[self.active_tab].display_label()).strong(),
                     );
@@ -1866,10 +1822,18 @@ impl eframe::App for HapcliApp {
                         {
                             want_reconnect = true;
                         }
+                        if sftp_connected
+                            && ui
+                                .add(ssh_icon("⇄"))
+                                .on_hover_text("端口转发")
+                                .clicked()
+                        {
+                            toggle_forward = true;
+                        }
                         ui.add_space(4.0);
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.spacing_mut().item_spacing.x = 2.0;
+                        ui.spacing_mut().item_spacing.x = 5.0;
                         let tab_icon = |text: &str| {
                             egui::Button::new(egui::RichText::new(text).size(13.0))
                                 .min_size(egui::vec2(22.0, 20.0))
