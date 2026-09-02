@@ -321,10 +321,8 @@ pub fn terminal_ui(
     images: &[TerminalImageSnapshot],
     textures: &mut ImageTextureCache,
 ) -> Response {
-    let desired = Vec2::new(
-        snapshot.cols as f32 * cell_size.x,
-        snapshot.rows as f32 * cell_size.y,
-    );
+    // 铺满当前可用区域，避免终端内容与面板底色之间出现“露头”缝隙。
+    let desired = ui.available_size();
     let (response, painter) = ui.allocate_painter(desired, Sense::click_and_drag());
     let origin = response.rect.min;
 
@@ -528,10 +526,25 @@ pub fn scrollbar(
     );
 
     let painter = ui.painter();
+    // 按主题调整滚动条颜色，确保浅/深色下都清晰可见。
+    let dark = ui.ctx().style().visuals.dark_mode;
+    let (track_color, thumb_idle, thumb_hover) = if dark {
+        (
+            Color32::from_rgb(0x33, 0x3a, 0x43),
+            Color32::from_rgb(0x6a, 0x72, 0x7c),
+            Color32::from_rgb(0x8a, 0x93, 0x9e),
+        )
+    } else {
+        (
+            Color32::from_rgb(0xe4, 0xe8, 0xee),
+            Color32::from_rgb(0xb4, 0xbc, 0xc6),
+            Color32::from_rgb(0x9c, 0xa6, 0xb2),
+        )
+    };
     painter.rect_filled(
         track,
         4.0,
-        Color32::from_rgba_unmultiplied(150, 158, 170, 70),
+        track_color,
     );
     let mut thumb_hovered = false;
     let mut command = None;
@@ -574,9 +587,9 @@ pub fn scrollbar(
     });
 
     let thumb_color = if command.is_some() || thumb_hovered {
-        Color32::from_rgba_unmultiplied(170, 180, 195, 230)
+        thumb_hover
     } else {
-        Color32::from_rgba_unmultiplied(120, 130, 145, 180)
+        thumb_idle
     };
     painter.rect_filled(thumb, 6.0, thumb_color);
 
