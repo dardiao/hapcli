@@ -124,8 +124,6 @@ pub fn scroll_offset_for_line(line: i32) -> usize {
 pub enum ScrollCommand {
     /// 滚动到指定 display offset（0 = 底部，scrollback_lines = 顶部）。
     ToOffset(usize),
-    PageUp,
-    PageDown,
 }
 
 /// 文本选区：起点（anchor）与当前端点（active），均为 (行, 列)。
@@ -550,38 +548,17 @@ pub fn scrollbar(
     let mut command = None;
 
     // 几何判定：滚动条与终端区域重叠，不能依赖 egui 的 widget 点击归属。
+    // 按下即在滚动条上定位并跟随拖动（无需精确按住滑块），更顺滑。
     ui.input(|i| {
         let pointer = &i.pointer;
-        thumb_hovered = pointer
-            .latest_pos()
-            .is_some_and(|pos| track.contains(pos));
-
-        if pointer.primary_down() {
-            // 拖拽：仅当按下起点在滑块上时进入，跟随指针移动。
-            if pointer.press_origin().is_some_and(|press| thumb.contains(press)) {
-                if let Some(pos) = pointer.latest_pos() {
-                    let travel = (track.height() - thumb_height).max(1.0);
-                    let f = ((pos.y - track.top()) / travel).clamp(0.0, 1.0);
-                    let offset = ((1.0 - f) * max_offset as f32).round() as usize;
-                    command = Some(ScrollCommand::ToOffset(offset));
-                }
-            }
-        } else if pointer.primary_clicked() {
-            // 点击轨道：滑块上方翻上一页，下方翻下一页。
-            // 若按下起点在滑块上（轻微拖拽后释放），不当作轨道点击。
-            let pressed_on_thumb = pointer
-                .press_origin()
-                .is_some_and(|press| thumb.contains(press));
-            if let Some(pos) = pointer.interact_pos() {
-                if track.contains(pos) && !pressed_on_thumb {
-                    command = Some(if pos.y < thumb.top() {
-                        ScrollCommand::PageUp
-                    } else if pos.y > thumb.bottom() {
-                        ScrollCommand::PageDown
-                    } else {
-                        return;
-                    });
-                }
+        let over = pointer.latest_pos().is_some_and(|pos| track.contains(pos));
+        thumb_hovered = over;
+        if over && pointer.primary_down() {
+            if let Some(pos) = pointer.latest_pos() {
+                let travel = (track.height() - thumb_height).max(1.0);
+                let f = ((pos.y - track.top()) / travel).clamp(0.0, 1.0);
+                let offset = ((1.0 - f) * max_offset as f32).round() as usize;
+                command = Some(ScrollCommand::ToOffset(offset));
             }
         }
     });
@@ -593,8 +570,8 @@ pub fn scrollbar(
     };
     painter.rect_filled(thumb, 6.0, thumb_color);
 
-    if thumb_hovered && command.is_none() {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    if thumb_hovered {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Default);
     }
 
     command
@@ -1261,7 +1238,7 @@ mod tests {
     }
 
     #[test]
-    fn scrollbar_click_above_thumb_returns_page_up() {
+    fn scrollbar_press_on_track_scrolls_to_offset() {
         let ctx = egui::Context::default();
         let snapshot = scrollback_snapshot(0, 8); // 底部：滑块位于轨道下方
         let font_id = FontId::monospace(13.0);
@@ -1294,36 +1271,14 @@ mod tests {
             ],
             ..Default::default()
         };
-        let _ = ctx.run(press_raw, |ctx| {
-            egui::CentralPanel::default().show(ctx, |ui| {
-                let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None, &[], &mut ImageTextureCache::default());
-                // 真实应用每帧都会渲染滚动条；按下帧必须存在该 widget 才能承接点击。
-                let _ = scrollbar(ui, &snapshot, &response);
-            });
-        });
-
-        // 第二遍：释放指针，收集滚动指令。
-        let release_raw = RawInput {
-            events: vec![egui::Event::PointerButton {
-                pos: click_pos,
-                button: PointerButton::Primary,
-                pressed: false,
-                modifiers: egui::Modifiers::NONE,
-            }],
-            ..Default::default()
-        };
         let command = RefCell::new(None);
-        let _ = ctx.run(release_raw, |ctx| {
+        let _ = ctx.run(press_raw, |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
                 let response = terminal_ui(ui, &snapshot, &font_id, cell_size_for(ui), true, &theme, None, None, &[], &mut ImageTextureCache::default());
                 *command.borrow_mut() = scrollbar(ui, &snapshot, &response);
             });
         });
 
-        assert_eq!(
-            *command.borrow(),
-            Some(ScrollCommand::PageUp),
-            "点击滑块上方轨道应触发向上翻页"
-        );
+        assert!(matches!(*command.borrow(), Some(ScrollCommand::ToOffset(_))));
     }
 }

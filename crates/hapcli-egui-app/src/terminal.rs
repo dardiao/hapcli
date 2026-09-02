@@ -1136,8 +1136,6 @@ impl TerminalTab {
         if let Some(command) = render::scrollbar(ui, &self.snapshot, &response) {
             match command {
                 ScrollCommand::ToOffset(offset) => self.session.scroll_to_display_offset(offset),
-                ScrollCommand::PageUp => self.session.page_up(),
-                ScrollCommand::PageDown => self.session.page_down(),
             }
         }
 
