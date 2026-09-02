@@ -1769,9 +1769,11 @@ impl eframe::App for HapcliApp {
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 5.0;
+                    ui.spacing_mut().item_spacing.x = 3.0;
                     ui.label(
-                        egui::RichText::new(self.tabs[self.active_tab].display_label()).strong(),
+                        egui::RichText::new(self.tabs[self.active_tab].display_label())
+                            .size(12.0)
+                            .strong(),
                     );
                     if self.tabs[self.active_tab].show_timestamps {
                         let now = std::time::SystemTime::now()
@@ -1779,13 +1781,13 @@ impl eframe::App for HapcliApp {
                             .map(|d| d.as_secs())
                             .unwrap_or(0);
                         let (h, m, s) = (now / 3600 % 24, now / 60 % 60, now % 60);
-                        ui.weak(format!("{h:02}:{m:02}:{s:02}"));
+                        ui.weak(egui::RichText::new(format!("{h:02}:{m:02}:{s:02}")).size(11.0));
                     }
                     // SSH 会话专属小按钮：紧跟会话标签。
                     if active_is_ssh {
                         let ssh_icon = |text: &str| {
-                            egui::Button::new(egui::RichText::new(text).size(13.0))
-                                .min_size(egui::vec2(22.0, 20.0))
+                            egui::Button::new(egui::RichText::new(text).size(11.0))
+                                .min_size(egui::vec2(19.0, 18.0))
                                 .fill(egui::Color32::TRANSPARENT)
                                 .stroke(egui::Stroke::NONE)
                                 .rounding(3.0)
@@ -1830,13 +1832,12 @@ impl eframe::App for HapcliApp {
                         {
                             toggle_forward = true;
                         }
-                        ui.add_space(4.0);
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.spacing_mut().item_spacing.x = 5.0;
+                        ui.spacing_mut().item_spacing.x = 3.0;
                         let tab_icon = |text: &str| {
-                            egui::Button::new(egui::RichText::new(text).size(13.0))
-                                .min_size(egui::vec2(22.0, 20.0))
+                            egui::Button::new(egui::RichText::new(text).size(11.0))
+                                .min_size(egui::vec2(19.0, 18.0))
                                 .fill(egui::Color32::TRANSPARENT)
                                 .stroke(egui::Stroke::NONE)
                                 .rounding(3.0)
