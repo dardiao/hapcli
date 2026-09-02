@@ -14,6 +14,9 @@ use hapcli_terminal::{
 
 use crate::settings::ThemeChoice;
 
+/// 终端内容相对可用区左边缘的缩进（像素），避免文字紧贴边框。
+pub const TERMINAL_LEFT_PAD: f32 = 8.0;
+
 /// 内核暗色主题的默认前景/背景（快照中空 cell 与默认文本的颜色）。
 /// 终端配色（后续可扩展为主题配置）。
 #[derive(Clone, Copy, Debug)]
@@ -322,7 +325,7 @@ pub fn terminal_ui(
     // 铺满当前可用区域，避免终端内容与面板底色之间出现“露头”缝隙。
     let desired = ui.available_size();
     let (response, painter) = ui.allocate_painter(desired, Sense::click_and_drag());
-    let origin = response.rect.min;
+    let origin = response.rect.min + Vec2::new(TERMINAL_LEFT_PAD, 0.0);
 
     // 整屏背景。
     painter.rect_filled(response.rect, 0.0, theme.background);

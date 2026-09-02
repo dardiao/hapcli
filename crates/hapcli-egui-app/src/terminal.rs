@@ -23,13 +23,6 @@ use zeroize::Zeroizing;
 
 static TRZSZ_OWNER_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-/// 右侧面板当前展示的标签页。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RightPanelTab {
-    Quick,
-    Forward,
-}
-
 #[derive(Clone, Copy, Debug)]
 pub struct TerminalPrefs {
     pub copy_on_select: bool,
@@ -98,8 +91,6 @@ pub struct TerminalTab {
     pub search_focus_requested: bool,
     /// 搜索框已消费 Enter（用于导航），终端不应再把该 Enter 转发给 shell。
     pub search_enter_consumed: bool,
-    /// 右侧面板是否打开及当前标签（SFTP / 快捷命令）。
-    pub right_panel: Option<RightPanelTab>,
     pub sftp: Option<crate::sftp::SftpPanelState>,
     /// 本地终端使用的本地目录浏览器状态。
     pub local_browser: Option<crate::sftp::LocalBrowserState>,
@@ -120,7 +111,6 @@ pub struct TerminalTab {
     /// Telnet / 串口配置（用于“复制标签”）。
     pub telnet_config: Option<TelnetSessionConfig>,
     pub serial_config: Option<SerialSessionConfig>,
-    pub forward: Option<crate::forward::ForwardPanel>,
     pub image_textures: ImageTextureCache,
     /// 长命令完成提醒：标签页显示 🔔，激活后清除。
     pub notify_pending: bool,
@@ -132,10 +122,8 @@ pub struct TerminalTab {
     pub force_full_snapshot: bool,
     /// 当前会话已应用的配色预设（用于新建会话立即应用配置、切换时整快照重算）。
     pub applied_theme: TerminalThemePreset,
-    /// 是否在会话工具栏显示当前时间戳。
-    pub show_timestamps: bool,
-    /// 左侧文件管理器是否打开。
-    pub left_files: bool,
+    /// SSH 端口转发面板状态（仅 SSH 会话使用）。
+    pub forward: Option<crate::forward::ForwardPanel>,
 }
 
 impl TerminalTab {
@@ -195,7 +183,6 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             search_enter_consumed: false,
-            right_panel: None,
             sftp: None,
             local_browser: None,
             sftp_prev_cwd: None,
@@ -207,7 +194,6 @@ impl TerminalTab {
             custom_label: None,
             telnet_config: None,
             serial_config: None,
-            forward: None,
             notify_pending: false,
             foreground_track: None,
             last_probe: None,
@@ -215,8 +201,7 @@ impl TerminalTab {
             base_label: "本地".to_string(),
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
-            show_timestamps: false,
-            left_files: false,
+            forward: None,
         })
     }
 
@@ -277,7 +262,6 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             search_enter_consumed: false,
-            right_panel: None,
             sftp: None,
             local_browser: None,
             sftp_prev_cwd: None,
@@ -289,7 +273,6 @@ impl TerminalTab {
             custom_label: None,
             telnet_config: None,
             serial_config: None,
-            forward: None,
             notify_pending: false,
             foreground_track: None,
             last_probe: None,
@@ -297,8 +280,7 @@ impl TerminalTab {
             base_label,
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
-            show_timestamps: false,
-            left_files: false,
+            forward: None,
         }
     }
 
@@ -357,7 +339,6 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             search_enter_consumed: false,
-            right_panel: None,
             sftp: None,
             local_browser: None,
             sftp_prev_cwd: None,
@@ -369,7 +350,6 @@ impl TerminalTab {
             custom_label: None,
             telnet_config: Some(stored_config),
             serial_config: None,
-            forward: None,
             notify_pending: false,
             foreground_track: None,
             last_probe: None,
@@ -377,8 +357,7 @@ impl TerminalTab {
             base_label,
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
-            show_timestamps: false,
-            left_files: false,
+            forward: None,
         }
     }
 
@@ -437,7 +416,6 @@ impl TerminalTab {
             search_current: None,
             search_focus_requested: false,
             search_enter_consumed: false,
-            right_panel: None,
             sftp: None,
             local_browser: None,
             sftp_prev_cwd: None,
@@ -449,7 +427,6 @@ impl TerminalTab {
             custom_label: None,
             telnet_config: None,
             serial_config: Some(stored_config),
-            forward: None,
             notify_pending: false,
             foreground_track: None,
             last_probe: None,
@@ -457,8 +434,7 @@ impl TerminalTab {
             base_label,
             force_full_snapshot: false,
             applied_theme: TerminalThemePreset::Default,
-            show_timestamps: false,
-            left_files: false,
+            forward: None,
         })
     }
 
@@ -516,7 +492,6 @@ impl TerminalTab {
         self.drag_scroll_accum = 0.0;
         self.drop_hovering = false;
         self.search_enter_consumed = false;
-        self.right_panel = None;
         self.local_browser = None;
     }
 
@@ -556,20 +531,15 @@ impl TerminalTab {
         match status.kind {
             TerminalSessionKind::LocalPty => {
                 let title = status.title.as_deref().unwrap_or("zsh");
-                format!("本地 · {title}")
+                title.to_string()
             }
             _ => {
                 let base = status
                     .title
                     .as_deref()
-                    .unwrap_or(self.base_label.as_str());
-                if !status.lifecycle.is_running() {
-                    format!("{base} ✗")
-                } else if status.title.is_none() {
-                    format!("{base} …")
-                } else {
-                    base.to_string()
-                }
+                    .unwrap_or(self.base_label.as_str())
+                    .to_string();
+                base
             }
         }
     }

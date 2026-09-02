@@ -22,55 +22,58 @@ fn widget(bg: u32, weak: u32, fg: u32, border: u32, rounding: f32) -> egui::styl
 
 fn dark_visuals() -> egui::Visuals {
     let mut v = egui::Visuals::dark();
-    v.panel_fill = hex(0x1a1f26);
-    v.window_fill = hex(0x1e242c);
-    v.extreme_bg_color = hex(0x0e1115);
-    v.faint_bg_color = hex(0x222a34);
-    v.code_bg_color = hex(0x242c37);
-    v.hyperlink_color = hex(0x82b4ff);
-    v.warn_fg_color = hex(0xe0b05c);
-    v.error_fg_color = hex(0xe06c75);
-    v.window_rounding = Rounding::same(3.0);
-    v.window_stroke = Stroke::new(1.0_f32, hex(0x2a323c));
-    v.menu_rounding = Rounding::same(3.0);
+    // GitHub Dark：清晰、高对比、中性偏冷，作为深色界面基准。
+    v.panel_fill = hex(0x161b22);
+    v.window_fill = hex(0x0d1117);
+    v.extreme_bg_color = hex(0x21262d);
+    v.faint_bg_color = hex(0x161b22);
+    v.code_bg_color = hex(0x21262d);
+    v.hyperlink_color = hex(0x58a6ff);
+    v.warn_fg_color = hex(0xd29922);
+    v.error_fg_color = hex(0xf85149);
+    v.window_rounding = Rounding::same(8.0);
+    v.window_stroke = Stroke::new(1.0_f32, hex(0x30363d));
+    v.menu_rounding = Rounding::same(8.0);
+    v.slider_trailing_fill = true;
     v.selection = egui::style::Selection {
-        bg_fill: hex(0x3b6db0),
-        stroke: Stroke::new(1.0_f32, hex(0x6ea8ff)),
+        bg_fill: hex(0x1f6feb),
+        stroke: Stroke::new(1.0_f32, hex(0x58a6ff)),
     };
     v.widgets = egui::style::Widgets {
-        noninteractive: widget(0x1d232b, 0x1d232b, 0xb9c0ca, 0x242c36, 3.0),
-        inactive: widget(0x242c36, 0x242c36, 0xd5dae1, 0x303a46, 3.0),
-        hovered: widget(0x344d68, 0x344d68, 0xffffff, 0x4a6c96, 3.0),
-        active: widget(0x2f5a8f, 0x2f5a8f, 0xffffff, 0x4a7fb5, 3.0),
-        open: widget(0x2a3440, 0x2a3440, 0xffffff, 0x394654, 3.0),
+        noninteractive: widget(0x21262d, 0x21262d, 0x8b949e, 0x30363d, 6.0),
+        inactive: widget(0x21262d, 0x21262d, 0xc9d1d9, 0x30363d, 6.0),
+        hovered: widget(0x30363d, 0x30363d, 0xffffff, 0x8b949e, 6.0),
+        active: widget(0x1f6feb, 0x1f6feb, 0xffffff, 0x58a6ff, 6.0),
+        open: widget(0x21262d, 0x21262d, 0xc9d1d9, 0x30363d, 6.0),
     };
     v
 }
 
 fn light_visuals() -> egui::Visuals {
     let mut v = egui::Visuals::light();
-    // 与深色主题同一套设计语言：明显偏蓝的浅色面板 + 蓝色强调（一眼可辨的自定义浅色）。
-    v.panel_fill = hex(0xf3f6fa);
+    // GitHub Light：干净白底 + 浅灰画布 + 品牌蓝强调，控件对比清晰。
+    v.panel_fill = hex(0xffffff);
     v.window_fill = hex(0xffffff);
-    v.extreme_bg_color = hex(0xe9eef5);
-    v.faint_bg_color = hex(0xf1f4f8);
-    v.code_bg_color = hex(0xf0f3f7);
-    v.hyperlink_color = hex(0x1f6feb);
-    v.warn_fg_color = hex(0xb7791f);
-    v.error_fg_color = hex(0xc0392b);
-    v.window_rounding = Rounding::same(3.0);
-    v.window_stroke = Stroke::new(1.0_f32, hex(0xdde3ec));
-    v.menu_rounding = Rounding::same(3.0);
+    v.extreme_bg_color = hex(0xeaeef2);
+    v.faint_bg_color = hex(0xf6f8fa);
+    v.code_bg_color = hex(0xf6f8fa);
+    v.hyperlink_color = hex(0x0969da);
+    v.warn_fg_color = hex(0x9a6700);
+    v.error_fg_color = hex(0xcf222e);
+    v.window_rounding = Rounding::same(8.0);
+    v.window_stroke = Stroke::new(1.0_f32, hex(0xd0d7de));
+    v.menu_rounding = Rounding::same(8.0);
+    v.slider_trailing_fill = true;
     v.selection = egui::style::Selection {
-        bg_fill: hex(0x8fbcff),
-        stroke: Stroke::new(1.0_f32, hex(0x2f7bfd)),
+        bg_fill: hex(0x0969da),
+        stroke: Stroke::new(1.0_f32, hex(0xffffff)),
     };
     v.widgets = egui::style::Widgets {
-        noninteractive: widget(0xf7f9fc, 0xf7f9fc, 0x2c3a4a, 0xdbe2ec, 3.0),
-        inactive: widget(0xffffff, 0xffffff, 0x14202e, 0xd7dfea, 3.0),
-        hovered: widget(0xeef4fb, 0xeef4fb, 0x0f1722, 0xb9cdec, 3.0),
-        active: widget(0xd6e6ff, 0xd6e6ff, 0x0f1722, 0x8fb9f0, 3.0),
-        open: widget(0xf1f5fa, 0xf1f5fa, 0x14202e, 0xd3dce7, 3.0),
+        noninteractive: widget(0xf6f8fa, 0xf6f8fa, 0x57606a, 0xd0d7de, 6.0),
+        inactive: widget(0xf6f8fa, 0xf6f8fa, 0x24292f, 0xd0d7de, 6.0),
+        hovered: widget(0xf3f4f6, 0xf3f4f6, 0x0969da, 0xd0d7de, 6.0),
+        active: widget(0xddf4ff, 0xddf4ff, 0x0969da, 0x54aeff, 6.0),
+        open: widget(0xf6f8fa, 0xf6f8fa, 0x24292f, 0xd0d7de, 6.0),
     };
     v
 }
@@ -99,6 +102,7 @@ pub fn apply_egui_theme(ctx: &egui::Context, choice: ThemeChoice) {
         style.spacing.combo_width = 180.0;
         style.spacing.text_edit_width = 240.0;
         style.spacing.icon_width = 20.0;
+        style.spacing.slider_width = 130.0;
     });
 }
 
@@ -114,15 +118,15 @@ mod tests {
 
         apply_egui_theme(&ctx, ThemeChoice::Light);
         assert_eq!(ctx.theme(), egui::Theme::Light);
-        assert_eq!(ctx.style().visuals.panel_fill, hex(0xf3f6fa));
-        assert_eq!(ctx.style().visuals.widgets.inactive.rounding, Rounding::same(3.0));
+        assert_eq!(ctx.style().visuals.panel_fill, hex(0xffffff));
+        assert_eq!(ctx.style().visuals.widgets.inactive.rounding, Rounding::same(6.0));
 
         apply_egui_theme(&ctx, ThemeChoice::Dark);
         assert_eq!(ctx.theme(), egui::Theme::Dark);
-        assert_eq!(ctx.style().visuals.panel_fill, hex(0x1a1f26));
+        assert_eq!(ctx.style().visuals.panel_fill, hex(0x161b22));
 
         apply_egui_theme(&ctx, ThemeChoice::Light);
         assert_eq!(ctx.theme(), egui::Theme::Light);
-        assert_eq!(ctx.style().visuals.panel_fill, hex(0xf3f6fa));
+        assert_eq!(ctx.style().visuals.panel_fill, hex(0xffffff));
     }
 }

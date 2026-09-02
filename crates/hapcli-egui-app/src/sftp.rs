@@ -532,7 +532,8 @@ pub fn local_browser_ui(ui: &mut egui::Ui, state: &mut LocalBrowserState) {
     ui.separator();
     let mut enter_path: Option<PathBuf> = None;
     egui::ScrollArea::vertical()
-        .max_height(340.0)
+        .id_salt("local_browser_file_list")
+        .max_height((ui.available_height() - 56.0).max(120.0))
         .auto_shrink([false, false])
         .show(ui, |ui| {
             for entry in &state.entries {
@@ -626,7 +627,8 @@ pub fn sftp_panel_ui(ui: &mut egui::Ui, panel: &mut SftpPanelState) -> Vec<SftpC
 
     ui.separator();
     egui::ScrollArea::vertical()
-        .max_height(340.0)
+        .id_salt("sftp_file_list")
+        .max_height((ui.available_height() - 130.0).max(120.0))
         .auto_shrink([false, false])
         .show(ui, |ui| {
             for (index, entry) in panel.entries.iter().enumerate() {
@@ -660,36 +662,6 @@ pub fn sftp_panel_ui(ui: &mut egui::Ui, panel: &mut SftpPanelState) -> Vec<SftpC
         .is_some_and(|entry| entry.file_type != FileType::Directory);
 
     ui.horizontal(|ui| {
-        if ui
-            .add_enabled(!panel.busy, egui::Button::new("上传文件"))
-            .clicked()
-        {
-            if let Some(paths) = rfd::FileDialog::new().pick_files() {
-                for path in paths {
-                    let local = path.display().to_string();
-                    let name = path
-                        .file_name()
-                        .map(|name| name.to_string_lossy().to_string())
-                        .unwrap_or_default();
-                    let remote = join_remote_path(&panel.cwd, &name);
-                    commands.push(SftpCommand::Upload { local, remote });
-                }
-            }
-        }
-        if ui
-            .add_enabled(!panel.busy, egui::Button::new("上传目录"))
-            .clicked()
-        {
-            if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                let local = path.display().to_string();
-                let name = path
-                    .file_name()
-                    .map(|name| name.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "folder".to_string());
-                let remote = join_remote_path(&panel.cwd, &name);
-                commands.push(SftpCommand::UploadDir { local, remote });
-            }
-        }
         if ui
             .add_enabled(
                 panel.selected.is_some() && !panel.busy && selected_is_file,
