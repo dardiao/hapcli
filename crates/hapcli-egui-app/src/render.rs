@@ -548,15 +548,21 @@ pub fn scrollbar(
     let mut command = None;
 
     // 几何判定：滚动条与终端区域重叠，不能依赖 egui 的 widget 点击归属。
-    // 按下即在滚动条上定位并跟随拖动（无需精确按住滑块），更顺滑。
+    // 在滚动条上按下后即进入“拖拽中”：即使移出轨道也继续跟随（按轨道范围钳制），
+    // 且光标保持黑色指针，直到松开。
     ui.input(|i| {
         let pointer = &i.pointer;
         let over = pointer.latest_pos().is_some_and(|pos| track.contains(pos));
-        thumb_hovered = over;
-        if over && pointer.primary_down() {
+        let dragging = pointer.primary_down()
+            && pointer
+                .press_origin()
+                .is_some_and(|press| track.contains(press));
+        thumb_hovered = over || dragging;
+        if dragging {
             if let Some(pos) = pointer.latest_pos() {
+                let y = pos.y.clamp(track.top(), track.bottom());
                 let travel = (track.height() - thumb_height).max(1.0);
-                let f = ((pos.y - track.top()) / travel).clamp(0.0, 1.0);
+                let f = ((y - track.top()) / travel).clamp(0.0, 1.0);
                 let offset = ((1.0 - f) * max_offset as f32).round() as usize;
                 command = Some(ScrollCommand::ToOffset(offset));
             }
