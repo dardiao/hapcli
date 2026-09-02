@@ -578,7 +578,7 @@ pub fn scrollbar(
     } else {
         Color32::from_rgba_unmultiplied(120, 130, 145, 180)
     };
-    painter.rect_filled(thumb, 4.0, thumb_color);
+    painter.rect_filled(thumb, 6.0, thumb_color);
 
     if thumb_hovered && command.is_none() {
         ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
@@ -589,8 +589,8 @@ pub fn scrollbar(
 
 /// 滚动条轨道矩形（终端右侧窄条）；无历史时滚动条不显示，返回 None。
 pub fn scrollbar_track_rect(area: Rect) -> Option<Rect> {
-    const TRACK_WIDTH: f32 = 10.0;
-    const EDGE_MARGIN: f32 = 3.0;
+    const TRACK_WIDTH: f32 = 14.0;
+    const EDGE_MARGIN: f32 = 4.0;
     let track = Rect::from_min_max(
         pos2(area.right() - TRACK_WIDTH - EDGE_MARGIN, area.top() + 2.0),
         pos2(area.right() - EDGE_MARGIN, area.bottom() - 2.0),

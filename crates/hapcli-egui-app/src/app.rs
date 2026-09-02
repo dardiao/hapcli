@@ -1956,9 +1956,13 @@ impl eframe::App for HapcliApp {
 
         // 7. 中央终端区：尺寸同步所有会话，渲染活动会话。
         let transparent = self.settings.transparent_window;
+        let theme = build_theme(self.settings.theme, self.settings.background_alpha);
         let mut central_frame = egui::Frame::default().inner_margin(0.0);
         if transparent {
             central_frame = central_frame.fill(egui::Color32::TRANSPARENT);
+        } else {
+            // 填充终端底色，避免留出黑底/深色缝隙。
+            central_frame = central_frame.fill(theme.background);
         }
         egui::CentralPanel::default().frame(central_frame).show(ctx, |ui| {
                 let avail = ui.available_size();
@@ -1978,7 +1982,6 @@ impl eframe::App for HapcliApp {
                     true
                 };
 
-                let theme = build_theme(self.settings.theme, self.settings.background_alpha);
                 self.active_tab()
                     .draw(ui, &font_id, cell_size, cursor_blink_on, &theme);
             });
