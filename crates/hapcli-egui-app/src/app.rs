@@ -653,7 +653,6 @@ impl HapcliApp {
         let mut reset = false;
         let mut pick_font = false;
         let mut clear_font = false;
-        let mut toggle_transparent: Option<bool> = None;
         // 改动即自动保存：进入设置时快照，结束时对比，有变化就写入。
         let before = self.settings.clone();
 
@@ -774,10 +773,7 @@ impl HapcliApp {
                                 ui.add_space(4.0);
                                 match self.settings_page {
                                     SettingsPage::General => self.settings_page_general(ui),
-                                    SettingsPage::Appearance => self.settings_page_appearance(
-                                        ui,
-                                        &mut toggle_transparent,
-                                    ),
+                                    SettingsPage::Appearance => self.settings_page_appearance(ui),
                                     SettingsPage::VersionInfo => self.settings_page_version_info(ui),
                                     SettingsPage::Terminal => match self.terminal_sub {
                                         TerminalSub::Display => self.settings_page_terminal(
@@ -821,9 +817,6 @@ impl HapcliApp {
             });
         self.show_settings = open;
 
-        if let Some(transparent) = toggle_transparent {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(transparent));
-        }
         if pick_font {
             if let Some(path) = rfd::FileDialog::new()
                 .add_filter("字体文件", &["ttf", "otf", "ttc"])
@@ -841,7 +834,6 @@ impl HapcliApp {
         if reset {
             self.settings = AppSettings::default();
             self.custom_font_loaded = install_fonts(ctx, &self.settings);
-            ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(false));
             self.settings_error = None;
         }
         // 改动即自动保存。
@@ -963,7 +955,6 @@ impl HapcliApp {
     fn settings_page_appearance(
         &mut self,
         ui: &mut egui::Ui,
-        toggle_transparent: &mut Option<bool>,
     ) {
         egui::Grid::new("settings_appearance_grid")
             .num_columns(2)
@@ -980,14 +971,6 @@ impl HapcliApp {
                         ui.selectable_value(&mut self.settings.theme, ThemeChoice::Dark, "深色");
                         ui.selectable_value(&mut self.settings.theme, ThemeChoice::Light, "浅色");
                     });
-                ui.end_row();
-
-                ui.label("透明窗口");
-                let before = self.settings.transparent_window;
-                ui.checkbox(&mut self.settings.transparent_window, "启用");
-                if before != self.settings.transparent_window {
-                    *toggle_transparent = Some(self.settings.transparent_window);
-                }
                 ui.end_row();
             });
         ui.add_space(8.0);
@@ -1012,12 +995,6 @@ impl HapcliApp {
                         MIN_FONT_SIZE..=MAX_FONT_SIZE,
                     )
                     .suffix(" pt"),
-                );
-                ui.end_row();
-
-                ui.label("背景不透明度");
-                ui.add(
-                    egui::Slider::new(&mut self.settings.background_alpha, 0.3..=1.0),
                 );
                 ui.end_row();
 
@@ -1955,21 +1932,10 @@ impl eframe::App for HapcliApp {
         }
 
         // 7. 中央终端区：尺寸同步所有会话，渲染活动会话。
-        let transparent = self.settings.transparent_window;
-        // 终端背景默认不透明（除非开启”透明窗口”），避免“底色 + 上层色”的层叠感。
-        let alpha = if self.settings.transparent_window {
-            self.settings.background_alpha
-        } else {
-            1.0
-        };
-        let theme = build_theme(self.settings.theme, alpha);
+        let theme = build_theme(self.settings.theme);
         let mut central_frame = egui::Frame::default().inner_margin(0.0);
-        if transparent {
-            central_frame = central_frame.fill(egui::Color32::TRANSPARENT);
-        } else {
-            // 填充终端底色，避免留出黑底/深色缝隙。
-            central_frame = central_frame.fill(theme.background);
-        }
+        // 填充终端底色，避免留出黑底/深色缝隙。
+        central_frame = central_frame.fill(theme.background);
         egui::CentralPanel::default().frame(central_frame).show(ctx, |ui| {
                 let avail = ui.available_size();
                 let cols = (avail.x / cell_size.x).floor().max(2.0) as usize;

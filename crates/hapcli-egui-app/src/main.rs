@@ -17,14 +17,13 @@ mod update;
 use eframe::egui;
 
 fn main() -> eframe::Result {
-    let settings = settings::load_settings();
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1000.0, 680.0])
             .with_min_inner_size([420.0, 260.0])
             .with_title("HapCLI")
             .with_icon(app_icon())
-            .with_transparent(settings.transparent_window),
+            .with_transparent(false),
         ..Default::default()
     };
 

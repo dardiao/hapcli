@@ -232,9 +232,6 @@ impl ThemePresetChoice {
 pub struct AppSettings {
     pub font_size: f32,
     pub theme: ThemeChoice,
-    /// 终端背景不透明度（配合透明窗口生效）。
-    pub background_alpha: f32,
-    pub transparent_window: bool,
     /// 自定义终端字体文件路径；None 表示使用默认等宽字体。
     pub terminal_font_path: Option<String>,
     /// 终端滚动历史行数（新会话生效）。
@@ -316,8 +313,6 @@ impl Default for AppSettings {
         Self {
             font_size: 13.0,
             theme: ThemeChoice::Light,
-            background_alpha: 1.0,
-            transparent_window: false,
             terminal_font_path: None,
             scrollback_lines: default_scrollback(),
             line_height: default_line_height(),
@@ -382,8 +377,6 @@ mod tests {
         let settings = AppSettings {
             font_size: 16.0,
             theme: ThemeChoice::Light,
-            background_alpha: 0.7,
-            transparent_window: true,
             terminal_font_path: Some("/tmp/myfont.ttf".to_string()),
             scrollback_lines: 5000,
             line_height: 1.2,
@@ -409,8 +402,6 @@ mod tests {
 
         assert_eq!(loaded.font_size, 16.0);
         assert_eq!(loaded.theme, ThemeChoice::Light);
-        assert_eq!(loaded.background_alpha, 0.7);
-        assert!(loaded.transparent_window);
         assert_eq!(loaded.terminal_font_path.as_deref(), Some("/tmp/myfont.ttf"));
         assert_eq!(loaded.scrollback_lines, 5000);
         assert_eq!(loaded.line_height, 1.2);

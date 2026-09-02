@@ -42,9 +42,9 @@ impl Default for TerminalTheme {
     }
 }
 
-/// 根据设置构建终端配色；背景色叠加透明度。
-pub fn build_theme(choice: ThemeChoice, background_alpha: f32) -> TerminalTheme {
-    let alpha = (background_alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
+/// 根据设置构建终端配色；背景不透明（不再支持透明窗口）。
+pub fn build_theme(choice: ThemeChoice) -> TerminalTheme {
+    let alpha = 255;
     match choice {
         ThemeChoice::Dark => TerminalTheme {
             background: Color32::from_rgba_unmultiplied(0x28, 0x2a, 0x36, alpha),
@@ -962,7 +962,7 @@ mod tests {
 
     #[test]
     fn resolve_colors_maps_kernel_defaults_to_light_theme() {
-        let theme = build_theme(ThemeChoice::Light, 1.0);
+        let theme = build_theme(ThemeChoice::Light);
         let plain = cell(
             'a',
             TerminalColor::rgb(0xf8, 0xf8, 0xf2),
