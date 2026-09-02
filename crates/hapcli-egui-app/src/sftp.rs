@@ -27,6 +27,13 @@ pub enum SftpCommand {
     Delete { path: String, recursive: bool },
 }
 
+/// 新建文件 / 文件夹的类别。
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum CreateKind {
+    File,
+    Folder,
+}
+
 pub enum SftpEvent {
     Listing {
         cwd: String,
@@ -57,6 +64,8 @@ pub struct SftpPanelState {
     pub transfer_progress: Option<(u64, u64)>,
     pub busy: bool,
     pub new_dir_name: String,
+    /// 通过“＋”/右键新建文件或文件夹时的类别与是否正在输入名称。
+    pub new_kind: Option<CreateKind>,
     /// 是否有本地文件正拖拽悬停在面板上（用于显示“松开上传”提示）。
     drop_hovering: bool,
     confirm_delete: Option<FileInfo>,
@@ -335,6 +344,7 @@ pub fn spawn_sftp_worker(handle: SshConnectionHandle) -> SftpPanelState {
         transfer_progress: None,
         busy: false,
         new_dir_name: String::new(),
+        new_kind: None,
         drop_hovering: false,
         confirm_delete: None,
     }
@@ -446,6 +456,11 @@ pub struct LocalBrowserState {
     pub cwd: PathBuf,
     pub entries: Vec<LocalEntry>,
     pub error: Option<String>,
+    /// 当前选中的本地条目索引（用于“上传选中”）。
+    pub selected: Option<usize>,
+    /// 本地新建文件 / 文件夹的类别与名称。
+    pub new_kind: Option<CreateKind>,
+    pub new_name: String,
 }
 
 impl LocalBrowserState {
@@ -454,6 +469,9 @@ impl LocalBrowserState {
             cwd: std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/")),
             entries: Vec::new(),
             error: None,
+            selected: None,
+            new_kind: None,
+            new_name: String::new(),
         };
         state.refresh();
         state
@@ -462,6 +480,7 @@ impl LocalBrowserState {
     pub fn refresh(&mut self) {
         self.entries.clear();
         self.error = None;
+        self.selected = None;
         match std::fs::read_dir(&self.cwd) {
             Ok(entries) => {
                 for entry in entries.flatten() {
@@ -503,40 +522,111 @@ impl LocalBrowserState {
             self.refresh();
         }
     }
+
 }
 
 /// 渲染本地目录浏览器。
-pub fn local_browser_ui(ui: &mut egui::Ui, state: &mut LocalBrowserState) {
+/// 返回用户通过右键“上传到远程”请求上传的条目 (路径, 是否目录)。
+pub fn local_browser_ui(
+    ui: &mut egui::Ui,
+    state: &mut LocalBrowserState,
+) -> Option<(PathBuf, bool)> {
     ui.horizontal(|ui| {
         ui.label("路径");
         let mut path_text = state.cwd.display().to_string();
         ui.add(
             egui::TextEdit::singleline(&mut path_text)
-                .desired_width(170.0),
+                .desired_width(140.0)
+                .interactive(false),
         );
-        if ui.button("进入").clicked() {
-            let path = PathBuf::from(path_text.trim());
-            state.cwd = path;
-            state.refresh();
-        }
-        if ui.button("上级").clicked() {
-            state.up();
-        }
-        if ui.button("刷新").clicked() {
-            state.refresh();
-        }
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.menu_button("＋", |ui| {
+                if ui.button("新建文件").clicked() {
+                    state.new_kind = Some(CreateKind::File);
+                    ui.close_menu();
+                }
+                if ui.button("新建文件夹").clicked() {
+                    state.new_kind = Some(CreateKind::Folder);
+                    ui.close_menu();
+                }
+            });
+        });
     });
+
+    // 新建名称输入。
+    if let Some(kind) = state.new_kind {
+        ui.horizontal(|ui| {
+            ui.label(if kind == CreateKind::File { "新文件" } else { "新文件夹" });
+            let resp = ui.add(
+                egui::TextEdit::singleline(&mut state.new_name)
+                    .hint_text("输入名称")
+                    .desired_width(120.0),
+            );
+            let submit =
+                resp.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+            if ui.button("确定").clicked() || submit {
+                let name = state.new_name.trim().to_string();
+                if !name.is_empty() {
+                    let path = state.cwd.join(&name);
+                    let result = match kind {
+                        CreateKind::File => std::fs::File::create(&path).map(|_| ()),
+                        CreateKind::Folder => std::fs::create_dir(&path),
+                    };
+                    if let Err(error) = result {
+                        state.error = Some(format!("创建失败: {error}"));
+                    }
+                    state.refresh();
+                }
+                state.new_kind = None;
+                state.new_name.clear();
+            }
+            if ui.button("取消").clicked() {
+                state.new_kind = None;
+                state.new_name.clear();
+            }
+        });
+    }
+
     if let Some(error) = &state.error {
         ui.colored_label(egui::Color32::from_rgb(0xff, 0x77, 0x77), error);
     }
     ui.separator();
     let mut enter_path: Option<PathBuf> = None;
+    let mut upload_req: Option<(PathBuf, bool)> = None;
+    // 空白处右键：新建 / 刷新（列表满时用右上角“＋”兜底）。
+    let bg = ui.available_rect_before_wrap();
+    let bg_resp = ui.interact(
+        bg,
+        ui.make_persistent_id("local_pane_empty"),
+        egui::Sense::click(),
+    );
+    bg_resp.context_menu(|ui| {
+        if ui.button("新建文件").clicked() {
+            state.new_kind = Some(CreateKind::File);
+            ui.close_menu();
+        }
+        if ui.button("新建文件夹").clicked() {
+            state.new_kind = Some(CreateKind::Folder);
+            ui.close_menu();
+        }
+        if ui.button("刷新").clicked() {
+            state.refresh();
+            ui.close_menu();
+        }
+    });
+    let mut go_up = false;
     egui::ScrollArea::vertical()
         .id_salt("local_browser_file_list")
-        .max_height((ui.available_height() - 56.0).max(120.0))
+        .max_height(ui.available_height())
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            for entry in &state.entries {
+            // 顶部：返回上一级（根目录不显示）。
+            if state.cwd.parent().is_some()
+                && ui.selectable_label(false, "⬆ 上级").on_hover_text("返回上一级").clicked()
+            {
+                go_up = true;
+            }
+            for (index, entry) in state.entries.iter().enumerate() {
                 let icon = if entry.is_dir { "📁" } else { "📄" };
                 let size = if entry.is_dir {
                     String::new()
@@ -544,19 +634,41 @@ pub fn local_browser_ui(ui: &mut egui::Ui, state: &mut LocalBrowserState) {
                     format_size(entry.size)
                 };
                 let label = format!("{icon} {}  {size}", entry.name);
-                let response = ui.selectable_label(false, label);
+                let selected = state.selected == Some(index);
+                let response = ui.selectable_label(selected, label);
+                if response.clicked() {
+                    state.selected = Some(index);
+                }
                 if entry.is_dir && response.double_clicked() {
                     enter_path = Some(entry.path.clone());
                 }
+                response.context_menu(|ui| {
+                    if ui.button("上传到远程").clicked() {
+                        upload_req = Some((entry.path.clone(), entry.is_dir));
+                        ui.close_menu();
+                    }
+                    if entry.is_dir && ui.button("进入").clicked() {
+                        enter_path = Some(entry.path.clone());
+                        ui.close_menu();
+                    }
+                });
             }
         });
+    if go_up {
+        state.up();
+    }
     if let Some(path) = enter_path {
         state.enter(&path);
     }
+    upload_req
 }
 
 /// 渲染 SFTP 面板，返回需要发送给 worker 的命令。
-pub fn sftp_panel_ui(ui: &mut egui::Ui, panel: &mut SftpPanelState) -> Vec<SftpCommand> {
+pub fn sftp_panel_ui(
+    ui: &mut egui::Ui,
+    panel: &mut SftpPanelState,
+    local_cwd: &Path,
+) -> Vec<SftpCommand> {
     let mut commands = Vec::new();
 
     // 拖拽上传：检测系统文件拖入面板，松手时对每个文件/目录生成上传命令。
@@ -608,29 +720,104 @@ pub fn sftp_panel_ui(ui: &mut egui::Ui, panel: &mut SftpPanelState) -> Vec<SftpC
         ui.label("路径");
         ui.add(
             egui::TextEdit::singleline(&mut panel.cwd)
-                .desired_width(170.0),
+                .desired_width(150.0)
+                .interactive(false),
         );
-        if ui.button("进入").clicked() {
-            commands.push(SftpCommand::List(panel.cwd.clone()));
-        }
-        if ui.button("上级").clicked() {
-            commands.push(SftpCommand::List(remote_parent_path(&panel.cwd)));
-        }
-        if ui.button("刷新").clicked() {
-            commands.push(SftpCommand::List(panel.cwd.clone()));
-        }
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.menu_button("＋", |ui| {
+                if ui.button("新建文件").clicked() {
+                    panel.new_kind = Some(CreateKind::File);
+                    ui.close_menu();
+                }
+                if ui.button("新建文件夹").clicked() {
+                    panel.new_kind = Some(CreateKind::Folder);
+                    ui.close_menu();
+                }
+            });
+        });
     });
+
+    // 新建名称输入。
+    if let Some(kind) = panel.new_kind {
+        ui.horizontal(|ui| {
+            ui.label(if kind == CreateKind::File { "新文件" } else { "新文件夹" });
+            let resp = ui.add(
+                egui::TextEdit::singleline(&mut panel.new_dir_name)
+                    .hint_text("输入名称")
+                    .desired_width(120.0),
+            );
+            let submit =
+                resp.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+            if ui.button("确定").clicked() || submit {
+                let name = panel.new_dir_name.trim().to_string();
+                if !name.is_empty() {
+                    let remote = join_remote_path(&panel.cwd, &name);
+                    match kind {
+                        CreateKind::Folder => {
+                            commands.push(SftpCommand::Mkdir(remote));
+                        }
+                        CreateKind::File => {
+                            // 用一个本地临时空文件上传，即远程创建该文件。
+                            let tmp = std::env::temp_dir().join(&name);
+                            if std::fs::write(&tmp, b"").is_ok() {
+                                commands.push(SftpCommand::Upload {
+                                    local: tmp.display().to_string(),
+                                    remote,
+                                });
+                            }
+                        }
+                    }
+                    commands.push(SftpCommand::List(panel.cwd.clone()));
+                }
+                panel.new_kind = None;
+                panel.new_dir_name.clear();
+            }
+            if ui.button("取消").clicked() {
+                panel.new_kind = None;
+                panel.new_dir_name.clear();
+            }
+        });
+    }
 
     if let Some(error) = &panel.error {
         ui.colored_label(egui::Color32::from_rgb(0xff, 0x77, 0x77), error);
     }
 
     ui.separator();
+    // 空白处右键：新建 / 刷新（列表满时用右上角“＋”兜底）。
+    let bg = ui.available_rect_before_wrap();
+    let bg_resp = ui.interact(
+        bg,
+        ui.make_persistent_id("sftp_pane_empty"),
+        egui::Sense::click(),
+    );
+    bg_resp.context_menu(|ui| {
+        if ui.button("新建文件").clicked() {
+            panel.new_kind = Some(CreateKind::File);
+            ui.close_menu();
+        }
+        if ui.button("新建文件夹").clicked() {
+            panel.new_kind = Some(CreateKind::Folder);
+            ui.close_menu();
+        }
+        if ui.button("刷新").clicked() {
+            panel.refresh();
+            ui.close_menu();
+        }
+    });
+    // 仅传输中才让出底部给进度条，平时列表填满整列（避免“分两层”）。
+    let reserve = if panel.transfer_progress.is_some() { 34.0 } else { 0.0 };
     egui::ScrollArea::vertical()
         .id_salt("sftp_file_list")
-        .max_height((ui.available_height() - 130.0).max(120.0))
+        .max_height((ui.available_height() - reserve).max(120.0))
         .auto_shrink([false, false])
         .show(ui, |ui| {
+            // 顶部：返回上一级（根目录不显示）。
+            if panel.cwd != "/"
+                && ui.selectable_label(false, "⬆ 上级").on_hover_text("返回上一级").clicked()
+            {
+                commands.push(SftpCommand::List(remote_parent_path(&panel.cwd)));
+            }
             for (index, entry) in panel.entries.iter().enumerate() {
                 let is_dir = entry.file_type == FileType::Directory;
                 let icon = if is_dir { "📁" } else { "📄" };
@@ -648,84 +835,35 @@ pub fn sftp_panel_ui(ui: &mut egui::Ui, panel: &mut SftpPanelState) -> Vec<SftpC
                 if is_dir && response.double_clicked() {
                     commands.push(SftpCommand::List(entry.path.clone()));
                 }
+                response.context_menu(|ui| {
+                    let is_dir = entry.file_type == FileType::Directory;
+                    if !is_dir && ui.button("下载").clicked() {
+                        let local = local_cwd.join(&entry.name);
+                        commands.push(SftpCommand::Download {
+                            remote: entry.path.clone(),
+                            local: local.display().to_string(),
+                        });
+                        ui.close_menu();
+                    }
+                    if is_dir && ui.button("下载目录").clicked() {
+                        let local = local_cwd.join(&entry.name);
+                        commands.push(SftpCommand::DownloadDir {
+                            remote: entry.path.clone(),
+                            local: local.display().to_string(),
+                        });
+                        ui.close_menu();
+                    }
+                    if ui.button("删除").clicked() {
+                        panel.confirm_delete = Some(entry.clone());
+                        ui.close_menu();
+                    }
+                    if is_dir && ui.button("进入").clicked() {
+                        commands.push(SftpCommand::List(entry.path.clone()));
+                        ui.close_menu();
+                    }
+                });
             }
         });
-    ui.separator();
-
-    let selected_is_dir = panel
-        .selected
-        .and_then(|index| panel.entries.get(index))
-        .is_some_and(|entry| entry.file_type == FileType::Directory);
-    let selected_is_file = panel
-        .selected
-        .and_then(|index| panel.entries.get(index))
-        .is_some_and(|entry| entry.file_type != FileType::Directory);
-
-    ui.horizontal(|ui| {
-        if ui
-            .add_enabled(
-                panel.selected.is_some() && !panel.busy && selected_is_file,
-                egui::Button::new("下载"),
-            )
-            .clicked()
-            && let Some(index) = panel.selected
-        {
-            let entry = &panel.entries[index];
-            if let Some(path) = rfd::FileDialog::new()
-                .set_file_name(&entry.name)
-                .save_file()
-            {
-                commands.push(SftpCommand::Download {
-                    remote: entry.path.clone(),
-                    local: path.display().to_string(),
-                });
-            }
-        }
-        if ui
-            .add_enabled(
-                panel.selected.is_some() && !panel.busy && selected_is_dir,
-                egui::Button::new("下载目录"),
-            )
-            .clicked()
-            && let Some(index) = panel.selected
-        {
-            let entry = &panel.entries[index];
-            if let Some(root) = rfd::FileDialog::new().pick_folder() {
-                let local = root.join(&entry.name);
-                commands.push(SftpCommand::DownloadDir {
-                    remote: entry.path.clone(),
-                    local: local.display().to_string(),
-                });
-            }
-        }
-    });
-
-    ui.horizontal(|ui| {
-        ui.label("新目录名");
-        ui.add(
-            egui::TextEdit::singleline(&mut panel.new_dir_name).desired_width(110.0),
-        );
-        if ui
-            .add_enabled(!panel.busy, egui::Button::new("新建目录"))
-            .clicked()
-        {
-            let name = panel.new_dir_name.trim().to_string();
-            if !name.is_empty() {
-                commands.push(SftpCommand::Mkdir(join_remote_path(&panel.cwd, &name)));
-                panel.new_dir_name.clear();
-            }
-        }
-        if ui
-            .add_enabled(
-                panel.selected.is_some() && !panel.busy,
-                egui::Button::new("删除"),
-            )
-            .clicked()
-            && let Some(index) = panel.selected
-        {
-            panel.confirm_delete = Some(panel.entries[index].clone());
-        }
-    });
 
     if let Some((transferred, total)) = panel.transfer_progress {
         let fraction = if total > 0 {
@@ -813,6 +951,7 @@ mod tests {
             transfer_progress: Some((100, 200)),
             busy: true,
             new_dir_name: String::new(),
+            new_kind: None,
             drop_hovering: false,
             confirm_delete: None,
         };

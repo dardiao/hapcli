@@ -3492,7 +3492,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-acp-adapter"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "agent-client-protocol",
  "clap",
@@ -3503,7 +3503,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-acp-host-tools"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "agent-client-protocol",
  "bytes",
@@ -3523,7 +3523,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-ai"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "agent-client-protocol",
  "anyhow",
@@ -3560,7 +3560,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-ai-tasks"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -3576,7 +3576,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-app-lock"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "anyhow",
  "argon2 0.5.3",
@@ -3599,18 +3599,18 @@ dependencies = [
 
 [[package]]
 name = "hapcli-atomic-file"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "tempfile",
 ]
 
 [[package]]
 name = "hapcli-backend-classification"
-version = "3.2.8"
+version = "4.0.0"
 
 [[package]]
 name = "hapcli-cli"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "chrono",
  "clap",
@@ -3632,7 +3632,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-cloud-sync"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "anyhow",
  "base64",
@@ -3660,7 +3660,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-connection-monitor"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "chrono",
  "serde",
@@ -3671,7 +3671,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-connections"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "anyhow",
  "argon2 0.5.3",
@@ -3701,7 +3701,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-editor-core"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "thiserror 2.0.18",
  "unicode-segmentation",
@@ -3709,7 +3709,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-editor-syntax"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "hapcli-editor-core",
  "thiserror 2.0.18",
@@ -3753,7 +3753,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-egui-app"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "ab_glyph",
  "anyhow",
@@ -3781,14 +3781,14 @@ dependencies = [
 
 [[package]]
 name = "hapcli-environment"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "hapcli-forwarding"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "chrono",
  "dashmap",
@@ -3810,14 +3810,14 @@ dependencies = [
 
 [[package]]
 name = "hapcli-i18n"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "hapcli-ide-core"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "serde",
  "thiserror 2.0.18",
@@ -3826,7 +3826,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-ide-fs"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "base64",
  "dashmap",
@@ -3846,7 +3846,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-local-files"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "chrono",
  "dirs",
@@ -3860,14 +3860,14 @@ dependencies = [
 
 [[package]]
 name = "hapcli-modem-transfer"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "thiserror 2.0.18",
 ]
 
 [[package]]
 name = "hapcli-network-proxy"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "hapcli-connections",
  "hapcli-settings",
@@ -3879,11 +3879,11 @@ dependencies = [
 
 [[package]]
 name = "hapcli-notification-center"
-version = "3.2.8"
+version = "4.0.0"
 
 [[package]]
 name = "hapcli-plugin-host-api"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "anyhow",
  "base64",
@@ -3914,7 +3914,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-plugin-manifest"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3922,7 +3922,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-plugin-protocol"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "hapcli-plugin-manifest",
  "serde",
@@ -3932,7 +3932,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-plugin-registry"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "hapcli-ai",
  "hapcli-network-proxy",
@@ -3946,7 +3946,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-plugin-runtime-install"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "flate2",
  "futures-util",
@@ -3962,7 +3962,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-plugin-wasm-runtime"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "hapcli-plugin-manifest",
  "hapcli-plugin-protocol",
@@ -3976,7 +3976,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-portable-runtime"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "argon2 0.5.3",
  "base64",
@@ -3995,7 +3995,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-preview"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "chardetng",
  "encoding_rs",
@@ -4013,7 +4013,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-quick-commands"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "hapcli-atomic-file",
  "regex",
@@ -4023,7 +4023,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-remote-desktop"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "base64",
  "hapcli-atomic-file",
@@ -4037,14 +4037,14 @@ dependencies = [
 
 [[package]]
 name = "hapcli-render-policy"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "hapcli-secret-store"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "anyhow",
  "block2 0.6.2",
@@ -4057,7 +4057,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-settings"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "anyhow",
  "hapcli-atomic-file",
@@ -4070,7 +4070,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-settings-model"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "hapcli-ai",
  "hapcli-cloud-sync",
@@ -4082,7 +4082,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-sftp"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "async-trait",
  "base64",
@@ -4112,7 +4112,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-skills"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "dirs",
  "serde",
@@ -4123,7 +4123,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-ssh"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "base64",
  "dashmap",
@@ -4151,7 +4151,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-ssh-launch"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "serde",
  "zeroize",
@@ -4159,7 +4159,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-terminal"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
@@ -4185,14 +4185,14 @@ dependencies = [
 
 [[package]]
 name = "hapcli-terminal-encoding"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "encoding_rs",
 ]
 
 [[package]]
 name = "hapcli-terminal-graphics"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "anyhow",
  "base64",
@@ -4203,18 +4203,18 @@ dependencies = [
 
 [[package]]
 name = "hapcli-terminal-model"
-version = "3.2.8"
+version = "4.0.0"
 
 [[package]]
 name = "hapcli-terminal-recording"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "hapcli-terminal-unicode"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "hapcli-terminal-model",
  "unicode-bidi",
@@ -4223,14 +4223,14 @@ dependencies = [
 
 [[package]]
 name = "hapcli-theme"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "hapcli-topology"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "chrono",
  "serde",
@@ -4238,7 +4238,7 @@ dependencies = [
 
 [[package]]
 name = "hapcli-trzsz"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "base64",
  "flate2",
@@ -4256,11 +4256,11 @@ dependencies = [
 
 [[package]]
 name = "hapcli-workspace"
-version = "3.2.8"
+version = "4.0.0"
 
 [[package]]
 name = "hapcli-x11-forwarding"
-version = "3.2.8"
+version = "4.0.0"
 dependencies = [
  "rand 0.8.6",
  "serde",

@@ -744,63 +744,32 @@ impl HapcliApp {
                 ui.label(egui::RichText::new("本地").strong().size(13.0));
             });
             cols[0].separator();
-            match tab.local_browser.as_mut() {
+            let upload_req = match tab.local_browser.as_mut() {
                 Some(browser) => sftp::local_browser_ui(&mut cols[0], browser),
                 None => {
                     cols[0].weak("本地文件浏览器未初始化");
+                    None
                 }
-            }
+            };
 
-            // 本地侧：上传（本地 → 远程当前目录）。
-            if active_is_ssh && tab.sftp.is_some() {
-                cols[0].add_space(8.0);
-                cols[0].horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 4.0;
-                    let busy = tab.sftp.as_ref().is_some_and(|panel| panel.busy);
-                    let mut commands = Vec::new();
-                    if ui
-                        .add_enabled(!busy, egui::Button::new("上传文件"))
-                        .clicked()
-                    {
-                        if let Some(paths) = rfd::FileDialog::new().pick_files() {
-                            if let Some(panel) = tab.sftp.as_mut() {
-                                let cwd = panel.cwd.clone();
-                                for path in paths {
-                                    let local = path.display().to_string();
-                                    let name = path
-                                        .file_name()
-                                        .map(|s| s.to_string_lossy().to_string())
-                                        .unwrap_or_default();
-                                    let remote = format!("{}/{}", cwd.trim_end_matches('/'), name);
-                                    commands.push(sftp::SftpCommand::Upload { local, remote });
-                                }
-                            }
-                        }
-                    }
-                    if ui
-                        .add_enabled(!busy, egui::Button::new("上传目录"))
-                        .clicked()
-                    {
-                        if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                            if let Some(panel) = tab.sftp.as_mut() {
-                                let cwd = panel.cwd.clone();
-                                let local = path.display().to_string();
-                                let name = path
-                                    .file_name()
-                                    .map(|s| s.to_string_lossy().to_string())
-                                    .unwrap_or_else(|| "folder".to_string());
-                                let remote = format!("{}/{}", cwd.trim_end_matches('/'), name);
-                                commands.push(sftp::SftpCommand::UploadDir { local, remote });
-                            }
-                        }
-                    }
-                    for command in commands {
-                        if let Some(panel) = tab.sftp.as_mut() {
-                            panel.send(command);
-                            panel.busy = true;
-                        }
-                    }
-                });
+            // 右键“上传到远程”：把选中的本地条目上传到远程当前目录。
+            if let Some((path, is_dir)) = upload_req {
+                if let Some(panel) = tab.sftp.as_mut() {
+                    let cwd = panel.cwd.clone();
+                    let name = path
+                        .file_name()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    let remote = format!("{}/{}", cwd.trim_end_matches('/'), name);
+                    let local = path.display().to_string();
+                    let command = if is_dir {
+                        sftp::SftpCommand::UploadDir { local, remote }
+                    } else {
+                        sftp::SftpCommand::Upload { local, remote }
+                    };
+                    panel.send(command);
+                    panel.busy = true;
+                }
             }
 
             // 左右两栏之间画一条竖向分隔线。
@@ -823,8 +792,13 @@ impl HapcliApp {
             if active_is_ssh {
                 match tab.sftp.as_mut() {
                     Some(panel) => {
+                        let local_cwd = tab
+                            .local_browser
+                            .as_ref()
+                            .map(|browser| browser.cwd.clone())
+                            .unwrap_or_default();
                         let mut transfer_started = false;
-                        let commands = sftp::sftp_panel_ui(&mut cols[1], panel);
+                        let commands = sftp::sftp_panel_ui(&mut cols[1], panel, &local_cwd);
                         for command in commands {
                             if matches!(
                                 command,
