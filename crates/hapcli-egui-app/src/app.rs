@@ -1789,6 +1789,7 @@ impl eframe::App for HapcliApp {
         let mut want_connect = false;
         let mut want_local = false;
         let mut want_settings = false;
+        let mut toggle_theme = false;
         let mut toggle_left_files = false;
         let mut toggle_forward = false;
         let mut toggle_quick = false;
@@ -1882,6 +1883,14 @@ impl eframe::App for HapcliApp {
                         {
                             want_settings = true;
                         }
+                        // ◐ 主题切换：位于设置之前、快捷命令之后。
+                        if ui
+                            .add(icon_btn("◐"))
+                            .on_hover_text("切换浅色 / 深色主题")
+                            .clicked()
+                        {
+                            toggle_theme = true;
+                        }
                         // 快捷命令 / 文件管理器 / 端口转发：放在设置左侧。
                         if ui.add(icon_btn("✎")).on_hover_text("快捷命令").clicked() {
                             toggle_quick = true;
@@ -1915,6 +1924,15 @@ impl eframe::App for HapcliApp {
         if want_settings {
             self.show_settings = true;
             self.show_connect_dialog = false;
+        }
+        if toggle_theme {
+            self.settings.theme = match self.settings.theme {
+                ThemeChoice::Dark => ThemeChoice::Light,
+                ThemeChoice::Light => ThemeChoice::Dark,
+            };
+            if let Err(message) = save_settings(&self.settings) {
+                self.settings_error = Some(message);
+            }
         }
 
         // 2.54 文件管理器改为独立弹窗（本地+远程双栏），见 show_files_window。
